@@ -15,3 +15,12 @@ object RegisterRoute : NavRoutes
 
 @Serializable
 object HomeRoute : NavRoutes
+
+@Serializable
+object AttendanceRoute : NavRoutes
+
+@Serializable
+object AttendanceHistoryRoute : NavRoutes
+
+@Serializable
+object ProfileRoute : NavRoutes

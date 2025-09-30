@@ -59,6 +59,7 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendSecondaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
+import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
 import com.amos_tech_code.smartattend.ui.navigation.RegisterRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
@@ -82,7 +83,7 @@ fun LoginScreen(
             }
 
             LoginEvent.NavigateToHome -> {
-
+                navController.navigate(HomeRoute)
             }
 
             LoginEvent.NavigateToRegister -> {
@@ -93,6 +94,7 @@ fun LoginScreen(
 
     Scaffold(
         topBar = {
+            
             CenterAlignedTopAppBar(
                 title = {
                     Text(

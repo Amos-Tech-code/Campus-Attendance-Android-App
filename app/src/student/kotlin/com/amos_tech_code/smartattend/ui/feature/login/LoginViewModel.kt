@@ -1,12 +1,15 @@
 package com.amos_tech_code.smartattend.ui.feature.login
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class LoginViewModel : ViewModel() {
 
@@ -21,7 +24,12 @@ class LoginViewModel : ViewModel() {
     }
 
     fun login() {
-
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            delay(2000)
+            _state.update { it.copy(isLoading = false) }
+            _event.trySend(LoginEvent.NavigateToHome)
+        }
     }
 
     fun navigateToRegister() {
