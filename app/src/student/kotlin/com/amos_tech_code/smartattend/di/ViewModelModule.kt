@@ -6,17 +6,18 @@ import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.login.LoginViewModel
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileViewModel
 import com.amos_tech_code.smartattend.ui.feature.register.RegisterViewModel
+import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
 
-    viewModel { RegisterViewModel() }
-    viewModel { LoginViewModel() }
+    viewModel { RegisterViewModel(get(), get(), get()) }
+    viewModel { LoginViewModel(get(), get(), get()) }
 
-    viewModel { HomeViewModel() }
+    viewModel { HomeViewModel(get()) }
     viewModel { AttendanceViewModel() }
     viewModel { HistoryViewModel() }
-    viewModel { ProfileViewModel() }
+    viewModel { ProfileViewModel(get()) }
 
 }

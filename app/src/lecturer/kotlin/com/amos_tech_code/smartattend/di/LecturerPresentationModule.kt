@@ -2,8 +2,6 @@ package com.amos_tech_code.smartattend.di
 
 import org.koin.dsl.module
 
-val studentPresentationModule = module {
-
+val lecturerPresentationModule = module {
     includes(viewModelModule)
-
 }

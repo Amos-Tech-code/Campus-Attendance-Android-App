@@ -1,7 +1,9 @@
 package com.amos_tech_code.smartattend
 
 import android.app.Application
-import com.amos_tech_code.smartattend.di.studentPresentationModule
+import com.amos_tech_code.smartattend.di.dataModule
+import com.amos_tech_code.smartattend.di.lecturerPresentationModule
+//import com.amos_tech_code.smartattend.di.studentPresentationModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
@@ -12,8 +14,16 @@ class SmartAttendApplication : Application() {
 
         startKoin {
             androidContext(this@SmartAttendApplication)
+            // Provide the property value for isDebug
+            properties(
+                mapOf("isDebug" to BuildConfig.DEBUG)
+            )
             modules(
-                listOf(studentPresentationModule)
+                listOf(
+                    //studentPresentationModule,
+                    lecturerPresentationModule,
+                    dataModule,
+                )
             )
         }
 

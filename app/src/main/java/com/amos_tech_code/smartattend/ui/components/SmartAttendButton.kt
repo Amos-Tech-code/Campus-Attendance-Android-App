@@ -161,7 +161,7 @@ fun SmartAttendButton(
             visible = isLoading
         ) {
             CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(24.dp),
                 color = contentColor,
                 strokeWidth = 2.dp
             )

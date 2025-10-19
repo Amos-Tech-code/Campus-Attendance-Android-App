@@ -12,10 +12,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
+import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.ui.feature.register.RegisterScreen
+import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
+import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
 import com.amos_tech_code.smartattend.ui.theme.SmartAttendTheme
+import org.koin.android.ext.android.inject
 
 class MainActivity : BaseSmartAttendActivity() {
+
+    private val session : SmartAttendSession by inject()
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,8 +32,12 @@ class MainActivity : BaseSmartAttendActivity() {
         setContent {
             SmartAttendTheme(darkTheme = false) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
+
+                    val startDestination = if (session.isLoggedIn()) HomeRoute else SignInRoute
+
                     App(
-                        navController = rememberNavController()
+                        navController = rememberNavController(),
+                        startDestination = startDestination
                     )
                 }
             }

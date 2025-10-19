@@ -22,10 +22,10 @@ fun BottomNavigation(
     navController: NavController
 ) {
     val items = listOf(
-        StudentBottomNavItem.Home,
-        StudentBottomNavItem.Attendance,
-        StudentBottomNavItem.History,
-        StudentBottomNavItem.Profile
+        BottomNavItem.Home,
+        BottomNavItem.Attendance,
+        BottomNavItem.History,
+        BottomNavItem.Profile
     )
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination

@@ -1,7 +1,6 @@
 package com.amos_tech_code.smartattend.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 
 // Primary Brand Colors - Professional Blue (Trust, Security, Education)
 val Primary10 = Color(0xFF000F5C)

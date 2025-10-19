@@ -1,12 +1,16 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
 import androidx.lifecycle.ViewModel
+import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val session: SmartAttendSession,
+) : ViewModel() {
 
     private val _homeState = MutableStateFlow(StudentHomeState())
     val homeState: StateFlow<StudentHomeState> = _homeState
@@ -14,7 +18,20 @@ class HomeViewModel : ViewModel() {
     private val _event = Channel<HomeEvent>()
     val event = _event.receiveAsFlow()
 
+    init {
+        fetchData()
+    }
+
     fun fetchData() {
+        val studentName = session.getName()
+        val registrationNo = session.getRegNo()
+
+        _homeState.update {
+            it.copy(
+                studentName = studentName ?: "",
+                registrationNo = registrationNo ?: ""
+            )
+        }
 
     }
 
@@ -23,8 +40,8 @@ class HomeViewModel : ViewModel() {
 
 // Home Screen State
 data class StudentHomeState(
-    val studentName: String = "John Doe",
-    val registrationNo: String = "U123/2021",
+    val studentName: String = "",
+    val registrationNo: String = "",
     val todaySessions: List<Session> = listOf(
         Session(
             id = "1",

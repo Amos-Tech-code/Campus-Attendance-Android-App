@@ -12,6 +12,7 @@ import com.amos_tech_code.smartattend.ui.feature.register.RegisterScreen
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
+import com.amos_tech_code.smartattend.ui.navigation.NavRoutes
 import com.amos_tech_code.smartattend.ui.navigation.ProfileRoute
 import com.amos_tech_code.smartattend.ui.navigation.RegisterRoute
 import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
@@ -20,11 +21,11 @@ import com.amos_tech_code.smartattend.ui.navigation.SmartAttendNavHost
 @Composable
 fun App(
     navController: NavHostController,
-    //startDestination: NavRoutes
+    startDestination: NavRoutes
 ) {
     SmartAttendNavHost(
         navController = navController,
-        startDestination = HomeRoute,
+        startDestination = startDestination,
     ) {
         composable<RegisterRoute> {
             RegisterScreen(navController)

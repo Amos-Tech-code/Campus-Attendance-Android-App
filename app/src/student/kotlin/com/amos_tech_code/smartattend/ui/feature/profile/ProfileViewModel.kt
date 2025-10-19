@@ -1,22 +1,48 @@
 package com.amos_tech_code.smartattend.ui.feature.profile
 
 import androidx.lifecycle.ViewModel
+import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.ui.feature.home.DeviceInfo
 import com.amos_tech_code.smartattend.ui.feature.home.Student
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(
+    private val session: SmartAttendSession
+) : ViewModel() {
 
     private val _profileState = MutableStateFlow(StudentProfileState())
     val profileState = _profileState.asStateFlow()
+
+    init {
+        fetchData()
+    }
+    fun fetchData() {
+        val studentName = session.getName()
+        val registrationNo = session.getRegNo()
+
+        _profileState.update {
+            it.copy(
+                student = Student(
+                    name = studentName ?: "",
+                    registrationNo = registrationNo ?: ""
+                )
+            )
+        }
+
+    }
+
+    fun logOut() {
+        //session.clearSession()
+    }
 }
 
 // Profile Screen State
 data class StudentProfileState(
     val student: Student = Student(
-        name = "John Doe",
-        registrationNo = "U123/2021",
+        name = "",
+        registrationNo = "",
         email = "john.doe@student.university.edu",
         department = "Computer Science",
         semester = "4",

@@ -1,14 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.login
 
-import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,27 +15,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,12 +39,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.R
+import com.amos_tech_code.smartattend.ui.components.ErrorDialog
+import com.amos_tech_code.smartattend.ui.components.LoadingDialog
+import com.amos_tech_code.smartattend.ui.components.NetworkErrorDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendSecondaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
 import com.amos_tech_code.smartattend.ui.navigation.RegisterRoute
+import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
+import com.amos_tech_code.smartattend.utils.ErrorMessageType
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
@@ -75,15 +64,21 @@ fun LoginScreen(
 
     // Collect state and events
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var showNetworkErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
             is LoginEvent.ShowErrorMessage -> {
-                Toast.makeText(navController.context, event.message, Toast.LENGTH_LONG).show()
+                errorMessage = event.message
+                if (event.type == ErrorMessageType.NETWORK) showNetworkErrorDialog = true else showErrorDialog = true
             }
 
             LoginEvent.NavigateToHome -> {
-                navController.navigate(HomeRoute)
+                navController.navigate(HomeRoute) {
+                    popUpTo(SignInRoute) { inclusive = true }
+                }
             }
 
             LoginEvent.NavigateToRegister -> {
@@ -103,14 +98,15 @@ fun LoginScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+//                colors = TopAppBarDefaults.topAppBarColors(
+//                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+//                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+//                )
             )
         },
         containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+    )
+    { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -198,58 +194,6 @@ fun LoginScreen(
                             imeAction = ImeAction.Done
                         )
                     )
-
-                    // Device Security Notice
-//                    AnimatedVisibility(
-//                        visible = state.showDeviceWarning,
-//                        enter = fadeIn() + expandVertically(),
-//                        exit = fadeOut() + shrinkVertically()
-//                    )
-//                    {
-//                        Card(
-//                            modifier = Modifier.fillMaxWidth(),
-//                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-//                            colors = CardDefaults.cardColors(
-//                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-//                            ),
-//                            shape = MaterialTheme.shapes.medium,
-//                            border = BorderStroke(
-//                                1.dp,
-//                                MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-//                            )
-//                        ) {
-//                            Row(
-//                                modifier = Modifier.padding(16.dp),
-//                                verticalAlignment = Alignment.Top,
-//                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-//                            ) {
-//                                Icon(
-//                                    imageVector = Icons.Default.Security,
-//                                    contentDescription = "Security Warning",
-//                                    tint = MaterialTheme.colorScheme.error,
-//                                    modifier = Modifier.size(20.dp)
-//                                )
-//                                Column(
-//                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-//                                ) {
-//                                    Text(
-//                                        text = "New Device Detected",
-//                                        style = MaterialTheme.typography.bodyMedium,
-//                                        fontWeight = FontWeight.SemiBold,
-//                                        color = MaterialTheme.colorScheme.onErrorContainer
-//                                    )
-//                                    Text(
-//                                        text = "You're logging in from a new device. This will be flagged for your lecturer's review.",
-//                                        style = MaterialTheme.typography.bodySmall,
-//                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(
-//                                            alpha = 0.8f
-//                                        ),
-//                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
                 }
 
                 SmartAttendHeightSpacer(16.dp)
@@ -263,7 +207,6 @@ fun LoginScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading,
-                    isLoading = state.isLoading
                 )
 
                 SmartAttendHeightSpacer(16.dp)
@@ -315,5 +258,30 @@ fun LoginScreen(
                 SmartAttendHeightSpacer(16.dp)
             }
         }
+    }
+
+    if (showErrorDialog) {
+        ErrorDialog(
+            title = "Login Failed",
+            message = errorMessage,
+            onDismiss = { showErrorDialog = false }
+        )
+    }
+
+    if (showNetworkErrorDialog) {
+        NetworkErrorDialog(
+            title = "Login Failed",
+            message = errorMessage,
+            onDismiss = { showNetworkErrorDialog = false },
+            onRetry = {
+                // You can add retry logic here if needed
+                viewModel.login()
+                showNetworkErrorDialog = false
+            }
+        )
+    }
+
+    if (state.isLoading) {
+        LoadingDialog(message = "Signing in...")
     }
 }

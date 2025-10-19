@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,7 +9,11 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.ViewCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = Primary40,
@@ -97,6 +102,27 @@ fun SmartAttendTheme(
 
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+    // Set system bar colors
+    val view = LocalView.current
+    val context = LocalContext.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            (context as? Activity)?.window?.let { window ->
+                // Set status bar color
+                window.statusBarColor = colorScheme.surface.toArgb()
+
+                // Set navigation bar color
+                window.navigationBarColor = colorScheme.primaryContainer.toArgb()
+
+                val insetsController = ViewCompat.getWindowInsetsController(view)
+
+                // Control light/dark appearance for status & nav bars
+                insetsController?.isAppearanceLightStatusBars = !darkTheme
+                insetsController?.isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+
     }
 
     MaterialTheme(

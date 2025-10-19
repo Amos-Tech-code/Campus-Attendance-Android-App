@@ -1,6 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.register
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,10 +28,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -48,11 +48,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.R
+import com.amos_tech_code.smartattend.ui.components.ErrorDialog
+import com.amos_tech_code.smartattend.ui.components.LoadingDialog
+import com.amos_tech_code.smartattend.ui.components.NetworkErrorDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
+import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
+import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
+import com.amos_tech_code.smartattend.utils.ErrorMessageType
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
@@ -67,16 +73,21 @@ fun RegisterScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Keyboard controller for handling keyboard state
     val keyboardController = LocalSoftwareKeyboardController.current
-    // Snackbar host state for showing snackbars
-    val snackBarHostState = remember { SnackbarHostState() }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var showNetworkErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
             is RegisterEvent.ShowErrorMessage -> {
-                Toast.makeText(navController.context, event.message, Toast.LENGTH_LONG).show()
+                errorMessage = event.message
+                if (event.type == ErrorMessageType.NETWORK) showNetworkErrorDialog = true else showErrorDialog = true
             }
             is RegisterEvent.NavigateToHome -> {
                 // Show success and navigate
+                navController.navigate(HomeRoute) {
+                    popUpTo(SignInRoute) { inclusive = true }
+                }
             }
 
             RegisterEvent.NavigateToLogin -> {
@@ -95,14 +106,15 @@ fun RegisterScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+//                colors = TopAppBarDefaults.topAppBarColors(
+//                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+//                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+//                )
             )
         },
         containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+    )
+    { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -210,8 +222,7 @@ fun RegisterScreen(
                         viewModel.register()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isLoading,
-                    isLoading = state.isLoading
+                    enabled = !state.isLoading
                 )
 
                 // Login Prompt
@@ -237,6 +248,32 @@ fun RegisterScreen(
             }
         }
     }
+
+    if (showErrorDialog) {
+        ErrorDialog(
+            title = "Registration Failed",
+            message = errorMessage,
+            onDismiss = { showErrorDialog = false }
+        )
+    }
+
+    if (showNetworkErrorDialog) {
+        NetworkErrorDialog(
+            title = "Registration Failed",
+            message = errorMessage,
+            onDismiss = { showNetworkErrorDialog = false },
+            onRetry = {
+                // You can add retry logic here if needed
+                viewModel.register()
+                showNetworkErrorDialog = false
+            }
+        )
+    }
+
+    if (state.isLoading) {
+        LoadingDialog(message = "Registering account...")
+    }
+
 }
 
 
@@ -284,7 +321,7 @@ private fun SmartAttendRegNoTextField(
         onValueChange = onValueChange,
         modifier = modifier,
         label = "Registration Number",
-        placeholder = "e.g., U123/2021",
+        placeholder = "e.g., SC211/0483/2022",
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Badge,
