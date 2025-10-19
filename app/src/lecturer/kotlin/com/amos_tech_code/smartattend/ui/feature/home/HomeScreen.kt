@@ -1,7 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCode2
@@ -49,7 +47,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.EmptyState
-import com.amos_tech_code.smartattend.ui.components.ProfileCompletionRequiredDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.feature.setup.ActivityStatus
 import com.amos_tech_code.smartattend.ui.feature.setup.ActivityType
@@ -74,7 +70,6 @@ import com.amos_tech_code.smartattend.ui.feature.setup.LecturerSession
 import com.amos_tech_code.smartattend.ui.feature.setup.SessionStatus
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
-import com.amos_tech_code.smartattend.ui.navigation.ProfileRoute
 import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
 import com.amos_tech_code.smartattend.ui.navigation.SettingsRoute
 import com.amos_tech_code.smartattend.ui.navigation.StartSessionRoute
