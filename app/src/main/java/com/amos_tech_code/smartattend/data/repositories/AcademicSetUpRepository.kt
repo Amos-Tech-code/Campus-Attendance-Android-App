@@ -1,7 +1,6 @@
 package com.amos_tech_code.smartattend.data.repositories
 
 import com.amos_tech_code.smartattend.data.local.room_db.dao.LecturerAcademicsDao
-import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.data.mappers.lecturerUniversitiesResponseToEntities
 import com.amos_tech_code.smartattend.data.mappers.toDomain

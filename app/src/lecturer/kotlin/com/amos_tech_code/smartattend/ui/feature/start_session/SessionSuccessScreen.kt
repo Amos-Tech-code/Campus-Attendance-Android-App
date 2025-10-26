@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
-import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButtonWithLeadingIcon
 
 @OptIn(ExperimentalMaterial3Api::class)

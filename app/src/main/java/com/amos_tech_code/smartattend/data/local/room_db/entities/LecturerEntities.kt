@@ -2,9 +2,9 @@ package com.amos_tech_code.smartattend.data.local.room_db.entities
 
 import androidx.room.Embedded
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import androidx.room.ForeignKey
 import androidx.room.Index
+import androidx.room.PrimaryKey
 import androidx.room.Relation
 
 // University Entity

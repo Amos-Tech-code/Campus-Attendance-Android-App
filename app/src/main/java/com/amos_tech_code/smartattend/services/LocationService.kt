@@ -1,8 +1,6 @@
 package com.amos_tech_code.smartattend.services
 
 import android.app.Activity
-import android.content.Context
-import android.location.Location
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import com.amos_tech_code.smartattend.domain.models.LocationData

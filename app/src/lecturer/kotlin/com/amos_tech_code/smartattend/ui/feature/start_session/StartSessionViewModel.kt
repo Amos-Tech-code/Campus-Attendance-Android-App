@@ -10,7 +10,6 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
-import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
 import com.amos_tech_code.smartattend.domain.models.request.AttendanceMethodRequest
