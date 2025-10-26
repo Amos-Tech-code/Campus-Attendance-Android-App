@@ -13,6 +13,8 @@ class SmartAttendSession(context: Context) {
         private const val KEY_EMAIL = "email"
         private const val KEY_PROFILE_COMPLETE = "profile_complete"
 
+        private const val KEY_ACADEMIC_SYNC_STATUS = "academic_sync_status"
+
         // ✅ Added key for student session
         private const val KEY_REG_NO = "reg_no"
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
@@ -39,6 +41,17 @@ class SmartAttendSession(context: Context) {
             putBoolean(KEY_PROFILE_COMPLETE, isSetupComplete)
             apply()
         }
+    }
+
+    fun setAcademicSyncStatus(isSynced: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_ACADEMIC_SYNC_STATUS, isSynced)
+            apply()
+        }
+    }
+
+    fun getAcademicSyncStatus(): Boolean {
+        return prefs.getBoolean(KEY_ACADEMIC_SYNC_STATUS, false)
     }
 
 

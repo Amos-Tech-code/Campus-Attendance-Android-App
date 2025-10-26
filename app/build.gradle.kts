@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     // Kotlin Serialization
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -116,6 +117,9 @@ dependencies {
     // Google Play Services for App Set ID
     implementation("com.google.android.gms:play-services-appset:16.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    // Google Play Services location
+    implementation(libs.play.services.location)
+
 
     //Kotlin Date Time
     implementation(libs.kotlinx.datetime)
@@ -125,5 +129,11 @@ dependencies {
     implementation(libs.converter.gson)
     //Logging
     implementation(libs.logging.interceptor)
+
+    // KSP
+    ksp(libs.androidx.room.compiler)
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
 
 }

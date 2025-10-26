@@ -24,7 +24,7 @@ val viewModelModule = module {
 
     viewModel { ProfileViewModel() }
 
-    viewModel { StartSessionViewModel(get()) }
+    viewModel { StartSessionViewModel(get(), get(), get(), get()) }
 
     viewModel { StudentLookupViewModel() }
 

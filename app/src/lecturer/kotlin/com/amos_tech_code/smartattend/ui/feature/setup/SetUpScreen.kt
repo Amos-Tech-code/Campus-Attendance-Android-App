@@ -75,7 +75,7 @@ fun UniversitySetupScreen(
     navController: NavController,
     viewModel: SetupViewModel = koinViewModel()
 ) {
-    val context = LocalContext.current
+
     val focusManager = LocalFocusManager.current
 
     val state by viewModel.setupState.collectAsStateWithLifecycle()

@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ fun SmartAttendTextField(
     placeholder: String = "",
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
     isError: Boolean = false,
     errorMessage: String? = null,
     supportingMessage: String? = null,
@@ -37,7 +39,9 @@ fun SmartAttendTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier,
+        modifier = modifier.then(
+                if (onClick != null) Modifier.clickable { onClick() } else Modifier
+            ),
         label = {
             Text(
                 text = label,

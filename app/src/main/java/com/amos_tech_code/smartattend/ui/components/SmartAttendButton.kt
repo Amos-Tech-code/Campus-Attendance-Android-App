@@ -1,11 +1,15 @@
 package com.amos_tech_code.smartattend.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -13,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,6 +51,7 @@ fun SmartAttendPrimaryButton(
         )
     }
 }
+
 
 @Composable
 fun SmartAttendSecondaryButton(
@@ -96,6 +102,47 @@ fun SmartAttendTextButton(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+fun SmartAttendPrimaryButtonWithLeadingIcon(
+    text: String,
+    leadingIcon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    size: SmartAttendButtonSize = SmartAttendButtonSize.Large
+) {
+    SmartAttendButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        isLoading = isLoading,
+        buttonStyle = SmartAttendButtonStyle.Primary,
+        size = size
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Only show icon and text when not loading
+            if (!isLoading) {
+                leadingIcon()
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = text,
+                    style = when (size) {
+                        SmartAttendButtonSize.Small -> MaterialTheme.typography.labelMedium
+                        SmartAttendButtonSize.Medium -> MaterialTheme.typography.bodyMedium
+                        SmartAttendButtonSize.Large -> MaterialTheme.typography.bodyLarge
+                    },
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 
