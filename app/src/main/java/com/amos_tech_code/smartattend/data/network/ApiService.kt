@@ -21,6 +21,9 @@ import retrofit2.http.Path
 
 interface ApiService {
 
+    @GET("health/status")
+    suspend fun checkApiStatus() : Response<Unit>
+
     /**
      * Lecturer Flavor Api Service Implementation
      */
@@ -43,13 +46,15 @@ interface ApiService {
     ) : Response<StartAttendanceSessionResponse>
 
     @POST("attendance/sessions/end")
-    fun endAttendanceSession(@Body request: EndSessionRequest) : Response<Unit>
+    suspend fun endAttendanceSession(@Body request: EndSessionRequest) : Response<Unit>
 
     @GET("attendance/sessions/active")
-    fun getActiveSession() : Response<StartAttendanceSessionResponse>
+    suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
+
 
 
     /**
+     *
      * Student Flavor Api Service Implementation
      *
      */

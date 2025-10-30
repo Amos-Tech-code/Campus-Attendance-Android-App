@@ -21,6 +21,9 @@ import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.NeutralVariant50
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -339,6 +342,10 @@ class SetupViewModel(
 
                 when(result) {
                     is ApiResult.Success -> {
+                        // Launch independent sync
+                        launch(SupervisorJob() + Dispatchers.IO) {
+                            academicSetUpRepository.syncLecturerAcademics()
+                        }
                         _setupState.update { it -> it.copy(isLoading = false) }
                         session.setSetupComplete(true)
                         _event.send(SetUpEvents.SetupComplete)

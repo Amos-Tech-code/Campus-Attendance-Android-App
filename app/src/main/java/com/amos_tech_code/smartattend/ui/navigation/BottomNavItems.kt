@@ -73,10 +73,10 @@ sealed class BottomNavItem(
     )
 
     object LiveAttendance : BottomNavItem(
-        route = LiveAttendanceRoute(),
+        route = LiveAttendanceRoute,
         title = "Live View",
         selectedIcon = Icons.Default.People,
         unselectedIcon = Icons.Outlined.People,
-        badgeCount = 3 // Active sessions count
+        badgeCount = 0 // Active sessions count
     )
 }

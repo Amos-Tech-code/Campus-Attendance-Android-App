@@ -3,20 +3,16 @@ package com.amos_tech_code.smartattend.ui.feature.start_session
 import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,43 +26,40 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,22 +71,30 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.models.LocationData
-import com.amos_tech_code.smartattend.domain.models.LocationPermissionState
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
 import com.amos_tech_code.smartattend.ui.components.LoadingDialog
+import com.amos_tech_code.smartattend.ui.components.LocationCapturedState
+import com.amos_tech_code.smartattend.ui.components.LocationCapturingState
+import com.amos_tech_code.smartattend.ui.components.LocationNotCapturedState
+import com.amos_tech_code.smartattend.ui.components.PermissionRationaleDialog
+import com.amos_tech_code.smartattend.ui.components.PermissionSettingsDialog
 import com.amos_tech_code.smartattend.ui.components.ProfileCompletionRequiredDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
-import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButtonWithLeadingIcon
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
-import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.navigation.LiveAttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.MultiplePermissionsState
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.shouldShowRationale
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun StartSessionScreen(
     navController: NavController,
@@ -103,18 +104,28 @@ fun StartSessionScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val successState by viewModel.successState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackBarHostState = remember { SnackbarHostState() }
     val activity = context as? Activity
     val scrollState = rememberScrollState()
     var shouldShowPermissionRationale by remember { mutableStateOf(false) }
     var shouldShowSettingsDialog by remember { mutableStateOf(false) }
 
     // Permission Launcher
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions.values.all { it }
-        activity?.let { viewModel.onLocationPermissionResult(granted, it) }
-    }
+//    val locationPermissionLauncher = rememberLauncherForActivityResult(
+//        contract = ActivityResultContracts.RequestMultiplePermissions()
+//    ) { permissions ->
+//        val granted = permissions.values.all { it }
+//        activity?.let { viewModel.onLocationPermissionResult(granted, it) }
+//    }
+    // Permission State using Accompanist
+    val locationPermissionState = rememberMultiplePermissionsState(
+        permissions = listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
+
 
     // --- GPS ENABLING LAUNCHER ---
     val enableGpsLauncher = rememberLauncherForActivityResult(
@@ -132,33 +143,45 @@ fun StartSessionScreen(
         }
     }
 
+    // Handle permission changes
+    LaunchedEffect(locationPermissionState.allPermissionsGranted) {
+        if (locationPermissionState.allPermissionsGranted) {
+            // Permission granted, proceed with location capture
+            activity?.let {
+                viewModel.onEvent(SessionUiEvent.CaptureTeachingVenue(it))
+            }
+        }
+    }
+
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
             is StartSessionEvent.ShowErrorMessage -> {
-                Toast.makeText(navController.context, event.message, Toast.LENGTH_LONG).show()
+                scope.launch {
+                    snackBarHostState.showSnackbar(event.message)
+                }
             }
             is StartSessionEvent.CompleteProfile -> {
                 navController.navigate(SetUpRoute)
             }
-            is StartSessionEvent.SessionStarted -> {
-                navController.navigate(LiveAttendanceRoute())
+            is StartSessionEvent.NavigateToLiveAttendance -> {
+                navController.navigate(LiveAttendanceRoute)
             }
 
-            is StartSessionEvent.RequestPermission -> {
-                when (event.state) {
-                    LocationPermissionState.GRANTED -> {
-                        // Should not happen here since we checked
-                    }
-                    LocationPermissionState.DENIED_SHOW_RATIONALE -> {
-                        // Show rationale dialog
-                        shouldShowPermissionRationale = true
-                    }
-                    LocationPermissionState.DENIED_NEVER_ASK -> {
-                        // Show settings dialog
-                        shouldShowSettingsDialog = true
-                    }
-                }
-            }
+//            is StartSessionEvent.RequestPermission -> {
+//                when (event.state) {
+//                    LocationPermissionState.GRANTED -> {
+//                        // Should not happen here since we checked
+//                    }
+//                    LocationPermissionState.DENIED_SHOW_RATIONALE -> {
+//                        // Show rationale dialog
+//                        shouldShowPermissionRationale = true
+//                    }
+//                    LocationPermissionState.DENIED_NEVER_ASK -> {
+//                        // Show settings dialog
+//                        shouldShowSettingsDialog = true
+//                    }
+//                }
+//            }
 
             StartSessionEvent.RequestEnableGps -> {
                 activity?.let {
@@ -171,18 +194,10 @@ fun StartSessionScreen(
     // Check if we should show success screen
     successState.sessionResponse?.let { sessionResponse ->
         SessionSuccessScreen(
-            navController = navController,
+            scope = scope,
             sessionResponse = sessionResponse,
-            onBackToHome = {
-                viewModel.clearSuccessState()
-                navController.popBackStack()
-            },
-            onShareSession = { shareText, sessionCode ->
-                shareSessionDetails(context, shareText, sessionCode)
-            },
-            onShareQRCode = { qrCodeUrl ->
-                shareQRCode(context, qrCodeUrl)
-            }
+            onLiveAttendanceClick = { viewModel.navigateToLiveAttendance() },
+            onBackToHome = { navController.popBackStack() }
         )
        // return
     } ?: run {
@@ -196,7 +211,7 @@ fun StartSessionScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
@@ -204,7 +219,8 @@ fun StartSessionScreen(
             },
             bottomBar = {
                 BottomNavigation(navController)
-            }
+            },
+            snackbarHost = { SnackbarHost(snackBarHostState) }
         )
         { paddingValues ->
             Column(
@@ -222,7 +238,7 @@ fun StartSessionScreen(
                 SessionConfigurationCard(state, viewModel::onEvent)
 
                 // Security Settings Card
-                SecuritySettingsCard(state, viewModel::onEvent)
+                SecuritySettingsCard(state, viewModel::onEvent,locationPermissionState, context)
 
                 // Start Session Button
                 SmartAttendPrimaryButton(
@@ -276,18 +292,7 @@ fun StartSessionScreen(
             isDismissible = true,
         )
     }
-    if (shouldShowPermissionRationale) {
-        PermissionRationaleDialog(
-            onDismissRequest = { shouldShowPermissionRationale = false },
-            permissionLauncher = locationPermissionLauncher
-        )
-    }
-    if (shouldShowSettingsDialog) {
-        PermissionSettingsDialog(
-            context = context,
-            onDismissRequest = { shouldShowSettingsDialog = false }
-        )
-    }
+
 }
 
 @Composable
@@ -498,10 +503,11 @@ fun DurationSelection(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState())
         ) {
-            listOf(15, 30, 45, 60).forEach { minutes ->
+            listOf(15, 30, 45, 60, 120).forEach { minutes ->
                 FilterChip(
                     selected = selectedDuration == minutes,
                     onClick = { onDurationSelected(minutes) },
@@ -584,11 +590,13 @@ fun LocationRadiusSelection(
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SecuritySettingsCard(
     state: SessionState,
     onEvent: (SessionUiEvent) -> Unit,
-    context: Context = LocalContext.current
+    locationPermissionState: MultiplePermissionsState,
+    context: Context
 ) {
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -653,10 +661,19 @@ fun SecuritySettingsCard(
                     teachingVenue = state.teachingVenue,
                     isCapturing = state.isCapturingLocation,
                     locationError = state.locationError,
+                    locationPermissionState,
+                    context,
                     onCaptureLocation = {
                         val activity = context as? Activity
                         activity?.let {
-                        onEvent(SessionUiEvent.CaptureTeachingVenue(it)) }
+                            // Use Accompanist to handle permission flow
+                            if (locationPermissionState.allPermissionsGranted) {
+                                onEvent(SessionUiEvent.CaptureTeachingVenue(it))
+                            } else {
+                                // This will automatically show the appropriate dialogs/rationale
+                                locationPermissionState.launchMultiplePermissionRequest()
+                            }
+                        }
                     }
                 )
             }
@@ -664,11 +681,14 @@ fun SecuritySettingsCard(
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun TeachingVenueLocationSection(
     teachingVenue: LocationData?,
     isCapturing: Boolean,
     locationError: String?,
+    locationPermissionState: MultiplePermissionsState,
+    context: Context,
     onCaptureLocation: () -> Unit
 ) {
     Column(
@@ -695,277 +715,70 @@ fun TeachingVenueLocationSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
+        // Handle permission rationale using Accompanist
+        locationPermissionState.permissions.forEach { permission ->
+            when (permission.permission) {
+                Manifest.permission.ACCESS_FINE_LOCATION -> {
+                    when {
+                        permission.status.isGranted -> {
+                            // Permission granted - show location state
+                            LocationContentState(
+                                teachingVenue = teachingVenue,
+                                isCapturing = isCapturing,
+                                locationError = locationError,
+                                onCaptureLocation = onCaptureLocation
+                            )
+                        }
 
-        // Location Status
-        when {
-            isCapturing -> {
-                LocationCapturingState()
-            }
-            teachingVenue != null -> {
-                LocationCapturedState(
-                    location = teachingVenue,
-                    onRecapture = onCaptureLocation
-                )
-            }
-            else -> {
-                LocationNotCapturedState(
-                    onCaptureLocation = onCaptureLocation,
-                    error = locationError
-                )
-            }
-        }
-    }
-}
+                        permission.status.shouldShowRationale -> {
+                            // Show rationale UI
+                            PermissionRationaleDialog(
+                                onDismissRequest = {  },
+                                onRequestPermission = { locationPermissionState.launchMultiplePermissionRequest() }
+                            )
+                        }
 
-@Composable
-fun LocationCapturingState() {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "Capturing current location...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun LocationCapturedState(
-    location: LocationData,
-    onRecapture: () -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.CheckCircle,
-                    "Captured",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = "Location Captured",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            // Display address if available from your service
-            location.address?.let { address ->
-                Column {
-                    Text(
-                        text = "Address:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    Text(
-                        text = address,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                        !permission.status.isGranted && !permission.status.shouldShowRationale -> {
+                            // Permission permanently denied - show settings UI
+                            PermissionSettingsDialog(
+                                context = context,
+                                onDismissRequest = {  }
+                            )
+                        }
+                    }
                 }
             }
-
-            // Always show coordinates
-            Column {
-                Text(
-                    text = "GPS Coordinates:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                Text(
-                    text = "Lat: ${"%.6f".format(location.latitude)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-                Text(
-                    text = "Lng: ${"%.6f".format(location.longitude)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-
-            // Show accuracy if available
-            location.accuracy?.let { accuracy ->
-                Text(
-                    text = "Accuracy: ±${"%.1f".format(accuracy)} meters",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-
-            // Show timestamp
-            val timeAgo = remember(location.timestamp) {
-                calculateTimeAgo(location.timestamp)
-            }
-            Text(
-                text = "Captured $timeAgo",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-
-            SmartAttendOutlinedButton(
-                text = "Recapture Location",
-                onClick = onRecapture,
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Refresh,
-                        "Recapture",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            )
         }
+
     }
 }
 
-// Helper function to calculate time ago
-fun calculateTimeAgo(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-
-    return when {
-        diff < 60000 -> "just now" // Less than 1 minute
-        diff < 3600000 -> "${diff / 60000} minutes ago" // Less than 1 hour
-        diff < 86400000 -> "${diff / 3600000} hours ago" // Less than 1 day
-        else -> "${diff / 86400000} days ago" // More than 1 day
-    }
-}
 
 @Composable
-fun LocationNotCapturedState(
-    onCaptureLocation: () -> Unit,
-    error: String?
+private fun LocationContentState(
+    teachingVenue: LocationData?,
+    isCapturing: Boolean,
+    locationError: String?,
+    onCaptureLocation: () -> Unit
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Warning,
-                    "Warning",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = "Location Required",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
-            Text(
-                text = "Capture your current teaching venue location to enable GPS-based attendance",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+    when {
+        isCapturing -> {
+            LocationCapturingState()
+        }
+        teachingVenue != null -> {
+            LocationCapturedState(
+                location = teachingVenue,
+                onRecapture = onCaptureLocation
             )
-
-            error?.let {
-                Text(
-                    text = "Error: $it",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
-            SmartAttendPrimaryButtonWithLeadingIcon(
-                text = "Capture Location",
-                onClick = onCaptureLocation,
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        "Capture Location",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+        }
+        else -> {
+            LocationNotCapturedState(
+                onCaptureLocation = onCaptureLocation,
+                error = locationError
             )
         }
     }
 }
-
-// Additional Button Style
-@Composable
-fun SmartAttendOutlinedButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    leadingIcon: @Composable (() -> Unit)? = null,
-    enabled: Boolean = true
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.primary
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
-    ) {
-        if (leadingIcon != null) {
-            leadingIcon()
-            SmartAttendWidthSpacer(8.dp)
-        }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1199,80 +1012,15 @@ fun UnitSelectionItem(
 
 
 
-@Composable
-fun PermissionRationaleDialog(
-    onDismissRequest: () -> Unit,
-    permissionLauncher: ActivityResultLauncher<Array<String>>
-) {
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = {
-            Text("Location Permission Required")
-        },
-        text = {
-            Text("This app needs location access to capture your teaching venue for GPS-based attendance tracking. Your location data is only used to verify student proximity during sessions.")
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                }
-            ) {
-                Text("Grant Permission")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest
-                }
-            ) {
-                Text("Deny")
-            }
-        }
-    )
-}
+// Helper function to calculate time ago
+fun calculateTimeAgo(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
 
-// Helper function to show settings dialog
-@Composable
-fun PermissionSettingsDialog(
-    context: Context,
-    onDismissRequest: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = {
-            Text("Location Permission Required")
-        },
-        text = {
-            Text("Location permission has been permanently denied. Please enable it in app settings to use GPS-based attendance features.")
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    // Open app settings
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
-                    }
-                    context.startActivity(intent)
-                }
-            ) {
-                Text("Open Settings")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest
-                }
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
+    return when {
+        diff < 60000 -> "just now" // Less than 1 minute
+        diff < 3600000 -> "${diff / 60000} minutes ago" // Less than 1 hour
+        diff < 86400000 -> "${diff / 3600000} hours ago" // Less than 1 day
+        else -> "${diff / 86400000} days ago" // More than 1 day
+    }
 }

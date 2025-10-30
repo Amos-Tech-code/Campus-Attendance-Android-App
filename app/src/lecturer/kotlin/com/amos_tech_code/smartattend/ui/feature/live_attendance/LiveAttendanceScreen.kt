@@ -1,6 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.live_attendance
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,13 +19,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearbyError
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ButtonDefaults
@@ -40,15 +37,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,34 +58,38 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
+import com.amos_tech_code.smartattend.ui.components.LoadingDialog
+import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
 import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceStatus
-import com.amos_tech_code.smartattend.ui.feature.setup.Session
+import com.amos_tech_code.smartattend.ui.feature.start_session.SessionSuccessScreen
+import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LiveAttendanceScreen(
-    sessionId: String = "0",
     navController: NavController,
     viewModel: LiveAttendanceViewModel = koinViewModel()
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
-
-    // Auto-refresh data
-    LaunchedEffect(sessionId) {
-        //viewModel.startLiveUpdates(sessionId)
-    }
+    val snackBarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var showConfirmEndSessionDialog by remember { mutableStateOf(false) }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
             is LiveAttendanceEvent.ShowErrorMessage -> {
-                Toast.makeText(navController.context, event.message, Toast.LENGTH_LONG).show()
+                scope.launch {
+                    snackBarHostState.showSnackbar(event.message)
+                }
             }
             LiveAttendanceEvent.SessionEnded -> {
                 navController.popBackStack()
@@ -105,38 +108,57 @@ fun LiveAttendanceScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = state.session?.courseName ?: "Session",
+                            text = state.session?.unit?.name ?: "Session",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Share session */ }) {
-                        Icon(Icons.Default.Share, "Share Session")
-                    }
-                    IconButton(onClick = {
-                        viewModel.endSession()
-                    }) {
-                        Icon(Icons.Default.Stop, "End Session", tint = MaterialTheme.colorScheme.error)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        IconButton(
+                            onClick = { viewModel.showQrCodeState() },
+                            modifier = Modifier
+                                //.size(20.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.QrCode2,
+                                "Show QR",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        IconButton(
+                            onClick = { showConfirmEndSessionDialog = true },
+                            modifier = Modifier
+                                //.size(20.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.Stop,
+                                "End Session",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             )
         },
         bottomBar = {
-            SessionInfoBar(
-                session = state.session,
-                attendanceStats = state.attendanceStats,
-                onShowCode = { /* Show code dialog */ },
-                onShowQR = { /* Show QR dialog */ }
-            )
-        }
-    ) { paddingValues ->
+            BottomNavigation(navController)
+        },
+        snackbarHost = { SnackbarHost(snackBarHostState) }
+    )
+    { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -181,80 +203,34 @@ fun LiveAttendanceScreen(
             }
         }
     }
-}
 
-@Composable
-private fun SessionInfoBar(
-    session: Session?,
-    attendanceStats: AttendanceStats,
-    onShowCode: () -> Unit,
-    onShowQR: () -> Unit
-) {
-    Surface(
-        tonalElevation = 8.dp,
-        shadowElevation = 8.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Session Code
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = session?.sessionCode ?: "----",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Session Code",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+    if (state.showQrCode) {
+        state.session?.let {
+        SessionSuccessScreen(
+            scope = scope,
+            sessionResponse = it,
+            shouldShowSessionSuccess = false,
+            onLiveAttendanceClick = { viewModel.hideQrCodeState() },
+            onBackToHome = { viewModel.hideQrCodeState() }
+        )}
+    }
 
-            // Action Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                IconButton(
-                    onClick = onShowCode,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Show Code",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-                IconButton(
-                    onClick = onShowQR,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QrCode2,
-                        contentDescription = "Show QR",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+    if (state.isLoading) {
+        LoadingDialog()
+    }
+
+    if (showConfirmEndSessionDialog) {
+        ConfirmActionDialog(
+            title = "End Session",
+            message = "Are you sure you want to end this session?",
+            confirmText = "End Session",
+            isDestructive = true,
+            onDismiss = { showConfirmEndSessionDialog = false },
+            onConfirm = {
+                showConfirmEndSessionDialog = false
+                state.session?.sessionId?.let { viewModel.endSession(it) }
             }
-        }
+        )
     }
 }
 

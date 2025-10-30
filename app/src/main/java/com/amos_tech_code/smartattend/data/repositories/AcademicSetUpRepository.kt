@@ -63,7 +63,7 @@ class AcademicSetUpRepository(
         lecturerAcademicsDao.setActiveUniversity(universityId)
     }
 
-    suspend fun getUniversitiesForSelection(): List<University> {
+    suspend fun getUniversities() : List<University> {
         val universities = lecturerAcademicsDao.getAllUniversities()
         return universities.map { universityEntity ->
             University(

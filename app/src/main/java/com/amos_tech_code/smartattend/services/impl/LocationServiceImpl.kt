@@ -143,6 +143,7 @@ class LocationServiceImpl(
     override fun getPermissionState(activity: Activity): LocationPermissionState {
         return when {
             hasLocationPermission(activity) -> LocationPermissionState.GRANTED
+
             ActivityCompat.shouldShowRequestPermissionRationale(
                 activity,
                 Manifest.permission.ACCESS_FINE_LOCATION

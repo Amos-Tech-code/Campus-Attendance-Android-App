@@ -15,9 +15,7 @@ class SmartAttendApplication : Application() {
         startKoin {
             androidContext(this@SmartAttendApplication)
             // Provide the property value for isDebug
-            properties(
-                mapOf("isDebug" to BuildConfig.DEBUG)
-            )
+            properties(mapOf("isDebug" to BuildConfig.DEBUG))
             modules(
                 listOf(
                     //studentPresentationModule,

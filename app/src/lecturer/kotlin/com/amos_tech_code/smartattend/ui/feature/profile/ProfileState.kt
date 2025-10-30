@@ -1,11 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.profile
 
-//sealed class ProfileState {
-//    data object Nothing : ProfileState()
-//    data object Loading : ProfileState()
-//    data object Success : ProfileState()
-//    data class Error(val message: String) : ProfileState()
-//}
 data class ProfileState(
     // Lecturer Profile
     val lecturer: Lecturer = Lecturer(),
@@ -39,10 +33,10 @@ data class NewInstitutionState(
 
 
 data class Institution(
-    val id: String,
-    val name: String,
-    val department: String,
-    val campus: String,
+    val id: String = "",
+    val name: String = "",
+    val department: String = "",
+    val campus: String = "",
     val isActive: Boolean = false
 )
 

@@ -48,30 +48,6 @@ class StartSessionViewModel(
         loadAcademicSetup()
     }
 
-    private fun loadAcademicSetup() {
-        val isProfileComplete = session.isProfileComplete()
-        if (!isProfileComplete) {
-            showCompleteProfileDialog.value = true
-        } else {
-            viewModelScope.launch {
-                try {
-                    val university = academicSetUpRepository.getActiveUniversityAcademics()
-                    university?.let {
-                        allProgrammes = it.programmes
-                        _state.update { currentState ->
-                            currentState.copy(
-                                universityId = it.id,
-                                availableUnits = getCommonUnits(emptyList()) // Start with empty selection
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    _event.send(StartSessionEvent.ShowErrorMessage("Failed to retrieve academic data."))
-                }
-            }
-        }
-    }
-
     fun onEvent(event: SessionUiEvent) {
         when (event) {
             is SessionUiEvent.ProgrammeSelectionChanged -> {
@@ -129,43 +105,6 @@ class StartSessionViewModel(
             SessionUiEvent.StartSession -> {
                 startSession()
             }
-        }
-    }
-
-    private fun updateProgrammeSelection(programme: Programme, selected: Boolean) {
-        val updatedSelection = if (selected) {
-            _state.value.selectedProgrammes + programme
-        } else {
-            _state.value.selectedProgrammes - programme
-        }
-
-        val commonUnits = getCommonUnits(updatedSelection)
-        val updatedSelectedUnit = if (_state.value.selectedUnit in commonUnits) {
-            _state.value.selectedUnit
-        } else {
-            null
-        }
-
-        _state.update {
-            it.copy(
-                selectedProgrammes = updatedSelection,
-                availableUnits = commonUnits,
-                selectedUnit = updatedSelectedUnit
-            )
-        }
-    }
-
-    private fun getCommonUnits(selectedProgrammes: List<Programme>): List<UnitModel> {
-        return if (selectedProgrammes.isEmpty()) {
-            emptyList()
-        } else {
-            selectedProgrammes
-                .map { it.units.map { unit -> unit.id } }
-                .reduce { acc, unitIds -> acc.intersect(unitIds).toList() }
-                .mapNotNull { unitId ->
-                    selectedProgrammes.flatMap { it.units }.find { it.id == unitId }
-                }
-                .distinctBy { it.id }
         }
     }
 
@@ -229,11 +168,9 @@ class StartSessionViewModel(
                         }
                     }
                     is ApiResult.Success -> {
-                       // _event.send(StartSessionEvent.SessionStarted(result.data.sessionId))
                         _successState.update {
                             SessionSuccessState(sessionResponse = result.data)
                         }
-                        //_event.send(StartSessionEvent.SessionStarted(result.data))
                     }
                 }
 
@@ -246,6 +183,67 @@ class StartSessionViewModel(
         }
     }
 
+    private fun loadAcademicSetup() {
+        val isProfileComplete = session.isProfileComplete()
+        if (!isProfileComplete) {
+            showCompleteProfileDialog.value = true
+        } else {
+            viewModelScope.launch {
+                try {
+                    val university = academicSetUpRepository.getActiveUniversityAcademics()
+                    university?.let {
+                        allProgrammes = it.programmes
+                        _state.update { currentState ->
+                            currentState.copy(
+                                universityId = it.id,
+                                availableUnits = getCommonUnits(emptyList()) // Start with empty selection
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    _event.send(StartSessionEvent.ShowErrorMessage("Failed to retrieve academic data."))
+                }
+            }
+        }
+    }
+
+    private fun updateProgrammeSelection(programme: Programme, selected: Boolean) {
+        val updatedSelection = if (selected) {
+            _state.value.selectedProgrammes + programme
+        } else {
+            _state.value.selectedProgrammes - programme
+        }
+
+        val commonUnits = getCommonUnits(updatedSelection)
+        val updatedSelectedUnit = if (_state.value.selectedUnit in commonUnits) {
+            _state.value.selectedUnit
+        } else {
+            null
+        }
+
+        _state.update {
+            it.copy(
+                selectedProgrammes = updatedSelection,
+                availableUnits = commonUnits,
+                selectedUnit = updatedSelectedUnit
+            )
+        }
+    }
+
+    private fun getCommonUnits(selectedProgrammes: List<Programme>): List<UnitModel> {
+        return if (selectedProgrammes.isEmpty()) {
+            emptyList()
+        } else {
+            selectedProgrammes
+                .map { it.units.map { unit -> unit.id } }
+                .reduce { acc, unitIds -> acc.intersect(unitIds).toList() }
+                .mapNotNull { unitId ->
+                    selectedProgrammes.flatMap { it.units }.find { it.id == unitId }
+                }
+                .distinctBy { it.id }
+        }
+    }
+
     private fun captureTeachingVenue(activity: Activity) {
         _state.update { it.copy(isCapturingLocation = true, locationError = null) }
 
@@ -253,7 +251,7 @@ class StartSessionViewModel(
             // 1. Check for location permissions first
             if (locationService.shouldRequestLocationPermission()) {
                 val permissionState = locationService.getPermissionState(activity)
-                _event.send(StartSessionEvent.RequestPermission(permissionState))
+                //_event.send(StartSessionEvent.RequestPermission(permissionState))
                 // Stop here; the user needs to grant permission first.
                 // We also reset the loading state as the capture process is paused.
                 _state.update { it.copy(isCapturingLocation = false) }
@@ -296,6 +294,7 @@ class StartSessionViewModel(
             }
         }
     }
+
     // Handle permission result from Activity
     fun onLocationPermissionResult(granted: Boolean, activity: Activity) {
         if (granted) {
@@ -313,16 +312,20 @@ class StartSessionViewModel(
         }
     }
 
-    fun navigateToCompleteProfile() {
-        _event.trySend(StartSessionEvent.CompleteProfile)
-    }
-
     fun dismissProgrammeSelection() {
         _state.update { it.copy(showProgrammeSelection = false) }
     }
 
     fun dismissUnitSelection() {
         _state.update { it.copy(showUnitSelection = false) }
+    }
+
+    fun navigateToCompleteProfile() {
+        _event.trySend(StartSessionEvent.CompleteProfile)
+    }
+
+    fun navigateToLiveAttendance() {
+        _event.trySend(StartSessionEvent.NavigateToLiveAttendance)
     }
 
     fun clearSuccessState() {

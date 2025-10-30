@@ -106,20 +106,24 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     //Coil
     implementation(libs.coil.compose)
+    implementation(libs.coil) // For image downloading
+    // Worker for background task
+    //implementation(libs.androidx.work.runtime.ktx)
     //Material3-Extended icons
     implementation (libs.androidx.material.icons.extended)
     // Kotlinx JSON serialization
     implementation(libs.kotlinx.serialization.json)
     //Google
-    implementation("androidx.credentials:credentials:1.5.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     // Google Play Services for App Set ID
-    implementation("com.google.android.gms:play-services-appset:16.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation(libs.play.services.appset)
+    implementation(libs.kotlinx.coroutines.play.services)
+    // Accompanits permissions
+    implementation(libs.accompanist.permissions)
     // Google Play Services location
     implementation(libs.play.services.location)
-
 
     //Kotlin Date Time
     implementation(libs.kotlinx.datetime)

@@ -20,9 +20,9 @@ val viewModelModule = module {
 
     viewModel { HomeViewModel(get()) }
 
-    viewModel { LiveAttendanceViewModel() }
+    viewModel { LiveAttendanceViewModel(get(), get()) }
 
-    viewModel { ProfileViewModel() }
+    viewModel { ProfileViewModel(get(), get()) }
 
     viewModel { StartSessionViewModel(get(), get(), get(), get()) }
 

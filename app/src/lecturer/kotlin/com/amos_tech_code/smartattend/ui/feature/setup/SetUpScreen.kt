@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.setup
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Delete
@@ -76,7 +78,6 @@ fun UniversitySetupScreen(
 ) {
 
     val focusManager = LocalFocusManager.current
-
     val state by viewModel.setupState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -85,6 +86,7 @@ fun UniversitySetupScreen(
         when (event) {
             SetUpEvents.SetupComplete -> {
                 navController.navigate(HomeRoute)
+                Toast.makeText(navController.context, "Details Uploaded Successfully", Toast.LENGTH_SHORT).show()
             }
             is SetUpEvents.ShowErrorMessage -> {
                 scope.launch {
@@ -103,6 +105,11 @@ fun UniversitySetupScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
                 }
             )
         },

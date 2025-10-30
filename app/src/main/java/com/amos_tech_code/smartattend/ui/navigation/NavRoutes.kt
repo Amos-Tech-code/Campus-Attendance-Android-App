@@ -32,7 +32,7 @@ object SetUpRoute : NavRoutes
 object StartSessionRoute : NavRoutes
 
 @Serializable
-data class LiveAttendanceRoute(val sessionId: String? = null) : NavRoutes
+object LiveAttendanceRoute : NavRoutes
 
 @Serializable
 object StudentLookupRoute : NavRoutes

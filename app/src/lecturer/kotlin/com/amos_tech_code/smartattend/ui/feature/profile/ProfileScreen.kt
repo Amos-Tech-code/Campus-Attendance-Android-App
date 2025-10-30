@@ -56,6 +56,7 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
+import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
 import com.amos_tech_code.smartattend.ui.navigation.SettingsRoute
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
@@ -88,6 +89,8 @@ fun ProfileScreen(
             is ProfileEvent.ShowSuccessMessage -> {
                 Toast.makeText(navController.context, event.message, Toast.LENGTH_LONG).show()
             }
+
+            ProfileEvent.NavigateToInstitutionSetUp -> { navController.navigate(SetUpRoute)}
         }
     }
 

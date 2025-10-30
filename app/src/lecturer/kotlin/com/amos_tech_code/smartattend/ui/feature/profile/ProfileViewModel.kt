@@ -2,6 +2,9 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
+import com.amos_tech_code.smartattend.domain.models.University
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +13,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(
+    private val session: SmartAttendSession,
+    private val academicSetUpRepository: AcademicSetUpRepository
+) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
     val state = _state.asStateFlow()
@@ -71,19 +77,24 @@ class ProfileViewModel : ViewModel() {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                // Simulate API calls
-                delay(1200)
-
                 val lecturer = loadLecturerData()
                 val institutions = loadInstitutions()
                 val teachingStats = loadTeachingStatistics()
+
+                val mappedInstitutions = institutions.map { inst ->
+                    Institution(
+                        id = inst.id,
+                        name = inst.name,
+                        isActive = inst.isActive
+                    )
+                }
 
                 _state.update {
                     it.copy(
                         isLoading = false,
                         lecturer = lecturer,
-                        institutions = institutions,
-                        selectedInstitution = institutions.firstOrNull { inst -> inst.isActive },
+                        institutions = mappedInstitutions,
+                        selectedInstitution = if (mappedInstitutions.size == 1) mappedInstitutions.first() else mappedInstitutions.firstOrNull { inst -> inst.isActive },
                         teachingStats = teachingStats
                     )
                 }
@@ -101,7 +112,8 @@ class ProfileViewModel : ViewModel() {
     }
 
     private fun toggleAddInstitution() {
-        _state.update { it.copy(showAddInstitution = !it.showAddInstitution) }
+        //_state.update { it.copy(showAddInstitution = !it.showAddInstitution) }
+        _event.trySend(ProfileEvent.NavigateToInstitutionSetUp)
     }
 
     private fun updateNewInstitutionName(name: String) {
@@ -212,17 +224,22 @@ class ProfileViewModel : ViewModel() {
             _state.update { it.copy(isLoading = true) }
 
             try {
-                // Simulate API call to set active institution
-                delay(800)
 
-                val updatedInstitutions = _state.value.institutions.map { institution ->
-                    institution.copy(isActive = institution.id == institutionId)
+                academicSetUpRepository.setActiveUniversity(institutionId)
+
+                val updatedInstitutions = academicSetUpRepository.getUniversities()
+                val mappedInstitutions = updatedInstitutions.map { inst ->
+                    Institution(
+                        id = inst.id,
+                        name = inst.name,
+                        isActive = inst.isActive
+                    )
                 }
 
                 _state.update { state ->
                     state.copy(
-                        institutions = updatedInstitutions,
-                        selectedInstitution = updatedInstitutions.find { it.id == institutionId },
+                        institutions = mappedInstitutions,
+                        selectedInstitution = mappedInstitutions.find { it.id == institutionId },
                         isLoading = false
                     )
                 }
@@ -256,46 +273,26 @@ class ProfileViewModel : ViewModel() {
     }
 
     // Mock data loaders
-    private suspend fun loadLecturerData(): Lecturer {
+    private fun loadLecturerData(): Lecturer {
+
         return Lecturer(
-            name = "Dr. Sarah Johnson",
-            email = "sarah.johnson@university.edu",
-            institution = "University of Technology",
-            department = "Computer Science",
-            staffId = "CS-2021-045",
-            officeLocation = "Room 301, CS Building",
-            profileImage = null,
-            joinDate = "2021-08-15"
+            name = session.getName() ?: "",
+            email =  session.getEmail() ?: "",
         )
     }
 
-    private suspend fun loadInstitutions(): List<Institution> {
-        return listOf(
-            Institution(
-                id = "inst_1",
-                name = "University of Technology",
-                department = "Computer Science",
-                campus = "Main Campus",
-                isActive = true
-            ),
-            Institution(
-                id = "inst_2",
-                name = "City College",
-                department = "Software Engineering",
-                campus = "Downtown Campus",
-                isActive = false
-            )
-        )
+    private suspend fun loadInstitutions(): List<University> {
+        return academicSetUpRepository.getUniversities()
     }
 
-    private suspend fun loadTeachingStatistics(): TeachingStatistics {
+    private fun loadTeachingStatistics(): TeachingStatistics {
         return TeachingStatistics(
             totalCourses = 8,
             totalStudents = 245,
             totalSessions = 156,
             averageAttendance = 87.5f,
-            currentSemester = "Spring 2024",
-            teachingSince = "2021"
+            currentSemester = "Year 4 Semester 1",
+            teachingSince = "2025"
         )
     }
 }

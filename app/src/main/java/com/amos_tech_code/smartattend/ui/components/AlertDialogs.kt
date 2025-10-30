@@ -1,5 +1,11 @@
 package com.amos_tech_code.smartattend.ui.components
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -113,6 +119,52 @@ fun SuccessAlertDialog(
         shape = MaterialTheme.shapes.medium,
         containerColor = MaterialTheme.colorScheme.surface,
         properties = properties
+    )
+}
+
+@Composable
+fun ConfirmActionDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    confirmText: String = "Confirm",
+    dismissText: String = "Cancel",
+    isDestructive: Boolean = false
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = if (isDestructive) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
+                )
+            ) {
+                Text(confirmText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(dismissText)
+            }
+        }
     )
 }
 
@@ -364,5 +416,80 @@ fun WarningAlertDialog(
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surface,
         properties = properties
+    )
+}
+
+
+
+
+
+@Composable
+fun PermissionRationaleDialog(
+    onDismissRequest: () -> Unit,
+    onRequestPermission: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text("Location Permission Required")
+        },
+        text = {
+            Text("This app needs location access to capture your teaching venue for GPS-based attendance tracking. Your location data is only used to verify student proximity during sessions.")
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onRequestPermission
+            ) {
+                Text("Grant Permission")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest
+                }
+            ) {
+                Text("Deny")
+            }
+        }
+    )
+}
+
+// Helper function to show settings dialog
+@Composable
+fun PermissionSettingsDialog(
+    context: Context,
+    onDismissRequest: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text("Location Permission Required")
+        },
+        text = {
+            Text("Location permission has been permanently denied. Please enable it in app settings to use GPS-based attendance features.")
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    // Open app settings
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }
+            ) {
+                Text("Open Settings")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest
+                }
+            ) {
+                Text("Cancel")
+            }
+        }
     )
 }

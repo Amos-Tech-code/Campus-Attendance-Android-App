@@ -11,9 +11,10 @@ sealed class StartSessionEvent {
 
     data class ShowErrorMessage(val message: String) : StartSessionEvent()
     object CompleteProfile : StartSessionEvent()
-    data class SessionStarted(val sessionResponse: StartAttendanceSessionResponse) : StartSessionEvent()
 
-    data class RequestPermission(val state: LocationPermissionState) : StartSessionEvent()
+    object NavigateToLiveAttendance : StartSessionEvent()
+
+    //data class RequestPermission(val state: LocationPermissionState) : StartSessionEvent()
 
     object RequestEnableGps : StartSessionEvent()
 }

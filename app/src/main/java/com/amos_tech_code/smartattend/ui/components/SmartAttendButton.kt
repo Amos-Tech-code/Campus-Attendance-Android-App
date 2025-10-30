@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -81,6 +83,70 @@ fun SmartAttendSecondaryButton(
         )
     }
 }
+
+
+@Composable
+fun SmartAttendErrorButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    size: SmartAttendButtonSize = SmartAttendButtonSize.Medium
+) {
+    SmartAttendButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        isLoading = isLoading,
+        buttonStyle = SmartAttendButtonStyle.Error,
+        size = size
+    ) {
+        Text(
+            text = text,
+            style = when (size) {
+                SmartAttendButtonSize.Small -> MaterialTheme.typography.labelMedium
+                SmartAttendButtonSize.Medium -> MaterialTheme.typography.bodyMedium
+                SmartAttendButtonSize.Large -> MaterialTheme.typography.bodyLarge
+            },
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+
+
+// Additional Button Style
+@Composable
+fun SmartAttendOutlinedButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    enabled: Boolean = true
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        if (leadingIcon != null) {
+            leadingIcon()
+            SmartAttendWidthSpacer(8.dp)
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
 
 @Composable
 fun SmartAttendTextButton(

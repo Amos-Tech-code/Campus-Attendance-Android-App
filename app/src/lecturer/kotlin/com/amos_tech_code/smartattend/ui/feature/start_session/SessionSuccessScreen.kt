@@ -26,69 +26,87 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.services.QrCodeSharingService
+import com.amos_tech_code.smartattend.ui.components.ErrorDialog
+import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
+import com.amos_tech_code.smartattend.ui.components.SmartAttendErrorButton
+import com.amos_tech_code.smartattend.ui.components.SmartAttendOutlinedButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButtonWithLeadingIcon
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionSuccessScreen(
-    navController: NavController,
+    scope: CoroutineScope,
     sessionResponse: StartAttendanceSessionResponse,
+    shouldShowSessionSuccess: Boolean = true,
+    onLiveAttendanceClick: () -> Unit,
     onBackToHome: () -> Unit,
-    onShareSession: (String, String) -> Unit,
-    onShareQRCode: (String) -> Unit
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    var isSharingQrCode by remember { mutableStateOf(false) }
+    var qrShareError by remember { mutableStateOf<String?>(null) }
+    // Initialize QR code sharing service
+    val qrCodeSharingService = remember { QrCodeSharingService(context) }
+
+    // Show error dialog if QR sharing fails
+    if (qrShareError != null) {
+        ErrorDialog(
+            title = "Sharing Failed",
+            message = qrShareError!!,
+            onDismiss = { qrShareError = null },
+            onPositiveButtonClick = { qrShareError = null }
+        )
+    }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
-                        text = "Session Created",
+                        text = if (shouldShowSessionSuccess) "Session Created" else "Session Details",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
-
-                    IconButton(
-                        onClick = {
-                            val shareText = buildSessionShareText(sessionResponse)
-                            onShareSession(shareText, sessionResponse.sessionCode)
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Share,
-                            "Share Session",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    SmartAttendErrorButton(
+                        text = "Live Attendance",
+                        onClick = onLiveAttendanceClick,
+                        size = SmartAttendButtonSize.Small,
+                    )
                 }
             )
         }
@@ -101,12 +119,28 @@ fun SessionSuccessScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Success Header
-            SuccessHeaderSection()
+            if (shouldShowSessionSuccess) { SuccessHeaderSection() }
 
             // QR Code Section
             QrCodeSection(
                 sessionResponse = sessionResponse,
-                onShareQRCode = onShareQRCode
+                isSharing = isSharingQrCode,
+                onShareQRCode = { qrCodeUrl ->
+                    scope.launch {
+                        isSharingQrCode = true
+                        qrShareError = null
+
+                        try {
+                            //onShareQRCode(qrCodeUrl)
+                            qrCodeSharingService.shareQrCodeImage(qrCodeUrl)
+
+                        } catch (e: Exception) {
+                            qrShareError = "Failed to share QR code: ${e.message}"
+                        } finally {
+                            isSharingQrCode = false
+                        }
+                    }
+                }
             )
 
             // Session Details Section
@@ -115,7 +149,9 @@ fun SessionSuccessScreen(
             // Action Buttons
             ActionButtonsSection(
                 sessionResponse = sessionResponse,
-                onShareSession = onShareSession,
+                onShareSession = { shareText, sessionCode ->
+                    shareSessionDetails(context, shareText, sessionCode)
+                },
                 onBackToHome = onBackToHome
             )
 
@@ -167,6 +203,7 @@ fun SuccessHeaderSection() {
 @Composable
 fun QrCodeSection(
     sessionResponse: StartAttendanceSessionResponse,
+    isSharing: Boolean,
     onShareQRCode: (String) -> Unit
 ) {
     Card(
@@ -189,42 +226,72 @@ fun QrCodeSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // QR Code Image
-            sessionResponse.qrCodeUrl?.let { qrCodeUrl ->
-                AsyncImage(
-                    model = qrCodeUrl,
-                    contentDescription = "QR Code for attendance session",
-                    modifier = Modifier
-                        .size(220.dp)
-                        .shadow(8.dp, MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.Fit
-                )
-            } ?: run {
-                // Fallback if no QR code URL
-                Box(
-                    modifier = Modifier
-                        .size(220.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = MaterialTheme.shapes.medium
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            // QR Code Image with loading state
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                sessionResponse.qrCodeUrl?.let { qrCodeUrl ->
+                    AsyncImage(
+                        model = qrCodeUrl,
+                        contentDescription = "QR Code for attendance session",
+                        modifier = Modifier
+                            .size(220.dp)
+                            .shadow(8.dp, MaterialTheme.shapes.medium),
+                        contentScale = ContentScale.Fit
+                    )
+
+                    // Sharing overlay
+                    if (isSharing) {
+                        Box(
+                            modifier = Modifier
+                                .size(220.dp)
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .clip(MaterialTheme.shapes.medium),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    text = "Preparing...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
+                } ?: run {
+                    // Fallback if no QR code URL
+                    Box(
+                        modifier = Modifier
+                            .size(220.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = MaterialTheme.shapes.medium
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.QrCodeScanner,
-                            "QR Code",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Text(
-                            text = "QR Code Not Available",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.QrCodeScanner,
+                                "QR Code",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = "QR Code Not Available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -269,19 +336,26 @@ fun QrCodeSection(
 
             // Share QR Code Button
             SmartAttendOutlinedButton(
-                text = "Share QR Code",
+                text = if (isSharing) "Preparing..." else "Share QR Code",
                 onClick = {
                     sessionResponse.qrCodeUrl?.let { onShareQRCode(it) }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
-                    Icon(
-                        Icons.Default.QrCode2,
-                        "Share QR Code",
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (isSharing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.QrCode2,
+                            "Share QR Code",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 },
-                enabled = sessionResponse.qrCodeUrl != null
+                enabled = sessionResponse.qrCodeUrl != null && !isSharing
             )
         }
     }
@@ -454,17 +528,17 @@ fun ImportantNotesSection() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "• Share the session code and secret key with students if you need them to join without QR CODE SCAN",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "• Session will automatically end after the specified duration",
+                text = "• Share the session details with students if you need them to join without QR CODE SCAN",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "• Students need both code and secret key to join through manual code attendance",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "• Session will automatically end after the specified duration",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -486,7 +560,7 @@ fun buildSessionShareText(response: StartAttendanceSessionResponse): String {
         ⏱️ Duration: ${response.timeInfo.durationMinutes} minutes
         ${response.location?.let { "📍 Location Radius: ${it.radiusMeters}m" } ?: ""}
         
-        Use the SmartAttend student app to join!
+        Use the ClassTrack app to join!
     """.trimIndent()
 }
 
@@ -499,16 +573,4 @@ fun shareSessionDetails(context: Context, shareText: String, sessionCode: String
         putExtra(Intent.EXTRA_TEXT, shareText)
     }
     context.startActivity(Intent.createChooser(shareIntent, "Share Session Details"))
-}
-
-
-// Share QR code function
-fun shareQRCode(context: Context, qrCodeUrl: String) {
-    // For now, share the URL. You might want to download and share the actual image
-    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "Attendance QR Code")
-        putExtra(Intent.EXTRA_TEXT, "Scan this QR code to join the attendance session:\n$qrCodeUrl")
-    }
-    context.startActivity(Intent.createChooser(shareIntent, "Share QR Code"))
 }

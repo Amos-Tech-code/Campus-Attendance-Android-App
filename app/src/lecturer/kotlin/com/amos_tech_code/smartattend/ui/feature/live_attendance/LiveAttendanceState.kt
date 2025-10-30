@@ -1,21 +1,17 @@
 package com.amos_tech_code.smartattend.ui.feature.live_attendance
 
+import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
 import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceMethod
 import com.amos_tech_code.smartattend.ui.feature.setup.Session
 import com.amos_tech_code.smartattend.ui.feature.setup.Student
 
-//sealed class LiveAttendanceState {
-//    data object Nothing : LiveAttendanceState()
-//    data object Loading : LiveAttendanceState()
-//    data object Success : LiveAttendanceState()
-//    data class Error(val message: String) : LiveAttendanceState()
-//}
 // Live Attendance State
 data class LiveAttendanceState(
-    val session: Session? = null,
+    val session: StartAttendanceSessionResponse? = null,
     val presentStudents: List<StudentAttendance> = emptyList(),
     val flaggedStudents: List<StudentAttendance> = emptyList(),
     val attendanceStats: AttendanceStats = AttendanceStats(),
+    val showQrCode: Boolean = false,
     val isLoading: Boolean = false
 )
 
