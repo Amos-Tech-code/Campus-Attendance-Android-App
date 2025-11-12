@@ -1,4 +1,4 @@
-package com.amos_tech_code.smartattend.domain.models.response
+package com.amos_tech_code.smartattend.domain.response
 
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus

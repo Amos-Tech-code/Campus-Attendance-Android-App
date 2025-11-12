@@ -495,7 +495,7 @@ private fun SessionCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = session.status.displayName,
+                    text = session.status.name,
                     style = MaterialTheme.typography.labelSmall,
                     color = when (session.status) {
                         SessionStatus.ACTIVE -> PresentColor

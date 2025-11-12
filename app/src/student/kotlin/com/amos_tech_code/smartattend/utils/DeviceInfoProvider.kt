@@ -2,7 +2,7 @@ package com.amos_tech_code.smartattend.utils
 
 import android.content.Context
 import android.os.Build
-import com.amos_tech_code.smartattend.domain.models.request.DeviceInfo
+import com.amos_tech_code.smartattend.domain.request.DeviceInfo
 import com.google.android.gms.appset.AppSet
 import com.google.android.gms.appset.AppSetIdInfo
 import kotlinx.coroutines.tasks.await

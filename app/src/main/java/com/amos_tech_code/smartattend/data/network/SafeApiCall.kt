@@ -3,7 +3,7 @@ package com.amos_tech_code.smartattend.data.network
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.ConnectivityObserver
-import com.amos_tech_code.smartattend.domain.models.response.GenericErrorResponse
+import com.amos_tech_code.smartattend.domain.response.GenericErrorResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException

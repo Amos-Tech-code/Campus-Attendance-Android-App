@@ -37,6 +37,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,16 +48,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonStyle
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
-import com.amos_tech_code.smartattend.ui.feature.home.DeviceInfo
 import com.amos_tech_code.smartattend.ui.feature.home.Student
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
+import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
+import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +69,17 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
     val state by viewModel.profileState.collectAsStateWithLifecycle()
+    var showConfirmLogOutDialog by remember { mutableStateOf(false) }
+
+    ObserveAsEvents(viewModel.event) { event ->
+        when(event) {
+            is ProfileEvent.NavigateToLogin -> {
+                navController.navigate(SignInRoute) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -101,10 +117,26 @@ fun ProfileScreen(
 
             // Settings
             SettingsSection(
-                onLogout = { },
+                isLoggingOut = state.isLoggingOut,
+                onLogout = { showConfirmLogOutDialog = true },
                 modifier = Modifier.padding(16.dp)
             )
         }
+    }
+
+    if (showConfirmLogOutDialog) {
+        ConfirmActionDialog(
+            title = "Logout",
+            message = "Are you sure you want to logout?",
+            isDestructive = true,
+            onDismiss = {
+                showConfirmLogOutDialog = false
+            },
+            onConfirm = {
+                showConfirmLogOutDialog = false
+                viewModel.logOut()
+            }
+        )
     }
 }
 
@@ -204,7 +236,7 @@ private fun InfoChip(
 
 @Composable
 private fun DeviceInfoSection(
-    deviceInfo: DeviceInfo,
+    deviceInfo: DeviceInfoUiState,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -288,6 +320,7 @@ private fun DeviceInfoSection(
 
 @Composable
 private fun SettingsSection(
+    isLoggingOut: Boolean,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -361,6 +394,7 @@ private fun SettingsSection(
         // Logout Button
         SmartAttendButton(
             onClick = onLogout,
+            isLoading = isLoggingOut,
             modifier = Modifier.fillMaxWidth(),
             buttonStyle = SmartAttendButtonStyle.Error,
             size = SmartAttendButtonSize.Large

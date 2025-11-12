@@ -1010,17 +1010,3 @@ fun UnitSelectionItem(
     }
 }
 
-
-
-// Helper function to calculate time ago
-fun calculateTimeAgo(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-
-    return when {
-        diff < 60000 -> "just now" // Less than 1 minute
-        diff < 3600000 -> "${diff / 60000} minutes ago" // Less than 1 hour
-        diff < 86400000 -> "${diff / 3600000} hours ago" // Less than 1 day
-        else -> "${diff / 86400000} days ago" // More than 1 day
-    }
-}

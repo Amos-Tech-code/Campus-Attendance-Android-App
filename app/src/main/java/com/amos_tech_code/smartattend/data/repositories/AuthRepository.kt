@@ -3,11 +3,11 @@ package com.amos_tech_code.smartattend.data.repositories
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
-import com.amos_tech_code.smartattend.domain.models.request.GoogleSignInRequest
-import com.amos_tech_code.smartattend.domain.models.request.StudentLoginRequest
-import com.amos_tech_code.smartattend.domain.models.request.StudentRegisterRequest
-import com.amos_tech_code.smartattend.domain.models.response.LecturerAuthResponse
-import com.amos_tech_code.smartattend.domain.models.response.StudentAuthResponse
+import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
+import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
+import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
+import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
+import com.amos_tech_code.smartattend.domain.response.StudentAuthResponse
 
 class AuthRepository(
     private val apiService: ApiService

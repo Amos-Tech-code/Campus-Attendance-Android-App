@@ -49,13 +49,16 @@ android {
         }
 
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -120,7 +123,7 @@ dependencies {
     // Google Play Services for App Set ID
     implementation(libs.play.services.appset)
     implementation(libs.kotlinx.coroutines.play.services)
-    // Accompanits permissions
+    // Accompanist permissions
     implementation(libs.accompanist.permissions)
     // Google Play Services location
     implementation(libs.play.services.location)
@@ -133,6 +136,16 @@ dependencies {
     implementation(libs.converter.gson)
     //Logging
     implementation(libs.logging.interceptor)
+    // CameraX for QR scanning
+    implementation("androidx.camera:camera-camera2:1.3.0")
+    implementation("androidx.camera:camera-lifecycle:1.3.0")
+    implementation("androidx.camera:camera-view:1.3.0")
+
+    // ML Kit Barcode Scanning
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // ZXing for additional QR processing
+    implementation("com.google.zxing:core:3.5.2")
 
     // KSP
     ksp(libs.androidx.room.compiler)

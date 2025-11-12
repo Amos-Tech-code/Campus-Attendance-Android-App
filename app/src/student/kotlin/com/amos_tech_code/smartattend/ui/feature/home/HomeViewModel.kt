@@ -133,13 +133,7 @@ data class Session(
 enum class SessionStatus {
     ACTIVE, UPCOMING, COMPLETED, MISSED;
 
-    val displayName: String
-        get() = when (this) {
-            ACTIVE -> "Active Now"
-            UPCOMING -> "Upcoming"
-            COMPLETED -> "Completed"
-            MISSED -> "Missed"
-        }
+
 }
 
 data class Activity(
@@ -222,12 +216,4 @@ data class Student(
     val department: String = "",
     val semester: String = "",
     val profileImage: String? = null
-)
-
-data class DeviceInfo(
-    val deviceId: String = "",
-    val deviceModel: String = "",
-    val lastLogin: String = "",
-    val isCurrentDevice: Boolean = true,
-    val registrationDate: String = ""
 )

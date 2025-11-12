@@ -23,17 +23,23 @@ import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,6 +60,9 @@ import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
+import com.amos_tech_code.smartattend.utils.ObserveAsEvents
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +72,85 @@ fun AttendanceScreen(
     viewModel: AttendanceViewModel = koinViewModel()
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
+    val snackBarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
+    ObserveAsEvents(viewModel.event) { event ->
+        when(event) {
+            is AttendanceEvent.ShowErrorMessage -> {
+                scope.launch {
+                    snackBarHostState.showSnackbar(event.message)
+                }
+            }
+            is AttendanceEvent.AttendanceMarkedSuccessfully -> {
+                // Show success and reset state after delay
+                scope.launch {
+                    delay(3000)
+                    viewModel.onEvent(AttendanceUiEvent.ResetState)
+                }
+            }
+            AttendanceEvent.NavigateToQRScanner -> {
+                // Handled by state
+            }
+            AttendanceEvent.NavigateToCodeEntry -> {
+                // Handled by state
+            }
+        }
+    }
+
+    // Handle QR Scanner
+    if (state.showQRScanner) {
+        QRScannerScreen(
+            viewModel = viewModel,
+            onBack = {
+                viewModel.onEvent(AttendanceUiEvent.ResetState)
+            }
+        )
+        return
+    }
+
+    // Handle Code Entry
+    if (state.showCodeEntry) {
+        CodeEntryScreen(
+            onVerifySession = { sessionCode, secretKey ->
+                viewModel.onEvent(AttendanceUiEvent.VerifySession(sessionCode, secretKey))
+            },
+            onBack = {
+                viewModel.onEvent(AttendanceUiEvent.ResetState)
+            }
+        )
+        return
+    }
+
+    // Handle Programme Selection
+    if (state.showProgrammeSelection) {
+        state.verificationResult?.availableProgrammes?.let { programmes ->
+            ProgrammeSelectionDialog(
+                programmes = programmes,
+                onProgrammeSelected = { programmeId ->
+                    viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                },
+                onDismiss = {
+                    viewModel.onEvent(AttendanceUiEvent.ResetState)
+                }
+            )
+        }
+    }
+
+    // Handle Success Screen
+    if (state.showSuccess) {
+        state.attendanceResult?.let { result ->
+            AttendanceSuccessScreen(
+                result = result,
+                onBack = {
+                    viewModel.onEvent(AttendanceUiEvent.ResetState)
+                }
+            )
+        }
+        return
+    }
+
+    // Main Attendance Screen
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -79,7 +166,10 @@ fun AttendanceScreen(
         floatingActionButton = {
             if (state.activeSessions.isNotEmpty()) {
                 ExtendedFloatingActionButton(
-                    onClick = { /* Quick attendance */ },
+                    onClick = {
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                        // This will trigger QR scanner through state change
+                    },
                     icon = {
                         Icon(Icons.Default.QrCode, "Scan QR")
                     },
@@ -92,14 +182,37 @@ fun AttendanceScreen(
         },
         bottomBar = {
             BottomNavigation(navController)
-        },
-        //contentColor = MaterialTheme.colorScheme.background
+        }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Loading State
+            if (state.isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+
+            // Error Message
+            state.errorMessage?.let { error ->
+                item {
+                    ErrorMessageCard(
+                        message = error,
+                        onRetry = { /* Handle retry if needed */ }
+                    )
+                }
+            }
+
             // Active Sessions
             item {
                 if (state.activeSessions.isNotEmpty()) {
@@ -113,6 +226,16 @@ fun AttendanceScreen(
             // Attendance Methods
             item {
                 AttendanceMethodsSection(
+                    onScanQR = {
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                        // This will trigger QR scanner
+                        viewModel.showQrScanner()
+                    },
+                    onEnterCode = {
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                        // This will trigger code entry
+                        viewModel.showCodeEntry()
+                    },
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -124,6 +247,44 @@ fun AttendanceScreen(
                     modifier = Modifier.padding(16.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AttendanceMethodsSection(
+    onScanQR: () -> Unit,
+    onEnterCode: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Mark Attendance",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        SmartAttendHeightSpacer(16.dp)
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            AttendanceMethodCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.QrCode2,
+                title = "Scan QR",
+                description = "Scan lecturer's QR code",
+                onClick = onScanQR
+            )
+
+            AttendanceMethodCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Pin,
+                title = "Enter Code",
+                description = "Use lecturer's code",
+                onClick = onEnterCode
+            )
         }
     }
 }
@@ -154,6 +315,7 @@ fun ActiveSessionsSection(
     }
 }
 
+/*
 @Composable
 private fun AttendanceMethodsSection(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
@@ -187,7 +349,7 @@ private fun AttendanceMethodsSection(modifier: Modifier = Modifier) {
         }
     }
 }
-
+*/
 @Composable
 private fun AttendanceMethodCard(
     modifier: Modifier = Modifier,
@@ -420,5 +582,46 @@ private fun IconText(
             style = MaterialTheme.typography.labelMedium,
             color = color
         )
+    }
+}
+
+
+@Composable
+fun ErrorMessageCard(message: String, onRetry: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                "Error",
+                tint = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Error",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            TextButton(onClick = onRetry) {
+                Text("Retry")
+            }
+        }
     }
 }

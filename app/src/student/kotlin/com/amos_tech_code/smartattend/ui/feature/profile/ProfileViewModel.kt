@@ -2,10 +2,11 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 
 import androidx.lifecycle.ViewModel
 import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
-import com.amos_tech_code.smartattend.ui.feature.home.DeviceInfo
 import com.amos_tech_code.smartattend.ui.feature.home.Student
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 
 class ProfileViewModel(
@@ -14,6 +15,9 @@ class ProfileViewModel(
 
     private val _profileState = MutableStateFlow(StudentProfileState())
     val profileState = _profileState.asStateFlow()
+
+    private val _event = Channel<ProfileEvent>()
+    val event = _event.receiveAsFlow()
 
     init {
         fetchData()
@@ -27,6 +31,13 @@ class ProfileViewModel(
                 student = Student(
                     name = studentName ?: "",
                     registrationNo = registrationNo ?: ""
+                ),
+                deviceInfo = DeviceInfoUiState(
+                    deviceId = session.getDeviceId() ?: "",
+                    deviceModel = session.getDeviceModel() ?: "",
+                    //lastLogin = session.getLastLogin() ?: "",
+                    //isCurrentDevice = session.isCurrentDevice() ?: false,
+                    //registrationDate = session.getRegistrationDate() ?: ""
                 )
             )
         }
@@ -34,7 +45,14 @@ class ProfileViewModel(
     }
 
     fun logOut() {
-        //session.clearSession()
+        _profileState.update {
+            it.copy(isLoggingOut = true)
+        }
+        session.clearSession()
+        _profileState.update {
+            it.copy(isLoggingOut = false)
+        }
+        _event.trySend(ProfileEvent.NavigateToLogin)
     }
 }
 
@@ -43,18 +61,26 @@ data class StudentProfileState(
     val student: Student = Student(
         name = "",
         registrationNo = "",
-        email = "john.doe@student.university.edu",
-        department = "Computer Science",
-        semester = "4",
+        email = "",
+        department = "",
+        semester = "",
         profileImage = null
     ),
-    val deviceInfo: DeviceInfo = DeviceInfo(
-        deviceId = "SM-G998B-7A8B9C0D",
-        deviceModel = "Samsung Galaxy S21 Ultra",
-        lastLogin = "2024-01-15 09:45 AM",
+    val deviceInfo: DeviceInfoUiState = DeviceInfoUiState(
+        deviceId = "",
+        deviceModel = "",
+        lastLogin = "",
         isCurrentDevice = true,
-        registrationDate = "2024-01-10"
+        registrationDate = ""
     ),
     val isLoading: Boolean = false,
     val isLoggingOut: Boolean = false
+)
+
+data class DeviceInfoUiState(
+    val deviceId: String = "",
+    val deviceModel: String = "",
+    val lastLogin: String = "",
+    val isCurrentDevice: Boolean = true,
+    val registrationDate: String = ""
 )

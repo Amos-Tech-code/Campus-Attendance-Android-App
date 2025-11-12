@@ -6,7 +6,7 @@ import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AuthRepository
-import com.amos_tech_code.smartattend.domain.models.request.StudentRegisterRequest
+import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
 import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
 import com.amos_tech_code.smartattend.utils.ErrorMessageType
 import kotlinx.coroutines.channels.Channel
@@ -63,7 +63,8 @@ class RegisterViewModel(
                         session.saveStudentSession(
                             token = result.data.token,
                             name = result.data.fullName,
-                            regNo = result.data.regNumber
+                            regNo = result.data.regNumber,
+                            deviceInfo = deviceInfo
                         )
                         _state.update { it.copy(isLoading = false) }
                         _event.trySend(RegisterEvent.NavigateToHome)

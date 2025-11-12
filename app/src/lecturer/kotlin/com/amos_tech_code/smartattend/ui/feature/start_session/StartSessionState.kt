@@ -12,7 +12,7 @@ data class SessionState(
     val availableUnits: List<UnitModel> = emptyList(),
     val durationMinutes: Int = 30,
     val allowedRadius: Int = 50,
-    val requireLocation: Boolean = true,
+    val requireLocation: Boolean = false,
     val teachingVenue: LocationData? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

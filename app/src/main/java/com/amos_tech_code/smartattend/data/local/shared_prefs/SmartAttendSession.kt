@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.data.local.shared_prefs
 
 import android.content.Context
 import androidx.core.content.edit
+import com.amos_tech_code.smartattend.domain.request.DeviceInfo
 
 class SmartAttendSession(context: Context) {
 
@@ -19,6 +20,10 @@ class SmartAttendSession(context: Context) {
         private const val KEY_REG_NO = "reg_no"
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
         private const val TOKEN_VALIDITY_DAYS = 10
+        // ✅ Added key for student device info
+        private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_DEVICE_MODEL = "device_model"
+        private const val KEY_DEVICE_OS = "device_os"
     }
 
     fun saveLecturerSession(
@@ -58,13 +63,18 @@ class SmartAttendSession(context: Context) {
     fun saveStudentSession(
         token: String,
         name: String,
-        regNo: String
+        regNo: String,
+        deviceInfo: DeviceInfo
     ) {
         prefs.edit {
             putString(KEY_TOKEN, token)
                 .putString(KEY_NAME, name)
                 .putString(KEY_REG_NO, regNo)
                 .putLong(KEY_TOKEN_CREATED_AT, System.currentTimeMillis())
+                .putString(KEY_DEVICE_ID, deviceInfo.deviceId)
+                .putString(KEY_DEVICE_MODEL, deviceInfo.model)
+                .putString(KEY_DEVICE_OS, deviceInfo.os)
+                .apply()
         }
     }
 
@@ -91,7 +101,12 @@ class SmartAttendSession(context: Context) {
 
     // Extra helper getters for student session
     fun getRegNo() : String? = prefs.getString(KEY_REG_NO, null)
+    fun getDeviceId() : String? = prefs.getString(KEY_DEVICE_ID, null)
+    fun getDeviceModel() : String? = prefs.getString(KEY_DEVICE_MODEL, null)
+    fun getDeviceOs() : String? = prefs.getString(KEY_DEVICE_OS, null)
+
 
     // ✅ Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null
+
 }

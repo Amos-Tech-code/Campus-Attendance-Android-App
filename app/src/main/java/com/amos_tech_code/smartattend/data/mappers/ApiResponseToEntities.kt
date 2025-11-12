@@ -8,7 +8,7 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWith
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
 import com.amos_tech_code.smartattend.domain.models.University
-import com.amos_tech_code.smartattend.domain.models.response.LecturerUniversitiesResponse
+import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
 
 fun lecturerUniversitiesResponseToEntities(response: LecturerUniversitiesResponse): Triple<List<UniversityEntity>, List<ProgrammeEntity>, List<UnitEntity>> {
     val universities = mutableListOf<UniversityEntity>()

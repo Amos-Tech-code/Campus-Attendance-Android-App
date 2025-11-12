@@ -1,17 +1,21 @@
 package com.amos_tech_code.smartattend.data.network
 
-import com.amos_tech_code.smartattend.domain.models.request.AcademicSetupUpRequest
-import com.amos_tech_code.smartattend.domain.models.request.EndSessionRequest
-import com.amos_tech_code.smartattend.domain.models.request.GoogleSignInRequest
-import com.amos_tech_code.smartattend.domain.models.request.StartSessionRequest
-import com.amos_tech_code.smartattend.domain.models.request.StudentLoginRequest
-import com.amos_tech_code.smartattend.domain.models.request.StudentRegisterRequest
-import com.amos_tech_code.smartattend.domain.models.request.UpdateSessionRequest
-import com.amos_tech_code.smartattend.domain.models.response.AcademicSetupResponse
-import com.amos_tech_code.smartattend.domain.models.response.LecturerAuthResponse
-import com.amos_tech_code.smartattend.domain.models.response.LecturerUniversitiesResponse
-import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
-import com.amos_tech_code.smartattend.domain.models.response.StudentAuthResponse
+import com.amos_tech_code.smartattend.domain.request.AcademicSetupUpRequest
+import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
+import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
+import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
+import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
+import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
+import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
+import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
+import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
+import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
+import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
+import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
+import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.domain.response.StudentAuthResponse
+import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -63,6 +67,12 @@ interface ApiService {
 
     @POST("auth/students/register")
     suspend fun studentRegister(@Body request: StudentRegisterRequest): Response<StudentAuthResponse>
+
+    @POST("attendance/verify")
+    suspend fun verifyAttendanceSession(@Body request: VerifySessionRequest) : Response<VerifyAttendanceResponse>
+
+    @POST("attendance/session/mark")
+    suspend fun markAttendanceSession(@Body request: MarkAttendanceRequest) : Response<MarkAttendanceResponse>
 
 
 }

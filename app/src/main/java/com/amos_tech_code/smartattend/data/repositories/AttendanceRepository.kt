@@ -3,15 +3,23 @@ package com.amos_tech_code.smartattend.data.repositories
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
-import com.amos_tech_code.smartattend.domain.models.request.EndSessionRequest
-import com.amos_tech_code.smartattend.domain.models.request.StartSessionRequest
-import com.amos_tech_code.smartattend.domain.models.request.UpdateSessionRequest
-import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
+import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
+import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
+import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
+import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
+import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 
 class AttendanceRepository(
     private val apiService: ApiService
 ) {
 
+    /**
+     * Lecture Attendance Implementation
+     *
+     */
     suspend fun startAttendanceSession(request: StartSessionRequest) : ApiResult<StartAttendanceSessionResponse> {
         return safeApiCall {
             apiService.startAttendanceSession(request)
@@ -37,6 +45,23 @@ class AttendanceRepository(
             )
         }
 
+    }
+
+
+    /**
+     * Student Attendance Implementation
+     */
+
+    suspend fun verifyAttendanceSession(request: VerifySessionRequest) : ApiResult<VerifyAttendanceResponse> {
+        return safeApiCall {
+            apiService.verifyAttendanceSession(request)
+        }
+    }
+
+    suspend fun markAttendance(request: MarkAttendanceRequest) : ApiResult<MarkAttendanceResponse> {
+        return safeApiCall {
+            apiService.markAttendanceSession(request)
+        }
     }
 
 }

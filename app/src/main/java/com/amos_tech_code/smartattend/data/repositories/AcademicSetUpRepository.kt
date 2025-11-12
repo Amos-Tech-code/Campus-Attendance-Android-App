@@ -8,9 +8,9 @@ import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.domain.models.University
-import com.amos_tech_code.smartattend.domain.models.request.AcademicSetupUpRequest
-import com.amos_tech_code.smartattend.domain.models.response.AcademicSetupResponse
-import com.amos_tech_code.smartattend.domain.models.response.LecturerUniversitiesResponse
+import com.amos_tech_code.smartattend.domain.request.AcademicSetupUpRequest
+import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
+import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
 
 class AcademicSetUpRepository(
     private val apiService: ApiService,

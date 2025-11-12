@@ -1,4 +1,4 @@
-package com.amos_tech_code.smartattend.domain.models.request
+package com.amos_tech_code.smartattend.domain.request
 
 import kotlinx.serialization.Serializable
 
