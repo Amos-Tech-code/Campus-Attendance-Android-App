@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,16 +79,14 @@ fun AttendanceScreen(
     ObserveAsEvents(viewModel.event) { event ->
         when(event) {
             is AttendanceEvent.ShowErrorMessage -> {
-                scope.launch {
-                    snackBarHostState.showSnackbar(event.message)
-                }
+                Toast.makeText(navController.context, event.message, Toast.LENGTH_SHORT).show()
             }
             is AttendanceEvent.AttendanceMarkedSuccessfully -> {
                 // Show success and reset state after delay
-                scope.launch {
-                    delay(3000)
-                    viewModel.onEvent(AttendanceUiEvent.ResetState)
-                }
+//                scope.launch {
+//                    delay(3000)
+//                    viewModel.onEvent(AttendanceUiEvent.ResetState)
+//                }
             }
             AttendanceEvent.NavigateToQRScanner -> {
                 // Handled by state
@@ -112,9 +111,7 @@ fun AttendanceScreen(
     // Handle Code Entry
     if (state.showCodeEntry) {
         CodeEntryScreen(
-            onVerifySession = { sessionCode, secretKey ->
-                viewModel.onEvent(AttendanceUiEvent.VerifySession(sessionCode, secretKey))
-            },
+            viewModel = viewModel,
             onBack = {
                 viewModel.onEvent(AttendanceUiEvent.ResetState)
             }

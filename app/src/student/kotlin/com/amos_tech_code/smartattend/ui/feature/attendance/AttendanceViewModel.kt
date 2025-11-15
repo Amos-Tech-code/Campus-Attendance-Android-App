@@ -24,7 +24,8 @@ class AttendanceViewModel(
     private val deviceInfoProvider: DeviceInfoProvider,
     private val session: SmartAttendSession,
     context: Context
-) : ViewModel() {
+) : ViewModel()
+{
 
     private val _attendanceState = MutableStateFlow(StudentAttendanceState())
     val attendanceState = _attendanceState.asStateFlow()
@@ -36,6 +37,22 @@ class AttendanceViewModel(
 
     fun onEvent(event: AttendanceUiEvent) {
         when (event) {
+            is AttendanceUiEvent.UpdateSessionCode -> {
+                _attendanceState.update {
+                    it.copy(
+                        sessionCode = event.sessionCode.uppercase().take(6),
+                        codeEntryErrorMessage = null
+                    )
+                }
+            }
+            is AttendanceUiEvent.UpdateSecretKey -> {
+                _attendanceState.update {
+                    it.copy(
+                        secretKey = event.secretKey.take(8),
+                        codeEntryErrorMessage = null
+                    )
+                }
+            }
             is AttendanceUiEvent.VerifySession -> {
                 verifySession(event.sessionCode, event.secretKey)
             }
@@ -56,12 +73,13 @@ class AttendanceViewModel(
             }
         }
     }
-
     fun showQrScanner() {
         _attendanceState.update {
             it.copy(
                 showQRScanner = true,
+                showCodeEntry = false,
                 qrScannerState = QRScannerState.IDLE,
+                scannedQRData = null,
                 errorMessage = null
             )
         }
@@ -71,13 +89,17 @@ class AttendanceViewModel(
         _attendanceState.update {
             it.copy(
                 showCodeEntry = true,
-                errorMessage = null
+                showQRScanner = false,
+                codeEntryState = CodeEntryState.IDLE,
+                sessionCode = "",
+                secretKey = "",
+                codeEntryErrorMessage = null
             )
         }
     }
 
     private fun processQRCode(qrData: String) {
-        // Update state to show scanning completed
+        // Update QR scanner state
         _attendanceState.update {
             it.copy(
                 qrScannerState = QRScannerState.SCANNED,
@@ -100,10 +122,10 @@ class AttendanceViewModel(
         }
 
         // Verify the session from QR code
-        verifySession(qrCodeData.sessionCode, qrCodeData.secretKey)
+        verifySessionFromQR(qrCodeData.sessionCode, qrCodeData.secretKey)
     }
 
-    private fun verifySession(sessionCode: String, secretKey: String) {
+    private fun verifySessionFromQR(sessionCode: String, secretKey: String) {
         _attendanceState.update {
             it.copy(
                 qrScannerState = QRScannerState.VERIFYING_SESSION,
@@ -114,6 +136,24 @@ class AttendanceViewModel(
             )
         }
 
+        verifySessionInternal(sessionCode, secretKey, isFromQR = true)
+    }
+
+    private fun verifySession(sessionCode: String, secretKey: String) {
+        _attendanceState.update {
+            it.copy(
+                codeEntryState = CodeEntryState.VERIFYING_SESSION,
+                isLoading = true,
+                codeEntryErrorMessage = null,
+                currentSessionCode = sessionCode,
+                currentSecretKey = secretKey
+            )
+        }
+
+        verifySessionInternal(sessionCode, secretKey, isFromQR = false)
+    }
+
+    private fun verifySessionInternal(sessionCode: String, secretKey: String, isFromQR: Boolean) {
         viewModelScope.launch {
             try {
                 val result = attendanceRepository.verifyAttendanceSession(
@@ -122,48 +162,83 @@ class AttendanceViewModel(
 
                 when (result) {
                     is ApiResult.Success -> {
-                        _attendanceState.update {
-                            it.copy(
-                                qrScannerState = QRScannerState.VERIFIED,
-                                isLoading = false,
-                                verificationResult = result.data,
-                                showProgrammeSelection = result.data.requiresProgrammeSelection
-                            )
+                        if (isFromQR) {
+                            _attendanceState.update {
+                                it.copy(
+                                    qrScannerState = QRScannerState.VERIFIED,
+                                    isLoading = false,
+                                    verificationResult = result.data,
+                                    showProgrammeSelection = result.data.requiresProgrammeSelection
+                                )
+                            }
+                        } else {
+                            _attendanceState.update {
+                                it.copy(
+                                    codeEntryState = CodeEntryState.VERIFIED,
+                                    isLoading = false,
+                                    verificationResult = result.data,
+                                    showProgrammeSelection = result.data.requiresProgrammeSelection
+                                )
+                            }
                         }
 
-                        // Vibrate on successful scan
-                        vibrationHelper.vibrate(50) // Short vibration for scan
+                        // Vibrate on successful verification
+                        vibrationHelper.vibrate(100)
 
                         // If no programme selection needed, proceed to mark attendance
                         if (!result.data.requiresProgrammeSelection) {
-                            markAttendanceDirectly(sessionCode, secretKey)
+                            if (isFromQR) {
+                                markAttendanceDirectlyFromQR(sessionCode, secretKey)
+                            } else {
+                                markAttendanceDirectlyFromCode(sessionCode, secretKey)
+                            }
                         }
                     }
                     is ApiResult.Failure -> {
-                        _attendanceState.update {
-                            it.copy(
-                                qrScannerState = QRScannerState.ERROR,
-                                isLoading = false,
-                                errorMessage = extractApiErrorMessage(result.error)
-                            )
+                        if (isFromQR) {
+                            _attendanceState.update {
+                                it.copy(
+                                    qrScannerState = QRScannerState.ERROR,
+                                    isLoading = false,
+                                    errorMessage = extractApiErrorMessage(result.error)
+                                )
+                            }
+                        } else {
+                            _attendanceState.update {
+                                it.copy(
+                                    codeEntryState = CodeEntryState.ERROR,
+                                    isLoading = false,
+                                    codeEntryErrorMessage = extractApiErrorMessage(result.error)
+                                )
+                            }
                         }
                         _event.send(AttendanceEvent.ShowErrorMessage("Session verification failed"))
                     }
                 }
             } catch (e: Exception) {
-                _attendanceState.update {
-                    it.copy(
-                        qrScannerState = QRScannerState.ERROR,
-                        isLoading = false,
-                        errorMessage = "Network error: ${e.message}"
-                    )
+                if (isFromQR) {
+                    _attendanceState.update {
+                        it.copy(
+                            qrScannerState = QRScannerState.ERROR,
+                            isLoading = false,
+                            errorMessage = "Network error: ${e.message}"
+                        )
+                    }
+                } else {
+                    _attendanceState.update {
+                        it.copy(
+                            codeEntryState = CodeEntryState.ERROR,
+                            isLoading = false,
+                            codeEntryErrorMessage = "Network error: ${e.message}"
+                        )
+                    }
                 }
                 _event.send(AttendanceEvent.ShowErrorMessage("Network error occurred"))
             }
         }
     }
 
-    private fun markAttendanceDirectly(sessionCode: String, secretKey: String) {
+    private fun markAttendanceDirectlyFromQR(sessionCode: String, secretKey: String) {
         _attendanceState.update {
             it.copy(
                 qrScannerState = QRScannerState.MARKING_ATTENDANCE,
@@ -180,7 +255,156 @@ class AttendanceViewModel(
                 studentLng = _attendanceState.value.studentLocation?.longitude
             )
 
-            markAttendance(request)
+            markAttendanceFromQR(request)
+        }
+    }
+
+    private fun markAttendanceDirectlyFromCode(sessionCode: String, secretKey: String) {
+        _attendanceState.update {
+            it.copy(
+                codeEntryState = CodeEntryState.MARKING_ATTENDANCE,
+                isLoading = true
+            )
+        }
+
+        viewModelScope.launch {
+            val request = MarkAttendanceRequest(
+                sessionCode = sessionCode,
+                secretKey = secretKey,
+                deviceId = session.getDeviceId() ?: deviceInfoProvider.getDeviceInfo().deviceId,
+                studentLat = _attendanceState.value.studentLocation?.latitude,
+                studentLng = _attendanceState.value.studentLocation?.longitude
+            )
+
+            markAttendanceFromCode(request)
+        }
+    }
+
+    private fun markAttendanceFromQR(request: MarkAttendanceRequest) {
+        viewModelScope.launch {
+            try {
+                when (val result = attendanceRepository.markAttendance(request)) {
+                    is ApiResult.Success -> {
+                        _attendanceState.update {
+                            it.copy(
+                                qrScannerState = QRScannerState.IDLE,
+                                isLoading = false,
+                                attendanceResult = result.data,
+                                showSuccess = true,
+                                showQRScanner = false
+                            )
+                        }
+                        vibrationHelper.vibrate(200)
+                        _event.send(AttendanceEvent.AttendanceMarkedSuccessfully(result.data))
+                    }
+                    is ApiResult.Failure -> {
+                        _attendanceState.update {
+                            it.copy(
+                                qrScannerState = QRScannerState.ERROR,
+                                isLoading = false,
+                                errorMessage = extractApiErrorMessage(result.error)
+                            )
+                        }
+                        _event.send(AttendanceEvent.ShowErrorMessage("Attendance marking failed"))
+                    }
+                }
+            } catch (e: Exception) {
+                _attendanceState.update {
+                    it.copy(
+                        qrScannerState = QRScannerState.ERROR,
+                        isLoading = false,
+                        errorMessage = "Network error: ${e.message}"
+                    )
+                }
+                _event.send(AttendanceEvent.ShowErrorMessage("Network error occurred"))
+            }
+        }
+    }
+
+    private fun markAttendanceFromCode(request: MarkAttendanceRequest) {
+        viewModelScope.launch {
+            try {
+                when (val result = attendanceRepository.markAttendance(request)) {
+                    is ApiResult.Success -> {
+                        _attendanceState.update {
+                            it.copy(
+                                codeEntryState = CodeEntryState.IDLE,
+                                isLoading = false,
+                                attendanceResult = result.data,
+                                showSuccess = true,
+                                showCodeEntry = false
+                            )
+                        }
+                        vibrationHelper.vibrate(200)
+                        _event.send(AttendanceEvent.AttendanceMarkedSuccessfully(result.data))
+                    }
+                    is ApiResult.Failure -> {
+                        _attendanceState.update {
+                            it.copy(
+                                codeEntryState = CodeEntryState.ERROR,
+                                isLoading = false,
+                                codeEntryErrorMessage = extractApiErrorMessage(result.error)
+                            )
+                        }
+                        _event.send(AttendanceEvent.ShowErrorMessage("Attendance marking failed"))
+                    }
+                }
+            } catch (e: Exception) {
+                _attendanceState.update {
+                    it.copy(
+                        codeEntryState = CodeEntryState.ERROR,
+                        isLoading = false,
+                        codeEntryErrorMessage = "Network error: ${e.message}"
+                    )
+                }
+                _event.send(AttendanceEvent.ShowErrorMessage("Network error occurred"))
+            }
+        }
+    }
+
+    fun resetQRScanner() {
+        _attendanceState.update {
+            it.copy(
+                qrScannerState = QRScannerState.IDLE,
+                scannedQRData = null,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun resetCodeEntry() {
+        _attendanceState.update {
+            it.copy(
+                codeEntryState = CodeEntryState.IDLE,
+                codeEntryErrorMessage = null,
+                sessionCode = "",
+                secretKey = ""
+            )
+        }
+    }
+
+    private fun markAttendanceWithProgramme(programmeId: String) {
+        viewModelScope.launch {
+            val state = _attendanceState.value
+            state.currentSessionCode?.let { sessionCode ->
+                state.currentSecretKey?.let { secretKey ->
+                    val request = MarkAttendanceRequest(
+                        sessionCode = sessionCode,
+                        secretKey = secretKey,
+                        deviceId = session.getDeviceId() ?: deviceInfoProvider.getDeviceInfo().deviceId,
+                        programmeId = programmeId,
+                        studentLat = state.studentLocation?.latitude,
+                        studentLng = state.studentLocation?.longitude
+                    )
+
+                    // Determine which flow we're in and mark accordingly
+                    if (state.showQRScanner) {
+                        markAttendanceFromQR(request)
+                    } else {
+                        markAttendanceFromCode(request)
+                    }
+                }
+            }
         }
     }
 
@@ -224,12 +448,24 @@ class AttendanceViewModel(
         }
     }
 
+    /*
     fun resetQRScanner() {
         _attendanceState.update {
             it.copy(
                 qrScannerState = QRScannerState.IDLE,
                 scannedQRData = null,
                 errorMessage = null
+            )
+        }
+    }
+
+    fun resetCodeEntry() {
+        _attendanceState.update {
+            it.copy(
+                codeEntryState = CodeEntryState.IDLE,
+                codeEntryErrorMessage = null,
+                sessionCode = "",
+                secretKey = ""
             )
         }
     }
@@ -252,18 +488,18 @@ class AttendanceViewModel(
                 }
             }
         }
-    }
+    }*/
 
     private fun extractApiErrorMessage(error: ApiError) : String {
         return when (error) {
             is ApiError.NetworkError -> {
-                "Network error: ${error.exception.message}"
+                "Network error: ${error.exception.message ?: "Unknown network error" }"
             }
             is ApiError.HttpError -> {
                 "HTTP error: ${error.statusCode} - ${error.message}"
             }
             is ApiError.UnknownError -> {
-                "Unknown error: ${error.throwable.message}"
+                "Unknown error: ${error.throwable.message ?: "Unknown error"}"
             }
 
         }

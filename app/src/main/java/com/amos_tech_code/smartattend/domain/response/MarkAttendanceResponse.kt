@@ -41,8 +41,6 @@ data class ProgrammeInfoResponse(
     val yearOfStudy: Int
 )
 
-
-
 @Serializable
 data class VerifyAttendanceResponse(
     val requiresProgrammeSelection: Boolean,

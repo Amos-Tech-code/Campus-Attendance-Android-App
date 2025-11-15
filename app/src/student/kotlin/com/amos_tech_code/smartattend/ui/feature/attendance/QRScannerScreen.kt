@@ -7,6 +7,7 @@ import android.provider.Settings
 import android.util.Size
 import androidx.activity.compose.BackHandler
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -27,7 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
@@ -84,12 +85,12 @@ fun QRScannerScreen(
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
 
     val cameraPermissionState = rememberPermissionState(
         permission = android.Manifest.permission.CAMERA
     )
+    val onNavigateBackEnabled = !(state.qrScannerState == QRScannerState.MARKING_ATTENDANCE || state.qrScannerState == QRScannerState.VERIFYING_SESSION)
 
     // Check camera permission
     LaunchedEffect(Unit) {
@@ -98,7 +99,9 @@ fun QRScannerScreen(
         }
     }
 
-    BackHandler {
+    BackHandler(
+        enabled = onNavigateBackEnabled
+    ) {
         onBack()
     }
 
@@ -123,9 +126,9 @@ fun QRScannerScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
-                        enabled = state.qrScannerState != QRScannerState.MARKING_ATTENDANCE
+                        enabled = onNavigateBackEnabled
                     ) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
             )
@@ -176,6 +179,8 @@ fun QRScannerScreen(
     }
 }
 
+
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 fun QRScannerContent(
     coroutineScope: CoroutineScope,
@@ -275,6 +280,8 @@ fun QRScannerContent(
     }
 }
 
+
+
 @Composable
 fun ScannerOverlayWithState(
     scannerState: QRScannerState,
@@ -317,12 +324,13 @@ fun ScannerOverlayWithState(
                 }
                 else -> {
                     // IDLE state - show instructions
-                    InstructionsContent(modifier.align(Alignment.BottomCenter))
+                    InstructionsContent()
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun AnimatedScannerFrame(scannerState: QRScannerState) {
@@ -512,15 +520,13 @@ fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
 }
 
 @Composable
-fun InstructionsContent(
-    modifier: Modifier = Modifier
-) {
+fun InstructionsContent() {
     Text(
         text = "Position QR code within the frame",
         style = MaterialTheme.typography.bodyMedium,
         color = Color.White,
-        modifier = modifier
-            .padding(bottom = 100.dp)
+        modifier = Modifier
+            //.padding(bottom = 100.dp)
     )
 }
 
@@ -556,7 +562,7 @@ fun PermissionRationaleContent(
         SmartAttendHeightSpacer(16.dp)
 
         Text(
-            text = "SmartAttend needs camera access to scan QR codes for attendance. The camera is only used for scanning and no images are stored.",
+            text = "ClassTrack needs camera access to scan QR codes for attendance. The camera is only used for scanning and no images are stored.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center

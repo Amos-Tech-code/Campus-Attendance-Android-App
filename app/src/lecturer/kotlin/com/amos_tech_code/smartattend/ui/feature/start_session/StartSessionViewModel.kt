@@ -12,8 +12,8 @@ import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
-import com.amos_tech_code.smartattend.domain.models.request.AttendanceMethodRequest
-import com.amos_tech_code.smartattend.domain.models.request.StartSessionRequest
+import com.amos_tech_code.smartattend.domain.request.AttendanceMethodRequest
+import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.services.LocationService
 import com.amos_tech_code.smartattend.utils.LocationServiceException
 import kotlinx.coroutines.channels.Channel
@@ -251,7 +251,6 @@ class StartSessionViewModel(
             // 1. Check for location permissions first
             if (locationService.shouldRequestLocationPermission()) {
                 val permissionState = locationService.getPermissionState(activity)
-                //_event.send(StartSessionEvent.RequestPermission(permissionState))
                 // Stop here; the user needs to grant permission first.
                 // We also reset the loading state as the capture process is paused.
                 _state.update { it.copy(isCapturingLocation = false) }
@@ -291,23 +290,6 @@ class StartSessionViewModel(
                     else -> "An unknown error occurred while capturing location."
                 }
                 onEvent(SessionUiEvent.LocationCaptureFailed(errorMessage))
-            }
-        }
-    }
-
-    // Handle permission result from Activity
-    fun onLocationPermissionResult(granted: Boolean, activity: Activity) {
-        if (granted) {
-            // Retry location capture if permission was just granted
-            if (_state.value.requireLocation && _state.value.teachingVenue == null) {
-                captureTeachingVenue(activity)
-            }
-        } else {
-            _state.update {
-                it.copy(
-                    isCapturingLocation = false,
-                    locationError = "Location permission is required to capture teaching venue"
-                )
             }
         }
     }

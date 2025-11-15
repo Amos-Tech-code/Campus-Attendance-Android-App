@@ -71,7 +71,7 @@ interface ApiService {
     @POST("attendance/verify")
     suspend fun verifyAttendanceSession(@Body request: VerifySessionRequest) : Response<VerifyAttendanceResponse>
 
-    @POST("attendance/session/mark")
+    @POST("attendance/mark")
     suspend fun markAttendanceSession(@Body request: MarkAttendanceRequest) : Response<MarkAttendanceResponse>
 
 

@@ -27,8 +27,8 @@ data class QRCodeData(
         fun isValid(qrCodeData: QRCodeData): Boolean {
             return qrCodeData.sessionCode.isNotBlank() &&
                     qrCodeData.secretKey.isNotBlank() &&
-                    qrCodeData.sessionId.isNotBlank() &&
-                    System.currentTimeMillis() - qrCodeData.timestamp < 24 * 60 * 60 * 1000 // 24 hours
+                    qrCodeData.sessionId.isNotBlank()
+                    && System.currentTimeMillis() - qrCodeData.timestamp < 24 * 60 * 60 * 1000 // 24 hours
         }
     }
 }

@@ -108,16 +108,6 @@ fun StartSessionScreen(
     val snackBarHostState = remember { SnackbarHostState() }
     val activity = context as? Activity
     val scrollState = rememberScrollState()
-    var shouldShowPermissionRationale by remember { mutableStateOf(false) }
-    var shouldShowSettingsDialog by remember { mutableStateOf(false) }
-
-    // Permission Launcher
-//    val locationPermissionLauncher = rememberLauncherForActivityResult(
-//        contract = ActivityResultContracts.RequestMultiplePermissions()
-//    ) { permissions ->
-//        val granted = permissions.values.all { it }
-//        activity?.let { viewModel.onLocationPermissionResult(granted, it) }
-//    }
     // Permission State using Accompanist
     val locationPermissionState = rememberMultiplePermissionsState(
         permissions = listOf(
@@ -166,22 +156,6 @@ fun StartSessionScreen(
             is StartSessionEvent.NavigateToLiveAttendance -> {
                 navController.navigate(LiveAttendanceRoute)
             }
-
-//            is StartSessionEvent.RequestPermission -> {
-//                when (event.state) {
-//                    LocationPermissionState.GRANTED -> {
-//                        // Should not happen here since we checked
-//                    }
-//                    LocationPermissionState.DENIED_SHOW_RATIONALE -> {
-//                        // Show rationale dialog
-//                        shouldShowPermissionRationale = true
-//                    }
-//                    LocationPermissionState.DENIED_NEVER_ASK -> {
-//                        // Show settings dialog
-//                        shouldShowSettingsDialog = true
-//                    }
-//                }
-//            }
 
             StartSessionEvent.RequestEnableGps -> {
                 activity?.let {
@@ -645,7 +619,9 @@ fun SecuritySettingsCard(
                 }
                 Switch(
                     checked = state.requireLocation,
-                    onCheckedChange = { onEvent(SessionUiEvent.ToggleLocationRequirement) },
+                    onCheckedChange = {
+                        onEvent(SessionUiEvent.ToggleLocationRequirement)
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = MaterialTheme.colorScheme.primary,
@@ -661,8 +637,8 @@ fun SecuritySettingsCard(
                     teachingVenue = state.teachingVenue,
                     isCapturing = state.isCapturingLocation,
                     locationError = state.locationError,
-                    locationPermissionState,
-                    context,
+                    locationPermissionState = locationPermissionState,
+                    context = context,
                     onCaptureLocation = {
                         val activity = context as? Activity
                         activity?.let {
@@ -674,12 +650,17 @@ fun SecuritySettingsCard(
                                 locationPermissionState.launchMultiplePermissionRequest()
                             }
                         }
+                    },
+                    onPermissionDenied = {
+                        // Turn off location requirement when permission is denied
+                        onEvent(SessionUiEvent.ToggleLocationRequirement)
                     }
                 )
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -689,7 +670,8 @@ fun TeachingVenueLocationSection(
     locationError: String?,
     locationPermissionState: MultiplePermissionsState,
     context: Context,
-    onCaptureLocation: () -> Unit
+    onCaptureLocation: () -> Unit,
+    onPermissionDenied: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -715,7 +697,11 @@ fun TeachingVenueLocationSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
+
         // Handle permission rationale using Accompanist
+        var showRationaleDialog by remember { mutableStateOf(false) }
+        var showSettingsDialog by remember { mutableStateOf(false) }
+
         locationPermissionState.permissions.forEach { permission ->
             when (permission.permission) {
                 Manifest.permission.ACCESS_FINE_LOCATION -> {
@@ -732,24 +718,46 @@ fun TeachingVenueLocationSection(
 
                         permission.status.shouldShowRationale -> {
                             // Show rationale UI
-                            PermissionRationaleDialog(
-                                onDismissRequest = {  },
-                                onRequestPermission = { locationPermissionState.launchMultiplePermissionRequest() }
-                            )
+                            LaunchedEffect(permission.status) {
+                                showRationaleDialog = true
+                            }
                         }
 
-                        !permission.status.isGranted && !permission.status.shouldShowRationale -> {
+                        else -> {
                             // Permission permanently denied - show settings UI
-                            PermissionSettingsDialog(
-                                context = context,
-                                onDismissRequest = {  }
-                            )
+                            LaunchedEffect(permission.status) {
+                                showSettingsDialog = true
+                            }
                         }
                     }
                 }
             }
         }
 
+        // Rationale Dialog
+        if (showRationaleDialog) {
+            PermissionRationaleDialog(
+                onDismissRequest = {
+                    showRationaleDialog = false
+                    onPermissionDenied() // Turn off location requirement
+                },
+                onRequestPermission = {
+                    showRationaleDialog = false
+                    locationPermissionState.launchMultiplePermissionRequest()
+                }
+            )
+        }
+
+        // Settings Dialog
+        if (showSettingsDialog) {
+            PermissionSettingsDialog(
+                context = context,
+                onDismissRequest = {
+                    showSettingsDialog = false
+                    onPermissionDenied() // Turn off location requirement
+                }
+            )
+        }
     }
 }
 
@@ -779,6 +787,7 @@ private fun LocationContentState(
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -844,6 +853,7 @@ fun ProgrammeSelectionDialog(
     }
 }
 
+
 @Composable
 fun ProgrammeSelectionItem(
     programme: Programme,
@@ -902,7 +912,6 @@ fun ProgrammeSelectionItem(
 }
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnitSelectionDialog(
@@ -958,7 +967,6 @@ fun UnitSelectionDialog(
 }
 
 
-
 @Composable
 fun UnitSelectionItem(
     unit: UnitModel,
@@ -1009,4 +1017,3 @@ fun UnitSelectionItem(
         }
     }
 }
-

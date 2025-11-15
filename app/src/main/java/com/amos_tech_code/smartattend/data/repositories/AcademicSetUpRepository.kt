@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.data.repositories
 
 import com.amos_tech_code.smartattend.data.local.room_db.dao.LecturerAcademicsDao
 import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.mappers.createProgrammeUnitRelationships
 import com.amos_tech_code.smartattend.data.mappers.lecturerUniversitiesResponseToEntities
 import com.amos_tech_code.smartattend.data.mappers.toDomain
 import com.amos_tech_code.smartattend.data.network.ApiService
@@ -76,23 +77,22 @@ class AcademicSetUpRepository(
 
 
     suspend fun syncLecturerAcademics() {
-
         val result = fetchLecturerAcademicSetUp()
 
         when (result) {
             is ApiResult.Success -> {
                 val (universities, programmes, units) = lecturerUniversitiesResponseToEntities(result.data)
+                val programmeUnits = createProgrammeUnitRelationships(result.data)
+
                 lecturerAcademicsDao.clearAll()
-                lecturerAcademicsDao.insertFullHierarchy(universities, programmes, units)
+                lecturerAcademicsDao.insertFullHierarchy(universities, programmes, units, programmeUnits)
                 session.setAcademicSyncStatus(true)
             }
 
-            is ApiResult.Failure ->  {
+            is ApiResult.Failure -> {
                 session.setAcademicSyncStatus(false)
             }
         }
-
-
     }
 
 

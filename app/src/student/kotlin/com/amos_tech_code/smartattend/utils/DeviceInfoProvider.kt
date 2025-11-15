@@ -2,12 +2,12 @@ package com.amos_tech_code.smartattend.utils
 
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
+import android.util.Log
 import com.amos_tech_code.smartattend.domain.request.DeviceInfo
 import com.google.android.gms.appset.AppSet
 import com.google.android.gms.appset.AppSetIdInfo
 import kotlinx.coroutines.tasks.await
-import android.provider.Settings
-import android.util.Log
 import java.security.MessageDigest
 
 class DeviceInfoProvider(

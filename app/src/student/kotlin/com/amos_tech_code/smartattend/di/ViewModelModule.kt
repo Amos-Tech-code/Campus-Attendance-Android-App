@@ -6,7 +6,6 @@ import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.login.LoginViewModel
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileViewModel
 import com.amos_tech_code.smartattend.ui.feature.register.RegisterViewModel
-import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 

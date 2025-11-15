@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.data.mappers
 
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeUnitCrossRef
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeWithUnits
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
@@ -10,28 +11,37 @@ import com.amos_tech_code.smartattend.domain.models.UnitModel
 import com.amos_tech_code.smartattend.domain.models.University
 import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
 
-fun lecturerUniversitiesResponseToEntities(response: LecturerUniversitiesResponse): Triple<List<UniversityEntity>, List<ProgrammeEntity>, List<UnitEntity>> {
+fun lecturerUniversitiesResponseToEntities(response: LecturerUniversitiesResponse):
+        Triple<List<UniversityEntity>, List<ProgrammeEntity>, List<UnitEntity>> {
+
     val universities = mutableListOf<UniversityEntity>()
     val programmes = mutableListOf<ProgrammeEntity>()
-    val units = mutableListOf<UnitEntity>()
+    val units = mutableSetOf<UnitEntity>() // Use Set to avoid duplicates
 
-    response.universities.forEach { uni ->
-        universities.add(UniversityEntity(id = uni.id, name = uni.name))
-        uni.programmes.forEach { prog ->
+    response.universities.forEach { university ->
+        universities.add(
+            UniversityEntity(
+                id = university.id,
+                name = university.name,
+                isActive = false
+            )
+        )
+
+        university.programmes.forEach { programme ->
             programmes.add(
                 ProgrammeEntity(
-                    id = prog.id,
-                    universityId = uni.id,
-                    name = prog.name,
-                    department = prog.department,
-                    yearOfStudy = prog.yearOfStudy
+                    id = programme.id,
+                    universityId = university.id,
+                    name = programme.name,
+                    department = programme.department,
+                    yearOfStudy = programme.yearOfStudy
                 )
             )
-            prog.units.forEach { unit ->
+
+            programme.units.forEach { unit ->
                 units.add(
                     UnitEntity(
                         id = unit.id,
-                        programmeId = prog.id,
                         code = unit.code,
                         name = unit.name
                     )
@@ -39,7 +49,28 @@ fun lecturerUniversitiesResponseToEntities(response: LecturerUniversitiesRespons
             }
         }
     }
-    return Triple(universities, programmes, units)
+
+    return Triple(universities, programmes, units.toList())
+}
+
+// Function to create programme-unit relationships
+fun createProgrammeUnitRelationships(response: LecturerUniversitiesResponse): List<ProgrammeUnitCrossRef> {
+    val crossRefs = mutableListOf<ProgrammeUnitCrossRef>()
+
+    response.universities.forEach { university ->
+        university.programmes.forEach { programme ->
+            programme.units.forEach { unit ->
+                crossRefs.add(
+                    ProgrammeUnitCrossRef(
+                        programmeId = programme.id,
+                        unitId = unit.id
+                    )
+                )
+            }
+        }
+    }
+
+    return crossRefs
 }
 
 

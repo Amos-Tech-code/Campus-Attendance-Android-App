@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeUnitCrossRef
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
@@ -22,26 +23,30 @@ interface LecturerAcademicsDao {
     suspend fun getAllUniversities(): List<UniversityEntity>
 
     // Insert operations
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUniversities(universities: List<UniversityEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgrammes(programmes: List<ProgrammeEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUnits(units: List<UnitEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProgrammeUnits(crossRefs: List<ProgrammeUnitCrossRef>)
 
-    // Optional: For incremental updates (if syncing per university)
+    // Transaction for full hierarchy insertion
     @Transaction
     suspend fun insertFullHierarchy(
         universities: List<UniversityEntity>,
         programmes: List<ProgrammeEntity>,
-        units: List<UnitEntity>
+        units: List<UnitEntity>,
+        programmeUnits: List<ProgrammeUnitCrossRef>
     ) {
         insertUniversities(universities)
         insertProgrammes(programmes)
         insertUnits(units)
+        insertProgrammeUnits(programmeUnits)
     }
 
     // Set a specific university as active
@@ -49,7 +54,23 @@ interface LecturerAcademicsDao {
     suspend fun setActiveUniversity(universityId: String)
 
     // Delete all when doing a full refresh
-    @Query("DELETE FROM universities")
-    suspend fun clearAll()
+    @Query("DELETE FROM programme_units")
+    suspend fun clearProgrammeUnits()
 
+    @Query("DELETE FROM units")
+    suspend fun clearUnits()
+
+    @Query("DELETE FROM programmes")
+    suspend fun clearProgrammes()
+
+    @Query("DELETE FROM universities")
+    suspend fun clearUniversities()
+
+    @Transaction
+    suspend fun clearAll() {
+        clearProgrammeUnits()
+        clearUnits()
+        clearProgrammes()
+        clearUniversities()
+    }
 }

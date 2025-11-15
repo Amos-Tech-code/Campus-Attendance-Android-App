@@ -3,7 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.start_session
 import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
-import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 
 data class SessionState(
     val universityId: String = "",

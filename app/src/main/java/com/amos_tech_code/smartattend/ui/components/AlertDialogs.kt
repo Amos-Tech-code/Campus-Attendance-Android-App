@@ -446,7 +446,7 @@ fun PermissionRationaleDialog(
         dismissButton = {
             TextButton(
                 onClick = {
-                    onDismissRequest
+                    onDismissRequest()
                 }
             ) {
                 Text("Deny")
@@ -485,7 +485,7 @@ fun PermissionSettingsDialog(
         dismissButton = {
             TextButton(
                 onClick = {
-                    onDismissRequest
+                    onDismissRequest()
                 }
             ) {
                 Text("Cancel")

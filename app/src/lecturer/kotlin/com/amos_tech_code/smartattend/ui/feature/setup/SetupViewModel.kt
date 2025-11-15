@@ -14,16 +14,15 @@ import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
-import com.amos_tech_code.smartattend.domain.models.request.AcademicSetupUpRequest
-import com.amos_tech_code.smartattend.domain.models.request.ProgrammeRequest
-import com.amos_tech_code.smartattend.domain.models.request.UnitRequest
+import com.amos_tech_code.smartattend.domain.request.AcademicSetupUpRequest
+import com.amos_tech_code.smartattend.domain.request.ProgrammeRequest
+import com.amos_tech_code.smartattend.domain.request.UnitRequest
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.NeutralVariant50
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -334,7 +333,8 @@ class SetupViewModel(
                                     UnitRequest(
                                         code = unit.code,
                                         name = unit.name
-                                    )}
+                                    )
+                                }
                             )
                         }
                     )
@@ -346,12 +346,12 @@ class SetupViewModel(
                         launch(SupervisorJob() + Dispatchers.IO) {
                             academicSetUpRepository.syncLecturerAcademics()
                         }
-                        _setupState.update { it -> it.copy(isLoading = false) }
+                        _setupState.update { it.copy(isLoading = false) }
                         session.setSetupComplete(true)
                         _event.send(SetUpEvents.SetupComplete)
                     }
                     is ApiResult.Failure -> {
-                        _setupState.update { it -> it.copy(isLoading = false) }
+                        _setupState.update { it.copy(isLoading = false) }
                         when(result.error) {
                             is ApiError.NetworkError -> {
                                 _event.send(SetUpEvents.ShowErrorMessage("Network error: ${result.error.exception.message}"))
@@ -384,6 +384,7 @@ class SetupViewModel(
 
         _setupState.update { it.copy(isSetupValid = isValid) }
     }
+
 }
 
 

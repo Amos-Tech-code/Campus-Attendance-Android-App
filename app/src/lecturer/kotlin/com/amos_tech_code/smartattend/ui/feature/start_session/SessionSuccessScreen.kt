@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.amos_tech_code.smartattend.domain.models.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 import com.amos_tech_code.smartattend.services.QrCodeSharingService
 import com.amos_tech_code.smartattend.ui.components.ErrorDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize

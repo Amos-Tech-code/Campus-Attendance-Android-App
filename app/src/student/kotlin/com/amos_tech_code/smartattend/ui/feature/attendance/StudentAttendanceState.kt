@@ -22,6 +22,12 @@ data class StudentAttendanceState(
     val qrScannerState: QRScannerState = QRScannerState.IDLE,
     val scannedQRData: String? = null,
 
+    // Code Entry State
+    val codeEntryState: CodeEntryState = CodeEntryState.IDLE,
+    val sessionCode: String = "",
+    val secretKey: String = "",
+    val codeEntryErrorMessage: String? = null,
+
     // Programme Selection
     val showProgrammeSelection: Boolean = false,
 
@@ -42,6 +48,14 @@ enum class QRScannerState {
     SCANNING,          // Actively scanning for QR codes
     SCANNED,           // QR code successfully scanned
     VERIFYING_SESSION, // Verifying the session with server
+    VERIFIED,          // Session verified successfully
+    MARKING_ATTENDANCE, // Marking attendance
+    ERROR              // Error occurred
+}
+
+enum class CodeEntryState {
+    IDLE,              // Ready for input
+    VERIFYING_SESSION, // Verifying session with server
     VERIFIED,          // Session verified successfully
     MARKING_ATTENDANCE, // Marking attendance
     ERROR              // Error occurred
