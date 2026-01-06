@@ -19,9 +19,7 @@ sealed class AttendanceUiEvent {
 
 // View Events
 sealed class AttendanceEvent {
+
     data class ShowErrorMessage(val message: String) : AttendanceEvent()
-    data class AttendanceMarkedSuccessfully(val response: MarkAttendanceResponse) : AttendanceEvent()
-    object NavigateToQRScanner : AttendanceEvent()
-    object NavigateToCodeEntry : AttendanceEvent()
 
 }

@@ -9,9 +9,17 @@ import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.domain.models.University
-import com.amos_tech_code.smartattend.domain.request.AcademicSetupUpRequest
+import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
+import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest
+import com.amos_tech_code.smartattend.domain.request.ProgrammeSuggestionRequest
+import com.amos_tech_code.smartattend.domain.request.UnitSuggestionRequest
+import com.amos_tech_code.smartattend.domain.request.UniversitySuggestionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
-import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
+import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
+import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
+import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
+import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
+import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 
 class AcademicSetUpRepository(
     private val apiService: ApiService,
@@ -19,18 +27,21 @@ class AcademicSetUpRepository(
     private val lecturerAcademicsDao: LecturerAcademicsDao
 ) {
 
-    suspend fun uploadAcademicSetUp(request: AcademicSetupUpRequest) : ApiResult<AcademicSetupResponse> {
+    suspend fun uploadAcademicSetUp(request: AcademicSetUpRequest) : ApiResult<AcademicSetupResponse> {
 
         return safeApiCall { apiService.uploadAcademicSetup(request) }
 
     }
 
-    suspend fun fetchLecturerAcademicSetUp() : ApiResult<LecturerUniversitiesResponse> {
+    suspend fun fetchLecturerAcademicSetUp() : ApiResult<LecturerAcademicSetupResponse> {
 
         return safeApiCall { apiService.fetchLecturerAcademicSetUp() }
 
     }
 
+    /**
+     * Local Data source Operations
+     */
     suspend fun getAllAcademicsForLecturer(): List<University> {
         // Sync if not done yet
         if (!session.getAcademicSyncStatus()) {
@@ -95,5 +106,50 @@ class AcademicSetUpRepository(
         }
     }
 
+
+    /**
+     * Academic set up suggestions
+     */
+    suspend fun fetchMatchingUniversities(request: UniversitySuggestionRequest): ApiResult<List<UniversitySuggestion>> {
+        return safeApiCall {
+            apiService.fetchMatchingUniversities(
+                query = request.query,
+                limit = request.limit
+            )
+        }
+    }
+
+    suspend fun fetchMatchingDepartments(request: DepartmentSuggestionRequest): ApiResult<List<DepartmentSuggestion>> {
+        return safeApiCall {
+            apiService.fetchMatchingDepartments(
+                universityId = request.universityId,
+                query = request.query,
+                limit = request.limit
+            )
+        }
+    }
+
+    suspend fun fetchMatchingProgrammes(request: ProgrammeSuggestionRequest): ApiResult<List<ProgrammeSuggestion>> {
+        return safeApiCall {
+            apiService.fetchMatchingProgrammes(
+                universityId = request.universityId,
+                departmentId = request.departmentId,
+                query = request.query,
+                limit = request.limit
+            )
+        }
+    }
+
+    suspend fun fetchMatchingUnits(request: UnitSuggestionRequest): ApiResult<List<UnitSuggestion>> {
+        return safeApiCall {
+            apiService.fetchMatchingUnits(
+                universityId = request.universityId,
+                departmentId = request.departmentId,
+                programmeId = request.programmeId,
+                query = request.query,
+                limit = request.limit
+            )
+        }
+    }
 
 }

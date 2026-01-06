@@ -1,7 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.QrCode
@@ -34,13 +32,10 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,9 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.EmptyState
-import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
-import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.feature.home.AttendanceStatus
 import com.amos_tech_code.smartattend.ui.feature.home.RecentAttendance
 import com.amos_tech_code.smartattend.ui.feature.home.Session
@@ -62,92 +55,75 @@ import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttendanceScreen(
     navController: NavController,
     viewModel: AttendanceViewModel = koinViewModel()
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
-    val snackBarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     ObserveAsEvents(viewModel.event) { event ->
-        when(event) {
+        when (event) {
             is AttendanceEvent.ShowErrorMessage -> {
                 Toast.makeText(navController.context, event.message, Toast.LENGTH_SHORT).show()
             }
-            is AttendanceEvent.AttendanceMarkedSuccessfully -> {
-                // Show success and reset state after delay
-//                scope.launch {
-//                    delay(3000)
-//                    viewModel.onEvent(AttendanceUiEvent.ResetState)
-//                }
-            }
-            AttendanceEvent.NavigateToQRScanner -> {
-                // Handled by state
-            }
-            AttendanceEvent.NavigateToCodeEntry -> {
-                // Handled by state
-            }
         }
     }
 
-    // Handle QR Scanner
-    if (state.showQRScanner) {
-        QRScannerScreen(
-            viewModel = viewModel,
-            onBack = {
-                viewModel.onEvent(AttendanceUiEvent.ResetState)
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Base screen content
+        when {
+            state.showQRScanner -> {
+                QRScannerScreen(
+                    viewModel = viewModel,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
             }
-        )
-        return
-    }
-
-    // Handle Code Entry
-    if (state.showCodeEntry) {
-        CodeEntryScreen(
-            viewModel = viewModel,
-            onBack = {
-                viewModel.onEvent(AttendanceUiEvent.ResetState)
+            state.showCodeEntry -> {
+                CodeEntryScreen(
+                    viewModel = viewModel,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
             }
-        )
-        return
-    }
-
-    // Handle Programme Selection
-    if (state.showProgrammeSelection) {
-        state.verificationResult?.availableProgrammes?.let { programmes ->
-            ProgrammeSelectionDialog(
-                programmes = programmes,
-                onProgrammeSelected = { programmeId ->
-                    viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
-                },
-                onDismiss = {
-                    viewModel.onEvent(AttendanceUiEvent.ResetState)
+            state.showSuccess -> {
+                state.attendanceResult?.let { result ->
+                    AttendanceSuccessScreen(
+                        result = result,
+                        onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                    )
                 }
-            )
+            }
+            else -> {
+                MainAttendanceScaffold(navController = navController, viewModel = viewModel, state = state)
+            }
+        }
+
+        // Overlay dialog on top of any screen
+        if (state.showProgrammeSelection) {
+            state.verificationResult?.availableProgrammes?.let { programmes ->
+                ProgrammeSelectionDialog(
+                    programmes = programmes,
+                    onProgrammeSelected = { programmeId ->
+                        viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                    },
+                    onDismiss = { // If the user dismisses the dialog, reset the state
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                    }
+                )
+            }
         }
     }
+}
 
-    // Handle Success Screen
-    if (state.showSuccess) {
-        state.attendanceResult?.let { result ->
-            AttendanceSuccessScreen(
-                result = result,
-                onBack = {
-                    viewModel.onEvent(AttendanceUiEvent.ResetState)
-                }
-            )
-        }
-        return
-    }
-
-    // Main Attendance Screen
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainAttendanceScaffold(
+    navController: NavController,
+    viewModel: AttendanceViewModel,
+    state: StudentAttendanceState
+) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -164,8 +140,7 @@ fun AttendanceScreen(
             if (state.activeSessions.isNotEmpty()) {
                 ExtendedFloatingActionButton(
                     onClick = {
-                        viewModel.onEvent(AttendanceUiEvent.ResetState)
-                        // This will trigger QR scanner through state change
+                        viewModel.showQrScanner()
                     },
                     icon = {
                         Icon(Icons.Default.QrCode, "Scan QR")
@@ -187,7 +162,7 @@ fun AttendanceScreen(
                 .padding(paddingValues)
         ) {
             // Loading State
-            if (state.isLoading) {
+            if (state.isLoading && state.activeSessions.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier
@@ -201,18 +176,18 @@ fun AttendanceScreen(
             }
 
             // Error Message
-            state.errorMessage?.let { error ->
+            state.errorMessage?.let {
                 item {
                     ErrorMessageCard(
-                        message = error,
+                        message = it,
                         onRetry = { /* Handle retry if needed */ }
                     )
                 }
             }
 
-            // Active Sessions
-            item {
-                if (state.activeSessions.isNotEmpty()) {
+            // Active Sessions or Empty State
+            if (state.activeSessions.isNotEmpty()) {
+                item {
                     ActiveSessionsSection(
                         sessions = state.activeSessions,
                         modifier = Modifier.padding(16.dp)
@@ -220,19 +195,12 @@ fun AttendanceScreen(
                 }
             }
 
+
             // Attendance Methods
             item {
                 AttendanceMethodsSection(
-                    onScanQR = {
-                        viewModel.onEvent(AttendanceUiEvent.ResetState)
-                        // This will trigger QR scanner
-                        viewModel.showQrScanner()
-                    },
-                    onEnterCode = {
-                        viewModel.onEvent(AttendanceUiEvent.ResetState)
-                        // This will trigger code entry
-                        viewModel.showCodeEntry()
-                    },
+                    onScanQR = { viewModel.showQrScanner() },
+                    onEnterCode = { viewModel.showCodeEntry() },
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -256,7 +224,7 @@ private fun AttendanceMethodsSection(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = "Mark Attendance",
+            text = "How to Mark Attendance",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
@@ -271,7 +239,7 @@ private fun AttendanceMethodsSection(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.QrCode2,
                 title = "Scan QR",
-                description = "Scan lecturer's QR code",
+                description = "Scan the lecturer's QR code.",
                 onClick = onScanQR
             )
 
@@ -279,13 +247,12 @@ private fun AttendanceMethodsSection(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Pin,
                 title = "Enter Code",
-                description = "Use lecturer's code",
+                description = "Use the lecturer's code.",
                 onClick = onEnterCode
             )
         }
     }
 }
-
 
 @Composable
 fun ActiveSessionsSection(
@@ -302,51 +269,14 @@ fun ActiveSessionsSection(
 
         SmartAttendHeightSpacer(12.dp)
 
-        LazyRow (
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(sessions) { session ->
-                ActiveSessionCard(session = session)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(sessions) {
+                // Replace with your ActiveSessionCard
             }
         }
     }
 }
 
-/*
-@Composable
-private fun AttendanceMethodsSection(modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Mark Attendance",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        SmartAttendHeightSpacer(16.dp)
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AttendanceMethodCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.QrCode2,
-                title = "Scan QR",
-                description = "Scan lecturer's QR code",
-                onClick = { /* Navigate to QR scanner */ }
-            )
-
-            AttendanceMethodCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.Pin,
-                title = "Enter Code",
-                description = "Use lecturer's code",
-                onClick = { /* Navigate to code input */ }
-            )
-        }
-    }
-}
-*/
 @Composable
 private fun AttendanceMethodCard(
     modifier: Modifier = Modifier,
@@ -359,124 +289,31 @@ private fun AttendanceMethodCard(
         onClick = onClick,
         modifier = modifier.height(140.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun ActiveSessionCard(session: Session) {
-    Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = session.courseName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = session.courseCode,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = PresentColor,
-                            shape = MaterialTheme.shapes.small
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "ACTIVE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconText(
-                    icon = Icons.Default.Schedule,
-                    text = session.time,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-                IconText(
-                    icon = Icons.Default.LocationOn,
-                    text = session.location,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-            }
-
-            SmartAttendPrimaryButton(
-                text = "Mark Attendance",
-                onClick = { /* Handle attendance */ },
-                size = SmartAttendButtonSize.Medium
-            )
+            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
+            SmartAttendHeightSpacer(8.dp)
+            Text(text = title, fontWeight = FontWeight.Bold)
+            SmartAttendHeightSpacer(4.dp)
+            Text(text = description, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
-private fun RecentAttendanceSection(
-    recentAttendance: List<RecentAttendance>,
-    modifier: Modifier = Modifier
-) {
+fun RecentAttendanceSection(recentAttendance: List<RecentAttendance>, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(
             text = "Recent Attendance",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
-
         SmartAttendHeightSpacer(12.dp)
-
         if (recentAttendance.isEmpty()) {
             EmptyState(
                 icon = Icons.Default.History,
@@ -494,6 +331,7 @@ private fun RecentAttendanceSection(
         }
     }
 }
+
 
 @Composable
 private fun RecentAttendanceItem(attendance: RecentAttendance) {

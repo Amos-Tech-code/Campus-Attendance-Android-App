@@ -4,7 +4,6 @@ import android.app.Activity
 import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
-import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 
 sealed class StartSessionEvent {
 

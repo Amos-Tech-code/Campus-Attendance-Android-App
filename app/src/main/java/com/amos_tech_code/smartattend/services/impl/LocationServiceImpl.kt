@@ -84,14 +84,20 @@ class LocationServiceImpl(
                 .setDurationMillis(15000) // Set timeout duration
                 .build()
 
-            // Get current location
-            val location = fusedLocationClient.getCurrentLocation(
+            // Try to get current location
+            var location = fusedLocationClient.getCurrentLocation(
                 currentLocationRequest,
                 cancellationTokenSource.token
             ).await()
 
+            // If current location is null, try to get last known location
             if (location == null) {
-                throw Exception("Unable to get current location - location is null")
+                location = fusedLocationClient.lastLocation.await()
+            }
+
+            // If both fail, throw exception
+            if (location == null) {
+                throw Exception("Unable to get location - GPS might be off or signal is weak")
             }
 
             // Get address from location

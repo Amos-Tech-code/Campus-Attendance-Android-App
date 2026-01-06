@@ -1,6 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.signIn
 
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.credentials.CredentialManager
@@ -41,12 +40,12 @@ class SignInViewModel(
                     context,
                     CredentialManager.create(context)
                 )
-                Log.d("GoogleSignIn", response.toString())
+                //Log.d("GoogleSignIn", response.toString())
                 onGoogleLoginSuccess(response.token)
                 googleAuthUiLoading.value = false
 
             } catch (e: Exception) {
-                Log.e("GoogleSignIn", "Sign-in failed", e)
+                //Log.e("GoogleSignIn", "Sign-in failed", e)
                 googleAuthUiLoading.value = false
                 when (e) {
                     is GetCredentialCancellationException -> {

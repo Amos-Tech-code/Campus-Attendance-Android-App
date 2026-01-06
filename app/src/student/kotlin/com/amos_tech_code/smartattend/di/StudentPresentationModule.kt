@@ -4,7 +4,7 @@ import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
-val studentPresentationModule = module {
+val flavorPresentationModule = module {
 
     includes(viewModelModule)
 

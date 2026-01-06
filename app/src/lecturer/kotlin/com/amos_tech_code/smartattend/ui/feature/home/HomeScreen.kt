@@ -102,6 +102,7 @@ fun HomeScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showMenu by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -245,6 +246,7 @@ fun HomeScreen(
                 onClick = { navController.navigate(StartSessionRoute) },
                 icon = { Icon(Icons.Default.QrCode, "Start Session") },
                 text = { Text("Start Session") },
+                expanded = scrollState.isScrollInProgress,
                 containerColor = MaterialTheme.colorScheme.primary
             )
         },
@@ -253,11 +255,12 @@ fun HomeScreen(
         }
     )
     { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             // Welcome Card
             WelcomeCard(

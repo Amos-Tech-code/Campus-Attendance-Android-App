@@ -73,6 +73,7 @@ class AttendanceViewModel(
             }
         }
     }
+
     fun showQrScanner() {
         _attendanceState.update {
             it.copy(
@@ -99,12 +100,21 @@ class AttendanceViewModel(
     }
 
     private fun processQRCode(qrData: String) {
-        // Update QR scanner state
-        _attendanceState.update {
-            it.copy(
-                qrScannerState = QRScannerState.SCANNED,
-                scannedQRData = qrData
-            )
+        var shouldProcess = false
+        _attendanceState.update { currentState ->
+            if (currentState.qrScannerState == QRScannerState.IDLE || currentState.qrScannerState == QRScannerState.SCANNING) {
+                shouldProcess = true
+                currentState.copy(
+                    qrScannerState = QRScannerState.SCANNED,
+                    scannedQRData = qrData
+                )
+            } else {
+                currentState
+            }
+        }
+
+        if (!shouldProcess) {
+            return
         }
 
         // Parse QR code data
@@ -162,13 +172,14 @@ class AttendanceViewModel(
 
                 when (result) {
                     is ApiResult.Success -> {
+                        val requiresProgrammeSelection = result.data.requiresProgrammeSelection
                         if (isFromQR) {
                             _attendanceState.update {
                                 it.copy(
                                     qrScannerState = QRScannerState.VERIFIED,
                                     isLoading = false,
                                     verificationResult = result.data,
-                                    showProgrammeSelection = result.data.requiresProgrammeSelection
+                                    showProgrammeSelection = requiresProgrammeSelection
                                 )
                             }
                         } else {
@@ -177,7 +188,7 @@ class AttendanceViewModel(
                                     codeEntryState = CodeEntryState.VERIFIED,
                                     isLoading = false,
                                     verificationResult = result.data,
-                                    showProgrammeSelection = result.data.requiresProgrammeSelection
+                                    showProgrammeSelection = requiresProgrammeSelection
                                 )
                             }
                         }
@@ -186,7 +197,7 @@ class AttendanceViewModel(
                         vibrationHelper.vibrate(100)
 
                         // If no programme selection needed, proceed to mark attendance
-                        if (!result.data.requiresProgrammeSelection) {
+                        if (!requiresProgrammeSelection) {
                             if (isFromQR) {
                                 markAttendanceDirectlyFromQR(sessionCode, secretKey)
                             } else {
@@ -239,12 +250,20 @@ class AttendanceViewModel(
     }
 
     private fun markAttendanceDirectlyFromQR(sessionCode: String, secretKey: String) {
+        var shouldMark = false
         _attendanceState.update {
-            it.copy(
-                qrScannerState = QRScannerState.MARKING_ATTENDANCE,
-                isLoading = true
-            )
+            if (it.qrScannerState == QRScannerState.VERIFIED) {
+                shouldMark = true
+                it.copy(
+                    qrScannerState = QRScannerState.MARKING_ATTENDANCE,
+                    isLoading = true
+                )
+            } else {
+                it
+            }
         }
+
+        if (!shouldMark) return
 
         viewModelScope.launch {
             val request = MarkAttendanceRequest(
@@ -260,12 +279,20 @@ class AttendanceViewModel(
     }
 
     private fun markAttendanceDirectlyFromCode(sessionCode: String, secretKey: String) {
+        var shouldMark = false
         _attendanceState.update {
-            it.copy(
-                codeEntryState = CodeEntryState.MARKING_ATTENDANCE,
-                isLoading = true
-            )
+            if (it.codeEntryState == CodeEntryState.VERIFIED) {
+                shouldMark = true
+                it.copy(
+                    codeEntryState = CodeEntryState.MARKING_ATTENDANCE,
+                    isLoading = true
+                )
+            } else {
+                it
+            }
         }
+
+        if (!shouldMark) return
 
         viewModelScope.launch {
             val request = MarkAttendanceRequest(
@@ -291,11 +318,11 @@ class AttendanceViewModel(
                                 isLoading = false,
                                 attendanceResult = result.data,
                                 showSuccess = true,
-                                showQRScanner = false
+                                showQRScanner = false,
+                                showProgrammeSelection = false
                             )
                         }
                         vibrationHelper.vibrate(200)
-                        _event.send(AttendanceEvent.AttendanceMarkedSuccessfully(result.data))
                     }
                     is ApiResult.Failure -> {
                         _attendanceState.update {
@@ -332,11 +359,11 @@ class AttendanceViewModel(
                                 isLoading = false,
                                 attendanceResult = result.data,
                                 showSuccess = true,
-                                showCodeEntry = false
+                                showCodeEntry = false,
+                                showProgrammeSelection = false
                             )
                         }
                         vibrationHelper.vibrate(200)
-                        _event.send(AttendanceEvent.AttendanceMarkedSuccessfully(result.data))
                     }
                     is ApiResult.Failure -> {
                         _attendanceState.update {
@@ -384,8 +411,23 @@ class AttendanceViewModel(
     }
 
     private fun markAttendanceWithProgramme(programmeId: String) {
+        val state = _attendanceState.value
+
+        val isQrFlow = state.qrScannerState == QRScannerState.VERIFIED
+        val isCodeFlow = state.codeEntryState == CodeEntryState.VERIFIED
+
+        if (!isQrFlow && !isCodeFlow) return // Not in a state to mark attendance with programme
+
+        _attendanceState.update {
+            it.copy(
+                isLoading = true,
+                showProgrammeSelection = false, // Dismiss dialog
+                qrScannerState = if (isQrFlow) QRScannerState.MARKING_ATTENDANCE else it.qrScannerState,
+                codeEntryState = if (isCodeFlow) CodeEntryState.MARKING_ATTENDANCE else it.codeEntryState
+            )
+        }
+
         viewModelScope.launch {
-            val state = _attendanceState.value
             state.currentSessionCode?.let { sessionCode ->
                 state.currentSecretKey?.let { secretKey ->
                     val request = MarkAttendanceRequest(
@@ -398,7 +440,7 @@ class AttendanceViewModel(
                     )
 
                     // Determine which flow we're in and mark accordingly
-                    if (state.showQRScanner) {
+                    if (isQrFlow) {
                         markAttendanceFromQR(request)
                     } else {
                         markAttendanceFromCode(request)
@@ -422,7 +464,6 @@ class AttendanceViewModel(
                                 showQRScanner = false
                             )
                         }
-                        _event.send(AttendanceEvent.AttendanceMarkedSuccessfully(result.data))
                     }
                     is ApiResult.Failure -> {
                         _attendanceState.update {
@@ -447,48 +488,6 @@ class AttendanceViewModel(
             }
         }
     }
-
-    /*
-    fun resetQRScanner() {
-        _attendanceState.update {
-            it.copy(
-                qrScannerState = QRScannerState.IDLE,
-                scannedQRData = null,
-                errorMessage = null
-            )
-        }
-    }
-
-    fun resetCodeEntry() {
-        _attendanceState.update {
-            it.copy(
-                codeEntryState = CodeEntryState.IDLE,
-                codeEntryErrorMessage = null,
-                sessionCode = "",
-                secretKey = ""
-            )
-        }
-    }
-
-    private fun markAttendanceWithProgramme(programmeId: String) {
-        viewModelScope.launch {
-            val state = _attendanceState.value
-            state.currentSessionCode?.let { sessionCode ->
-                state.currentSecretKey?.let { secretKey ->
-                    val request = MarkAttendanceRequest(
-                        sessionCode = sessionCode,
-                        secretKey = secretKey,
-                        deviceId = session.getDeviceId()
-                            ?: deviceInfoProvider.getDeviceInfo().deviceId,
-                        programmeId = programmeId,
-                        studentLat = state.studentLocation?.latitude,
-                        studentLng = state.studentLocation?.longitude
-                    )
-                    markAttendance(request)
-                }
-            }
-        }
-    }*/
 
     private fun extractApiErrorMessage(error: ApiError) : String {
         return when (error) {

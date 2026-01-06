@@ -9,11 +9,13 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWith
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
 import com.amos_tech_code.smartattend.domain.models.University
-import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
+import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 
-fun lecturerUniversitiesResponseToEntities(response: LecturerUniversitiesResponse):
+fun lecturerUniversitiesResponseToEntities(response: LecturerAcademicSetupResponse):
         Triple<List<UniversityEntity>, List<ProgrammeEntity>, List<UnitEntity>> {
 
+    TODO()
+    /*
     val universities = mutableListOf<UniversityEntity>()
     val programmes = mutableListOf<ProgrammeEntity>()
     val units = mutableSetOf<UnitEntity>() // Use Set to avoid duplicates
@@ -51,12 +53,16 @@ fun lecturerUniversitiesResponseToEntities(response: LecturerUniversitiesRespons
     }
 
     return Triple(universities, programmes, units.toList())
+
+     */
 }
 
 // Function to create programme-unit relationships
-fun createProgrammeUnitRelationships(response: LecturerUniversitiesResponse): List<ProgrammeUnitCrossRef> {
+fun createProgrammeUnitRelationships(response: LecturerAcademicSetupResponse): List<ProgrammeUnitCrossRef> {
     val crossRefs = mutableListOf<ProgrammeUnitCrossRef>()
 
+    TODO()
+    /*
     response.universities.forEach { university ->
         university.programmes.forEach { programme ->
             programme.units.forEach { unit ->
@@ -71,6 +77,8 @@ fun createProgrammeUnitRelationships(response: LecturerUniversitiesResponse): Li
     }
 
     return crossRefs
+
+     */
 }
 
 

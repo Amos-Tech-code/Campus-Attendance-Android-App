@@ -1,6 +1,6 @@
 package com.amos_tech_code.smartattend.data.network
 
-import com.amos_tech_code.smartattend.domain.request.AcademicSetupUpRequest
+import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
@@ -10,11 +10,15 @@ import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
+import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
+import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
-import com.amos_tech_code.smartattend.domain.response.LecturerUniversitiesResponse
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
+import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 import com.amos_tech_code.smartattend.domain.response.StudentAuthResponse
+import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
+import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import retrofit2.Response
 import retrofit2.http.Body
@@ -22,6 +26,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
 
@@ -34,27 +39,56 @@ interface ApiService {
     @POST("auth/lecturers/google")
     suspend fun googleSignIn(@Body request: GoogleSignInRequest): Response<LecturerAuthResponse>
 
+    @GET("lecturer/academic-setup/suggestions/universities")
+    suspend fun fetchMatchingUniversities(
+        @Query("query") query: String,
+        @Query("limit") limit: Int
+    ) : Response<List<UniversitySuggestion>>
+
+    @GET("lecturer/academic-setup/suggestions/departments")
+    suspend fun fetchMatchingDepartments(
+        @Query("universityId") universityId: String,
+        @Query("query") query: String,
+        @Query("limit") limit: Int
+    ) : Response<List<DepartmentSuggestion>>
+
+    @GET("lecturer/academic-setup/suggestions/programmes")
+    suspend fun fetchMatchingProgrammes(
+        @Query("universityId") universityId: String,
+        @Query("departmentId") departmentId: String?,
+        @Query("query") query: String,
+        @Query("limit") limit: Int
+    ) : Response<List<ProgrammeSuggestion>>
+
+    @GET("lecturer/academic-setup/suggestions/units")
+    suspend fun fetchMatchingUnits(
+        @Query("universityId") universityId: String,
+        @Query("departmentId") departmentId: String?,
+        @Query("programmeId") programmeId: String?,
+        @Query("query") query: String,
+        @Query("limit") limit: Int
+    ) : Response<List<UnitSuggestion>>
+
     @POST("lecturer/academic-setup")
-    suspend fun uploadAcademicSetup(@Body request: AcademicSetupUpRequest): Response<AcademicSetupResponse>
+    suspend fun uploadAcademicSetup(@Body request: AcademicSetUpRequest): Response<AcademicSetupResponse>
 
     @GET("lecturer/academic-setup")
-    suspend fun fetchLecturerAcademicSetUp(): Response<LecturerUniversitiesResponse>
+    suspend fun fetchLecturerAcademicSetUp(): Response<LecturerAcademicSetupResponse>
 
-    @POST("attendance/sessions/start")
+    @POST("attendance/session/start")
     suspend fun startAttendanceSession(@Body request: StartSessionRequest) : Response<StartAttendanceSessionResponse>
 
-    @PATCH("attendance/sessions/{sessionId}")
+    @PATCH("attendance/session/{sessionId}")
     suspend fun updateAttendanceSession(
         @Path("sessionId") sessionId: String,
         @Body request: UpdateSessionRequest
     ) : Response<StartAttendanceSessionResponse>
 
-    @POST("attendance/sessions/end")
+    @POST("attendance/session/end")
     suspend fun endAttendanceSession(@Body request: EndSessionRequest) : Response<Unit>
 
-    @GET("attendance/sessions/active")
+    @GET("attendance/session/active")
     suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
-
 
 
     /**
