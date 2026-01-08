@@ -5,8 +5,6 @@ import com.amos_tech_code.smartattend.data.network.utils.AuthInterceptor
 import com.amos_tech_code.smartattend.data.network.utils.ConnectivityObserver
 import com.amos_tech_code.smartattend.data.network.utils.ConnectivityObserverImpl
 import com.google.gson.GsonBuilder
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.dsl.module
