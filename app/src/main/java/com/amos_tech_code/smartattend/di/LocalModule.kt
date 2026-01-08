@@ -6,11 +6,16 @@ import com.amos_tech_code.smartattend.data.local.room_db.ClassTrackDatabase
 import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.services.LocationService
 import com.amos_tech_code.smartattend.services.impl.LocationServiceImpl
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import org.koin.dsl.module
 
 val localModule = module {
 
     single { SmartAttendSession(get()) }
+
+    // Provide Coroutine Dispatchers
+    single<CoroutineDispatcher> { Dispatchers.IO }
 
     // Provide Room Database
     single {

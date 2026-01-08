@@ -2,19 +2,26 @@ package com.amos_tech_code.smartattend.domain.response
 
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class StartAttendanceSessionResponse(
     val sessionId: String,
-    val sessionCode: String, // 6-digit code
-    val secretKey: String, // 8-char secret
-    val qrCodeUrl: String?, // CDN URL if QR method
+    val title: String?,
+    val sessionType: AttendanceSessionType,
+    val weekNumber: Int,
+
+    val sessionCode: String,
+    val qrCodeUrl: String?,
     val method: AttendanceMethod,
     val universityId: String,
+
     val programmes: List<ProgrammeInfo>,
     val unit: UnitInfo,
-    val location: LocationInfo,
+
+    val isLocationRequired: Boolean,
+    val location: LocationInfo?,
     val timeInfo: TimeInfo,
     val status: AttendanceSessionStatus
 )

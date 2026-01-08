@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.DepartmentEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeUnitCrossRef
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
@@ -14,20 +16,50 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWith
 @Dao
 interface LecturerAcademicsDao {
 
-    // Fetch full hierarchy: University -> Programmes -> Units
     @Transaction
     @Query("SELECT * FROM universities")
     suspend fun getUniversitiesWithProgrammesAndUnits(): List<UniversityWithProgrammesAndUnits>
 
+    @Transaction
+    @Query("SELECT * FROM universities WHERE id = :universityId")
+    suspend fun getUniversityWithProgrammesAndUnits(universityId: String): UniversityWithProgrammesAndUnits?
+
     @Query("SELECT * FROM universities")
     suspend fun getAllUniversities(): List<UniversityEntity>
 
+    @Query("SELECT * FROM universities WHERE isActive = 1 LIMIT 1")
+    suspend fun getActiveUniversity(): UniversityEntity?
+
+    @Query("SELECT * FROM academic_terms WHERE universityId = :universityId")
+    suspend fun getAcademicTermsForUniversity(universityId: String): List<AcademicTermEntity>
+
+    @Query("SELECT * FROM academic_terms WHERE universityId = :universityId AND isActive = 1 LIMIT 1")
+    suspend fun getActiveAcademicTermForUniversity(universityId: String): AcademicTermEntity?
+
     // Insert operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUniversities(universities: List<UniversityEntity>)
+    suspend fun insertUniversity(university: UniversityEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAcademicTerm(academicTerm: AcademicTermEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAcademicTerms(academicTerms: List<AcademicTermEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDepartment(department: DepartmentEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDepartments(departments: List<DepartmentEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProgramme(programme: ProgrammeEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgrammes(programmes: List<ProgrammeEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUnit(unit: UnitEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUnits(units: List<UnitEntity>)
@@ -35,15 +67,37 @@ interface LecturerAcademicsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgrammeUnits(crossRefs: List<ProgrammeUnitCrossRef>)
 
-    // Transaction for full hierarchy insertion
+    // Transaction for inserting single university setup
     @Transaction
-    suspend fun insertFullHierarchy(
-        universities: List<UniversityEntity>,
+    suspend fun insertUniversitySetup(
+        university: UniversityEntity,
+        academicTerms: List<AcademicTermEntity>,
+        departments: List<DepartmentEntity>,
         programmes: List<ProgrammeEntity>,
         units: List<UnitEntity>,
         programmeUnits: List<ProgrammeUnitCrossRef>
     ) {
-        insertUniversities(universities)
+        insertUniversity(university)
+        insertAcademicTerms(academicTerms)
+        insertDepartments(departments)
+        insertProgrammes(programmes)
+        insertUnits(units)
+        insertProgrammeUnits(programmeUnits)
+    }
+
+    // Transaction for full hierarchy insertion (multiple universities)
+    @Transaction
+    suspend fun insertFullHierarchy(
+        universities: List<UniversityEntity>,
+        academicTerms: List<AcademicTermEntity>,
+        departments: List<DepartmentEntity>,
+        programmes: List<ProgrammeEntity>,
+        units: List<UnitEntity>,
+        programmeUnits: List<ProgrammeUnitCrossRef>
+    ) {
+        universities.forEach { insertUniversity(it) }
+        insertAcademicTerms(academicTerms)
+        insertDepartments(departments)
         insertProgrammes(programmes)
         insertUnits(units)
         insertProgrammeUnits(programmeUnits)
@@ -53,7 +107,36 @@ interface LecturerAcademicsDao {
     @Query("UPDATE universities SET isActive = CASE WHEN id = :universityId THEN 1 ELSE 0 END")
     suspend fun setActiveUniversity(universityId: String)
 
-    // Delete all when doing a full refresh
+    // Delete single university setup
+    @Transaction
+    suspend fun deleteUniversitySetup(universityId: String) {
+        deleteProgrammeUnitsForUniversity(universityId)
+        deleteUnitsForUniversity(universityId)
+        deleteProgrammesForUniversity(universityId)
+        deleteDepartmentsForUniversity(universityId)
+        deleteAcademicTermsForUniversity(universityId)
+        deleteUniversity(universityId)
+    }
+
+    @Query("DELETE FROM universities WHERE id = :universityId")
+    suspend fun deleteUniversity(universityId: String)
+
+    @Query("DELETE FROM academic_terms WHERE universityId = :universityId")
+    suspend fun deleteAcademicTermsForUniversity(universityId: String)
+
+    @Query("DELETE FROM departments WHERE universityId = :universityId")
+    suspend fun deleteDepartmentsForUniversity(universityId: String)
+
+    @Query("DELETE FROM programmes WHERE universityId = :universityId")
+    suspend fun deleteProgrammesForUniversity(universityId: String)
+
+    @Query("DELETE FROM units WHERE universityId = :universityId")
+    suspend fun deleteUnitsForUniversity(universityId: String)
+
+    @Query("DELETE FROM programme_units WHERE unitId IN (SELECT id FROM units WHERE universityId = :universityId)")
+    suspend fun deleteProgrammeUnitsForUniversity(universityId: String)
+
+    // Clear all data
     @Query("DELETE FROM programme_units")
     suspend fun clearProgrammeUnits()
 
@@ -63,6 +146,12 @@ interface LecturerAcademicsDao {
     @Query("DELETE FROM programmes")
     suspend fun clearProgrammes()
 
+    @Query("DELETE FROM departments")
+    suspend fun clearDepartments()
+
+    @Query("DELETE FROM academic_terms")
+    suspend fun clearAcademicTerms()
+
     @Query("DELETE FROM universities")
     suspend fun clearUniversities()
 
@@ -71,6 +160,8 @@ interface LecturerAcademicsDao {
         clearProgrammeUnits()
         clearUnits()
         clearProgrammes()
+        clearDepartments()
+        clearAcademicTerms()
         clearUniversities()
     }
 }

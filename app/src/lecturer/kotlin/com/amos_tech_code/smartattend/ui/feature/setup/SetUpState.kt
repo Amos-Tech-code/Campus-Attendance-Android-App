@@ -52,7 +52,7 @@ data class ProgrammeUiState(
     val showDepartmentSuggestions: Boolean = false,
 
     val yearOfStudy: Int = 1,
-    val expectedStudentCount: Int = 30,
+    val expectedStudentCount: String = "",
     val units: List<UnitUiState> = emptyList(),
     val isExpanded: Boolean = true
 )
@@ -64,7 +64,6 @@ data class UnitUiState(
     val name: String = "",
     val nameError: String? = null,
     val selectedUnitId: String? = null,
-    val semester: Int = 1,
     val lectureDay: String = "",
     val lectureTime: String = "",
     val lectureVenue: String = ""
@@ -79,7 +78,7 @@ data class AddProgrammeState(
     val selectedDepartmentId: String? = null,
     val yearOfStudy: Int = 1,
     val yearOfStudyError: String? = null,
-    val expectedStudentCount: Int = 30,
+    val expectedStudentCount: Int = 0,
     val expectedStudentCountError: String? = null
 )
 

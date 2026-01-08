@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
@@ -25,6 +26,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -72,6 +74,9 @@ interface ApiService {
     @POST("lecturer/academic-setup")
     suspend fun uploadAcademicSetup(@Body request: AcademicSetUpRequest): Response<AcademicSetupResponse>
 
+    @PUT("lecturer/academic-setup")
+    suspend fun updateAcademicSetup(@Body request: UpdateAcademicSetupRequest): Response<AcademicSetupResponse>
+
     @GET("lecturer/academic-setup")
     suspend fun fetchLecturerAcademicSetUp(): Response<LecturerAcademicSetupResponse>
 
@@ -89,7 +94,6 @@ interface ApiService {
 
     @GET("attendance/session/active")
     suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
-
 
     /**
      *

@@ -1,5 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.start_session
 
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
 import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
@@ -7,9 +9,13 @@ import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResp
 
 data class SessionState(
     val universityId: String = "",
+    val title: String = "",
+    val sessionType: AttendanceSessionType = AttendanceSessionType.REGULAR,
+    val weekNumber: Int = 1, // New: Week number
     val selectedProgrammes: List<Programme> = emptyList(),
     val selectedUnit: UnitModel? = null,
     val availableUnits: List<UnitModel> = emptyList(),
+    val attendanceMethod: AttendanceMethod = AttendanceMethod.QR_CODE,
     val durationMinutes: Int = 30,
     val allowedRadius: Int = 50,
     val requireLocation: Boolean = false,
@@ -23,9 +29,7 @@ data class SessionState(
 )
 
 
-
-
-// New state for session success
+// State for session success
 data class SessionSuccessState(
     val sessionResponse: StartAttendanceSessionResponse? = null,
     val isLoading: Boolean = false,

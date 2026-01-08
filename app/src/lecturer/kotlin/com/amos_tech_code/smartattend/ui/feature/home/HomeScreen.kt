@@ -246,7 +246,7 @@ fun HomeScreen(
                 onClick = { navController.navigate(StartSessionRoute) },
                 icon = { Icon(Icons.Default.QrCode, "Start Session") },
                 text = { Text("Start Session") },
-                expanded = scrollState.isScrollInProgress,
+                expanded = !scrollState.isScrollInProgress,
                 containerColor = MaterialTheme.colorScheme.primary
             )
         },

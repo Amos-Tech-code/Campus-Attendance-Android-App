@@ -25,6 +25,8 @@ sealed interface SetupUiEvent {
     data class ProgrammeNameChanged(val programmeId: String, val name: String) : SetupUiEvent
     data class ProgrammeSelected(val programmeId: String, val suggestion: ProgrammeSuggestion) : SetupUiEvent
     data class OnYearOfStudyChanged(val programmeId: String, val year: Int) : SetupUiEvent
+
+    data class NoOfExpectedStudentsChanged(val programmeId: String, val count: String) : SetupUiEvent
     data class ToggleProgrammeExpanded(val programmeId: String) : SetupUiEvent
     data class RemoveProgramme(val programmeId: String) : SetupUiEvent
     data class ShowAddUnitForm(val programmeId: String) : SetupUiEvent

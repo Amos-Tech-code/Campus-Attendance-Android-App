@@ -12,7 +12,7 @@ import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
-import com.amos_tech_code.smartattend.domain.request.AttendanceMethodRequest
+import com.amos_tech_code.smartattend.domain.request.AttendanceLocationRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.services.LocationService
 import com.amos_tech_code.smartattend.utils.LocationServiceException
@@ -62,13 +62,22 @@ class StartSessionViewModel(
             is SessionUiEvent.RadiusChanged -> {
                 _state.update { it.copy(allowedRadius = event.radius) }
             }
+            is SessionUiEvent.WeekNumberChanged -> {
+                _state.update { it.copy(weekNumber = event.week) }
+            }
+            is SessionUiEvent.TitleChanged -> {
+                _state.update { it.copy(title = event.title) }
+            }
+            is SessionUiEvent.SessionTypeChanged -> {
+                _state.update { it.copy(sessionType = event.sessionType) }
+            }
             SessionUiEvent.ToggleLocationRequirement -> {
                 val newRequireLocation = !_state.value.requireLocation
                 _state.update { it.copy(requireLocation = newRequireLocation) }
 
                 // If turning off location, clear the teaching venue
                 if (!newRequireLocation) {
-                    _state.update { it.copy(teachingVenue = null) }
+                    _state.update { it.copy(teachingVenue = null, allowedRadius = 50) }
                 }
             }
 
@@ -96,6 +105,10 @@ class StartSessionViewModel(
                 _event.trySend(StartSessionEvent.ShowErrorMessage("Failed to capture location: ${event.error}"))
             }
 
+            is SessionUiEvent.AttendanceMethodChanged -> {
+                _state.update { it.copy(attendanceMethod = event.method) }
+            }
+
             SessionUiEvent.ShowProgrammeSelection -> {
                 _state.update { it.copy(showProgrammeSelection = true) }
             }
@@ -121,6 +134,12 @@ class StartSessionViewModel(
             _event.trySend(StartSessionEvent.ShowErrorMessage("Please select a unit"))
             return
         }
+
+        if (state.weekNumber < 1) {
+            _event.trySend(StartSessionEvent.ShowErrorMessage("Please enter a valid week number"))
+            return
+        }
+
         // Location validation when required
         if (state.requireLocation) {
             if (state.teachingVenue == null) {
@@ -140,18 +159,26 @@ class StartSessionViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true)}
             try {
-                val result = attendanceRepository.startAttendanceSession(
-                    StartSessionRequest(
-                        universityId = state.universityId,
-                        programmeIds = state.selectedProgrammes.map { it.id },
-                        unitId = state.selectedUnit.id,
-                        method = AttendanceMethodRequest.QR_CODE,
-                        locationLat = state.teachingVenue?.latitude,
-                        locationLng = state.teachingVenue?.longitude,
-                        radiusMeters = state.allowedRadius,
-                        durationMinutes = state.durationMinutes
-                    )
+                val request = StartSessionRequest(
+                    universityId = state.universityId,
+                    title = state.title,
+                    attendanceSessionType = state.sessionType,
+                    weekNumber = state.weekNumber,
+                    programmeIds = state.selectedProgrammes.map { it.id },
+                    unitId = state.selectedUnit.id,
+                    allowedMethod = state.attendanceMethod,
+                    isLocationRequired = state.requireLocation,
+                    location = if (state.requireLocation && state.teachingVenue != null) {
+                        AttendanceLocationRequest(
+                            latitude = state.teachingVenue.latitude,
+                            longitude = state.teachingVenue.longitude
+                        )
+                    } else null,
+                    radiusMeters = if (state.requireLocation) state.allowedRadius else null,
+                    durationMinutes = state.durationMinutes
                 )
+
+                val result = attendanceRepository.startAttendanceSession(request)
 
                 when (result) {
                     is ApiResult.Failure -> {
@@ -179,7 +206,6 @@ class StartSessionViewModel(
             } finally {
                 _state.update { it.copy(isLoading = false)}
             }
-
         }
     }
 
@@ -313,5 +339,4 @@ class StartSessionViewModel(
     fun clearSuccessState() {
         _successState.update { SessionSuccessState() }
     }
-
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -70,6 +72,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +82,7 @@ import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.ui.components.LoadingDialog
+import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
@@ -138,6 +142,7 @@ fun UniversitySetupScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(scrollState)
+                .imePadding()
         )
     }
 
@@ -179,27 +184,7 @@ private fun SetupContent(
             programmes = uiState.programmes,
             onEvent = onEvent,
             showAddUnitForm = uiState.showAddUnitForm,
-            addUnitState = uiState.addUnitState,
-            onAddProgramme = { onEvent(SetupUiEvent.AddProgramme) },
-            onProgrammeNameChanged = { programmeId, name ->
-                onEvent(SetupUiEvent.ProgrammeNameChanged(programmeId, name))
-            },
-            onProgrammeSelected = { programmeId, suggestion ->
-                onEvent(SetupUiEvent.ProgrammeSelected(programmeId, suggestion))
-            },
-            onToggleProgrammeExpanded = { onEvent(SetupUiEvent.ToggleProgrammeExpanded(it)) },
-            onRemoveProgramme = { onEvent(SetupUiEvent.RemoveProgramme(it)) },
-            onShowAddUnitForm = { onEvent(SetupUiEvent.ShowAddUnitForm(it)) },
-            onRemoveUnit = { programmeId, unitId ->
-                onEvent(SetupUiEvent.RemoveUnit(programmeId, unitId))
-            },
-            onDepartmentNameChanged = { programmeId, name ->
-                onEvent(SetupUiEvent.DepartmentNameChanged(programmeId, name)) },
-            onDepartmentSelected = { programmeId, suggestion ->
-                onEvent(SetupUiEvent.DepartmentSelected(programmeId, suggestion)) },
-            onYearOfStudyChanged = { programmeId, year ->
-                onEvent(SetupUiEvent.OnYearOfStudyChanged(programmeId, year))
-            }
+            addUnitState = uiState.addUnitState
         )
 
         // Action Button (only shown when not adding units)
@@ -214,7 +199,7 @@ private fun SetupContent(
                     .fillMaxWidth()
                     .padding(bottom = 32.dp),
                 enabled = uiState.isSetupValid && !uiState.isLoading,
-                //elevation = ButtonDefaults.elevatedButtonElevation(defaultElevation = 4.dp)
+                size = SmartAttendButtonSize.Medium,
             )
         }
     }
@@ -353,17 +338,7 @@ private fun ProgrammesCard(
     programmes: List<ProgrammeUiState>,
     showAddUnitForm: Boolean,
     addUnitState: AddUnitState,
-    onEvent: (SetupUiEvent) -> Unit,
-    onAddProgramme: () -> Unit,
-    onProgrammeNameChanged: (String, String) -> Unit,
-    onProgrammeSelected: (String, ProgrammeSuggestion) -> Unit,
-    onDepartmentNameChanged: (String, String) -> Unit,
-    onDepartmentSelected: (String, DepartmentSuggestion) -> Unit,
-    onYearOfStudyChanged: (String, Int) -> Unit,
-    onToggleProgrammeExpanded: (String) -> Unit,
-    onRemoveProgramme: (String) -> Unit,
-    onShowAddUnitForm: (String) -> Unit,
-    onRemoveUnit: (String, String) -> Unit
+    onEvent: (SetupUiEvent) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -396,7 +371,7 @@ private fun ProgrammesCard(
                 // Add Programme Button
                 if (programmes.isNotEmpty()) {
                     ElevatedButton(
-                        onClick = onAddProgramme,
+                        onClick = { onEvent(SetupUiEvent.AddProgramme) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.large,
                         colors = ButtonDefaults.elevatedButtonColors(
@@ -424,7 +399,7 @@ private fun ProgrammesCard(
 
             // Programmes List
             if (programmes.isEmpty()) {
-                EmptyProgrammesState(onAddProgramme = onAddProgramme)
+                EmptyProgrammesState(onAddProgramme = { onEvent(SetupUiEvent.AddProgramme) })
             } else {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -433,15 +408,28 @@ private fun ProgrammesCard(
                     programmes.forEach { programme ->
                         ProgrammeCard(
                             programme = programme,
-                            onProgrammeNameChanged = { onProgrammeNameChanged(programme.id, it) },
-                            onProgrammeSelected = { onProgrammeSelected(programme.id, it) },
-                            onDepartmentNameChanged = { onDepartmentNameChanged(programme.id, it) },
-                            onDepartmentSelected = { onDepartmentSelected(programme.id, it) },
-                            onYearOfStudyChanged = { onYearOfStudyChanged(programme.id, it) },
-                            onToggleExpanded = { onToggleProgrammeExpanded(programme.id) },
-                            onRemove = { onRemoveProgramme(programme.id) },
-                            onAddUnit = { onShowAddUnitForm(programme.id) },
-                            onRemoveUnit = { unitId -> onRemoveUnit(programme.id, unitId) }
+                            onProgrammeNameChanged = { name ->
+                                onEvent(SetupUiEvent.ProgrammeNameChanged(programme.id, name))
+                            },
+                            onProgrammeSelected = { suggestion ->
+                                onEvent(SetupUiEvent.ProgrammeSelected(programme.id, suggestion))
+                            },
+                            onProgrammeToggleExpanded = { onEvent(SetupUiEvent.ToggleProgrammeExpanded(programme.id)) },
+                            onRemoveProgramme = { onEvent(SetupUiEvent.RemoveProgramme(programme.id)) },
+                            onShowAddUnitForm = { onEvent(SetupUiEvent.ShowAddUnitForm(programme.id)) },
+                            onRemoveUnit = { unitId ->
+                                onEvent(SetupUiEvent.RemoveUnit(programme.id, unitId))
+                            },
+                            onDepartmentNameChanged = { name ->
+                                onEvent(SetupUiEvent.DepartmentNameChanged(programme.id, name)) },
+                            onDepartmentSelected = { suggestion ->
+                                onEvent(SetupUiEvent.DepartmentSelected(programme.id, suggestion)) },
+                            onYearOfStudyChanged = { year ->
+                                onEvent(SetupUiEvent.OnYearOfStudyChanged(programme.id, year))
+                            },
+                            onStudentNoChanged = { count ->
+                                onEvent(SetupUiEvent.NoOfExpectedStudentsChanged(programme.id, count))
+                            }
                         )
                     }
                 }
@@ -466,9 +454,10 @@ private fun ProgrammeCard(
     onDepartmentNameChanged: (String) -> Unit,
     onDepartmentSelected: (DepartmentSuggestion) -> Unit,
     onYearOfStudyChanged: (Int) -> Unit,
-    onToggleExpanded: () -> Unit,
-    onRemove: () -> Unit,
-    onAddUnit: () -> Unit,
+    onStudentNoChanged: (String) -> Unit,
+    onProgrammeToggleExpanded: () -> Unit,
+    onRemoveProgramme: () -> Unit,
+    onShowAddUnitForm: () -> Unit,
     onRemoveUnit: (String) -> Unit
 ) {
 
@@ -507,7 +496,7 @@ private fun ProgrammeCard(
                 }
 
                 IconButton(
-                    onClick = onToggleExpanded,
+                    onClick = onProgrammeToggleExpanded,
                     modifier = Modifier.size(40.dp),
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -530,7 +519,6 @@ private fun ProgrammeCard(
                     value = programme.name,
                     onValueChange = {
                         onProgrammeNameChanged(it)
-                        //showProgrammeSuggestions = it.length >= 2
                     },
                     label = "Programme Name *",
                     placeholder = "Search or enter programme name",
@@ -573,14 +561,14 @@ private fun ProgrammeCard(
                     value = programme.departmentName,
                     onValueChange = {
                         onDepartmentNameChanged(it)
-                        //showDepartmentSuggestions = it.length >= 2
                     },
                     label = "Department *",
                     placeholder = "Search or enter department",
                     modifier = Modifier.fillMaxWidth(),
                     isError = programme.departmentNameError != null,
                     errorMessage = programme.departmentNameError,
-                    leadingIcon = { Icon(Icons.Default.Business, null) }
+                    leadingIcon = { Icon(Icons.Default.Business, null) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
 
                 if (programme.showDepartmentSuggestions && programme.departmentSuggestions.isNotEmpty()) {
@@ -619,6 +607,15 @@ private fun ProgrammeCard(
                     onYearSelected = onYearOfStudyChanged
                 )
             }
+            SmartAttendTextField(
+                value = programme.expectedStudentCount,
+                onValueChange = { onStudentNoChanged(it) },
+                label = "Expected no of students *",
+                placeholder = "Enter number of students",
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Default.ConfirmationNumber, null) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
 
             // Expanded Units Section
             AnimatedVisibility(
@@ -627,7 +624,8 @@ private fun ProgrammeCard(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     // Units Header with Add Button
                     Row(
@@ -641,7 +639,7 @@ private fun ProgrammeCard(
                         )
 
                         FilledTonalButton(
-                            onClick = onAddUnit,
+                            onClick = onShowAddUnitForm,
                             shape = MaterialTheme.shapes.small
                         ) {
                             Icon(Icons.Default.Add, "Add Unit", modifier = Modifier.size(16.dp))
@@ -659,7 +657,7 @@ private fun ProgrammeCard(
 
             // Remove Programme Button
             OutlinedButton(
-                onClick = onRemove,
+                onClick = onRemoveProgramme,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -773,12 +771,6 @@ private fun UnitCard(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = "Semester ${unit.semester}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
                     if (unit.lectureDay.isNotBlank()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -883,7 +875,6 @@ private fun AddUnitCard(
                     value = state.unitCode,
                     onValueChange = {
                         onEvent(SetupUiEvent.UnitCodeChanged(it))
-                        //showUnitSuggestions = it.length >= 2
                     },
                     label = "Unit Code *",
                     placeholder = "e.g., CS401",
@@ -934,7 +925,10 @@ private fun AddUnitCard(
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = "Lecture Details (Optional)",
                         style = MaterialTheme.typography.labelLarge,
@@ -996,7 +990,6 @@ private fun AddUnitCard(
                             placeholder = "e.g., Room 101",
                             modifier = Modifier.fillMaxWidth(),
                             leadingIcon = { Icon(Icons.Default.LocationOn, null) },
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                         )
                     }
                 }

@@ -183,7 +183,7 @@ fun SmartAttendPrimaryButtonWithLeadingIcon(
 ) {
     SmartAttendButton(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         enabled = enabled,
         isLoading = isLoading,
         buttonStyle = SmartAttendButtonStyle.Primary,

@@ -2,7 +2,7 @@ package com.amos_tech_code.smartattend.ui.feature.student_lookup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceMethod
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceRecord
 import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceStatus
 import kotlinx.coroutines.channels.Channel
@@ -209,7 +209,7 @@ class StudentLookupViewModel : ViewModel() {
                 date = "2024-01-13",
                 time = "08:20 AM",
                 status = AttendanceStatus.ABSENT,
-                method = AttendanceMethod.GPS,
+                method = AttendanceMethod.ANY,
                 location = null,
                 distance = null,
                 deviceVerified = false,

@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOff
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.ui.components.EmptyState
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonStyle
@@ -62,7 +64,6 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendSecondaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceMethod
 import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceRecord
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
@@ -604,8 +605,8 @@ fun AttendanceRecordItem(
                     icon = when (record.method) {
                         AttendanceMethod.QR_CODE -> Icons.Default.QrCode
                         AttendanceMethod.MANUAL_CODE -> Icons.Default.Pin
-                        AttendanceMethod.GPS -> Icons.Default.LocationOn
-                        AttendanceMethod.LECTURER_MANUAL -> Icons.Default.Person
+                        AttendanceMethod.ANY -> Icons.Default.AllInclusive
+                        //AttendanceMethod.LECTURER_MANUAL -> Icons.Default.Person
                     },
                     text = record.method.name,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

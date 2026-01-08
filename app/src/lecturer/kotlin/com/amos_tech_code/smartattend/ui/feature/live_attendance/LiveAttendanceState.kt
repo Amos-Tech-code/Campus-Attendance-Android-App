@@ -1,7 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.live_attendance
 
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceMethod
 import com.amos_tech_code.smartattend.ui.feature.setup.Student
 
 // Live Attendance State

@@ -13,6 +13,7 @@ import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.ProgrammeSetupRequest
@@ -28,7 +29,6 @@ import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.NeutralVariant50
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -42,7 +42,8 @@ import kotlinx.coroutines.launch
 class SetupViewModel(
     private val session: SmartAttendSession,
     private val academicSetUpRepository: AcademicSetUpRepository
-) : ViewModel() {
+) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupUiState())
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
@@ -64,6 +65,7 @@ class SetupViewModel(
             is SetupUiEvent.ProgrammeNameChanged -> onProgrammeNameChanged(intent.programmeId, intent.name)
             is SetupUiEvent.ProgrammeSelected -> onProgrammeSelected(intent.programmeId, intent.suggestion)
             is SetupUiEvent.OnYearOfStudyChanged -> onProgrammeYearOfStudyChange(intent.programmeId, intent.year)
+            is SetupUiEvent.NoOfExpectedStudentsChanged -> onProgrammeStudentNoChange(intent.programmeId, intent.count)
             is SetupUiEvent.ToggleProgrammeExpanded -> onToggleProgrammeExpanded(intent.programmeId)
             is SetupUiEvent.RemoveProgramme -> onRemoveProgramme(intent.programmeId)
             is SetupUiEvent.ShowAddUnitForm -> onShowAddUnitForm(intent.programmeId)
@@ -227,6 +229,17 @@ class SetupViewModel(
         }
     }
 
+    private fun onProgrammeStudentNoChange(programmeId: String, count: String) {
+        _uiState.update { state ->
+            state.copy(
+                programmes = state.programmes.map { programme ->
+                    if (programme.id == programmeId) {
+                        programme.copy(expectedStudentCount = count)
+                    } else programme
+                }
+            )
+        }
+    }
     fun onRemoveProgramme(programmeId: String) {
         _uiState.update {
             it.copy(
@@ -404,9 +417,6 @@ class SetupViewModel(
 
                 when(result) {
                     is ApiResult.Success -> {
-                        launch(Dispatchers.IO) {
-                            academicSetUpRepository.syncLecturerAcademics()
-                        }
 
                         _uiState.update { it.copy(isLoading = false) }
                         session.setSetupComplete(true)
@@ -435,17 +445,17 @@ class SetupViewModel(
         val state = _uiState.value
         return AcademicSetUpRequest(
             universityId = state.selectedUniversityId,
-            universityName = if (state.selectedUniversityId == null) state.universityName else null,
+            universityName = state.universityName,
             academicYear = state.academicYear,
             semester = state.selectedSemester,
             programmes = state.programmes.map { programme ->
                 ProgrammeSetupRequest(
                     programmeId = programme.selectedProgrammeId,
-                    programmeName = if (programme.selectedProgrammeId == null) programme.name else null,
+                    programmeName = programme.name,
                     departmentId = programme.selectedDepartmentId,
-                    departmentName = if (programme.selectedDepartmentId == null) programme.departmentName else null,
+                    departmentName = programme.departmentName,
                     yearOfStudy = programme.yearOfStudy,
-                    expectedStudentCount = programme.expectedStudentCount,
+                    expectedStudentCount = programme.expectedStudentCount.toInt(),
                     units = programme.units.map { unit ->
                         UnitSetupRequest(
                             unitId = unit.selectedUnitId,
@@ -602,6 +612,8 @@ class SetupViewModel(
                 state.programmes.isNotEmpty() &&
                 state.programmes.all { programme ->
                     programme.name.isNotBlank() &&
+                            programme.expectedStudentCount.isNotBlank() &&
+                            programme.departmentName.isNotBlank() &&
                             programme.units.isNotEmpty() &&
                             programme.units.all { unit ->
                                 unit.code.isNotBlank() && unit.name.isNotBlank()
@@ -655,10 +667,6 @@ enum class ActivityType {
 
 enum class ActivityStatus {
     SUCCESS, WARNING, ERROR, INFO
-}
-
-enum class AttendanceMethod {
-    QR_CODE, MANUAL_CODE, GPS, LECTURER_MANUAL
 }
 
 enum class AttendanceStatus {

@@ -1,8 +1,14 @@
 package com.amos_tech_code.smartattend.data.repositories
 
+import android.util.Log
 import com.amos_tech_code.smartattend.data.local.room_db.dao.LecturerAcademicsDao
+import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.DepartmentEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeUnitCrossRef
+import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
-import com.amos_tech_code.smartattend.data.mappers.createProgrammeUnitRelationships
+import com.amos_tech_code.smartattend.data.mappers.academicSetupResponseToEntities
 import com.amos_tech_code.smartattend.data.mappers.lecturerUniversitiesResponseToEntities
 import com.amos_tech_code.smartattend.data.mappers.toDomain
 import com.amos_tech_code.smartattend.data.network.ApiService
@@ -14,22 +20,44 @@ import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.ProgrammeSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.UnitSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.UniversitySuggestionRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
 import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AcademicSetUpRepository(
     private val apiService: ApiService,
     private val session: SmartAttendSession,
+    private val ioDispatcher: CoroutineDispatcher,
     private val lecturerAcademicsDao: LecturerAcademicsDao
 ) {
 
     suspend fun uploadAcademicSetUp(request: AcademicSetUpRequest) : ApiResult<AcademicSetupResponse> {
 
-        return safeApiCall { apiService.uploadAcademicSetup(request) }
+        val result = safeApiCall { apiService.uploadAcademicSetup(request) }
+
+        if (result is ApiResult.Success) {
+            saveUniversitySetupAsync(result.data)
+        }
+        return result
+
+    }
+
+    suspend fun updateAcademicSetUp(request: UpdateAcademicSetupRequest) : ApiResult<AcademicSetupResponse> {
+
+        val result = safeApiCall { apiService.updateAcademicSetup(request) }
+
+        if (result is ApiResult.Success) {
+            updateUniversitySetupAsync(request.universityId, result.data)
+        }
+        return result
 
     }
 
@@ -41,41 +69,203 @@ class AcademicSetUpRepository(
 
     /**
      * Local Data source Operations
+     * Save a single university setup after upload/update
      */
+    private fun saveUniversitySetupAsync(response: AcademicSetupResponse) {
+        // Launch a coroutine in the IO dispatcher that's independent of the calling scope
+        CoroutineScope(ioDispatcher + SupervisorJob()).launch {
+            try {
+                saveUniversitySetup(response)
+            } catch (e: Exception) {
+                session.setAcademicSyncStatus(false)
+                Log.e("AcademicSetUpRepository", "Failed to save university setup: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Update a single university setup
+     */
+    private fun updateUniversitySetupAsync(universityId: String, response: AcademicSetupResponse) {
+        CoroutineScope(ioDispatcher + SupervisorJob()).launch {
+            try {
+                // Get the current active university before deletion
+                val currentActive = lecturerAcademicsDao.getActiveUniversity()
+                val wasActive = currentActive?.id == universityId
+
+                // First delete existing setup for this university
+                lecturerAcademicsDao.deleteUniversitySetup(universityId)
+
+                // Save the updated setup
+                saveUniversitySetup(response, universityId)
+
+                // If this was the active university, make sure it stays active
+                if (wasActive) {
+                    handleActiveUniversity(universityId)
+                }
+            } catch (e: Exception) {
+                session.setAcademicSyncStatus(false)
+                Log.e("AcademicSetUpRepository", "Failed to save updated university setup: ${e.message}")
+            }
+        }
+    }
+
+    suspend fun saveUniversitySetup(response: AcademicSetupResponse, universityId: String? = null) {
+        val (university, departmentProgrammeUnitTriple) = academicSetupResponseToEntities(response, universityId)
+        val (departments, programmes, units) = departmentProgrammeUnitTriple
+
+        // Create programme-unit relationships
+        val programmeUnits = mutableListOf<ProgrammeUnitCrossRef>()
+        response.programmes.forEach { programmeResponse ->
+            programmeResponse.units.forEach { unitResponse ->
+                programmeUnits.add(
+                    ProgrammeUnitCrossRef(
+                        programmeId = programmeResponse.programmeId,
+                        unitId = unitResponse.unitId
+                    )
+                )
+            }
+        }
+
+        // Extract academic terms from response
+        val academicTerms = response.academicTerm?.let { term ->
+            listOf(
+                AcademicTermEntity(
+                    id = term.id,
+                    universityId = university.id,
+                    academicYear = term.academicYear,
+                    semester = term.semester,
+                    isActive = term.isActive
+                )
+            )
+        } ?: emptyList()
+
+        // Save to database
+        lecturerAcademicsDao.insertUniversitySetup(
+            university = university,
+            academicTerms = academicTerms,
+            departments = departments,
+            programmes = programmes,
+            units = units,
+            programmeUnits = programmeUnits
+        )
+
+        // Handle active university logic
+        if (response.isActive) {
+            handleActiveUniversity(university.id)
+        } else {
+            // Check if we need to mark any university as active
+            ensureActiveUniversityExists()
+        }
+    }
+
+
+    /**
+     * Sync full hierarchy from API
+     */
+    suspend fun syncLecturerAcademics() {
+        val result = fetchLecturerAcademicSetUp()
+
+        when (result) {
+            is ApiResult.Success -> {
+                val (universities, programmes, units) = lecturerUniversitiesResponseToEntities(result.data)
+
+                // Create additional entities from response
+                val academicTerms = mutableListOf<AcademicTermEntity>()
+                val departments = mutableListOf<DepartmentEntity>()
+                val programmeUnits = mutableListOf<ProgrammeUnitCrossRef>()
+
+                result.data.universities.forEach { universitySetup ->
+                    // Academic Terms
+                    universitySetup.academicTerms.forEach { term ->
+                        academicTerms.add(
+                            AcademicTermEntity(
+                                id = term.id,
+                                universityId = universitySetup.university.id,
+                                academicYear = term.academicYear,
+                                semester = term.semester,
+                                isActive = term.isActive
+                            )
+                        )
+                    }
+
+                    // Departments and Programme-Unit relationships
+                    universitySetup.programmes.forEach { programmeSetup ->
+                        // Department
+                        departments.add(
+                            DepartmentEntity(
+                                id = programmeSetup.department.id,
+                                universityId = universitySetup.university.id,
+                                name = programmeSetup.department.name
+                            )
+                        )
+
+                        // Programme-Unit relationships
+                        programmeSetup.units.forEach { unitSetup ->
+                            programmeUnits.add(
+                                ProgrammeUnitCrossRef(
+                                    programmeId = programmeSetup.programme.id,
+                                    unitId = unitSetup.unitId
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Clear and insert full hierarchy
+                lecturerAcademicsDao.clearAll()
+                lecturerAcademicsDao.insertFullHierarchy(
+                    universities = universities,
+                    academicTerms = academicTerms,
+                    departments = departments,
+                    programmes = programmes,
+                    units = units,
+                    programmeUnits = programmeUnits
+                )
+
+                // Ensure we have an active university after sync
+                updateActiveUniversityAfterSync(universities)
+
+                session.setAcademicSyncStatus(true)
+            }
+
+            is ApiResult.Failure -> {
+                session.setAcademicSyncStatus(false)
+                Log.e("AcademicSetUpRepository", "Sync failed: ${result.error}")
+            }
+        }
+    }
+
     suspend fun getAllAcademicsForLecturer(): List<University> {
         // Sync if not done yet
         if (!session.getAcademicSyncStatus()) {
-            syncLecturerAcademics()
+            try {
+                syncLecturerAcademics()
+            } catch (e: Exception) {
+                // Handle sync failure
+                Log.e("AcademicSetUpRepository", "Sync failed: ${e.message}")
+            }
         }
 
         // Fetch all from Room
         val dbUniversities = lecturerAcademicsDao.getUniversitiesWithProgrammesAndUnits()
 
         // Map to domain models
-        val domainUniversities = dbUniversities.map { it.toDomain() }
-
-        return domainUniversities
+        return dbUniversities.map { it.toDomain() }
     }
 
     suspend fun getActiveUniversityAcademics(): University? {
         val allUniversities = getAllAcademicsForLecturer()
-        val activeUniversities = allUniversities.find { it.isActive }
+        val activeUniversity = allUniversities.find { it.isActive }
 
-        return if (allUniversities.size == 1) {
-            allUniversities.first()
-        } else if (allUniversities.isNotEmpty() && activeUniversities != null) {
-            activeUniversities
-        } else {
-            allUniversities.firstOrNull()
-        }
-
+        return activeUniversity ?: allUniversities.firstOrNull()
     }
 
     suspend fun setActiveUniversity(universityId: String) {
         lecturerAcademicsDao.setActiveUniversity(universityId)
     }
 
-    suspend fun getUniversities() : List<University> {
+    suspend fun getUniversities(): List<University> {
         val universities = lecturerAcademicsDao.getAllUniversities()
         return universities.map { universityEntity ->
             University(
@@ -86,29 +276,56 @@ class AcademicSetUpRepository(
         }
     }
 
+    suspend fun getUniversitySetup(universityId: String): UniversityWithProgrammesAndUnits? {
+        return lecturerAcademicsDao.getUniversityWithProgrammesAndUnits(universityId)
+    }
 
-    suspend fun syncLecturerAcademics() {
-        val result = fetchLecturerAcademicSetUp()
-
-        when (result) {
-            is ApiResult.Success -> {
-                val (universities, programmes, units) = lecturerUniversitiesResponseToEntities(result.data)
-                val programmeUnits = createProgrammeUnitRelationships(result.data)
-
-                lecturerAcademicsDao.clearAll()
-                lecturerAcademicsDao.insertFullHierarchy(universities, programmes, units, programmeUnits)
-                session.setAcademicSyncStatus(true)
-            }
-
-            is ApiResult.Failure -> {
-                session.setAcademicSyncStatus(false)
+    /**
+     * Ensures that at least one university is marked as active.
+     * If no university is active, marks the first one as active.
+     */
+    private suspend fun ensureActiveUniversityExists() {
+        val activeUniversity = lecturerAcademicsDao.getActiveUniversity()
+        if (activeUniversity == null) {
+            val allUniversities = lecturerAcademicsDao.getAllUniversities()
+            allUniversities.firstOrNull()?.let {
+                lecturerAcademicsDao.setActiveUniversity(it.id)
             }
         }
     }
 
+    /**
+     * Handles setting a university as active while ensuring only one is active at a time
+     */
+    private suspend fun handleActiveUniversity(universityId: String) {
+        lecturerAcademicsDao.setActiveUniversity(universityId)
+    }
 
     /**
-     * Academic set up suggestions
+     * Updates the active university status after syncing
+     * This ensures we always have one university marked as active
+     */
+    private suspend fun updateActiveUniversityAfterSync(universities: List<UniversityEntity>) {
+        // Check if we already have an active university
+        val existingActive = lecturerAcademicsDao.getActiveUniversity()
+
+        if (existingActive != null) {
+            // If we have an active university, check if it still exists in the synced data
+            val existsInSync = universities.any { it.id == existingActive.id }
+            if (existsInSync) {
+                // Keep the existing active university
+                return
+            }
+        }
+
+        // If no active university or it doesn't exist in sync, mark the first one as active
+        universities.firstOrNull()?.let {
+            lecturerAcademicsDao.setActiveUniversity(it.id)
+        }
+    }
+
+    /**
+     * Academic set up suggestions Network Operations
      */
     suspend fun fetchMatchingUniversities(request: UniversitySuggestionRequest): ApiResult<List<UniversitySuggestion>> {
         return safeApiCall {
