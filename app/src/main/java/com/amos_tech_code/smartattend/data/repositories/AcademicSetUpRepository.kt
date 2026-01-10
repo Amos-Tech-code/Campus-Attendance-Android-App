@@ -10,7 +10,6 @@ import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSessi
 import com.amos_tech_code.smartattend.data.mappers.academicSetupResponseToEntities
 import com.amos_tech_code.smartattend.data.mappers.lecturerUniversitiesResponseToEntities
 import com.amos_tech_code.smartattend.data.mappers.toDomain
-import com.amos_tech_code.smartattend.models.TeachingStatistics
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
@@ -27,6 +26,7 @@ import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupRespo
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
 import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
+import com.amos_tech_code.smartattend.models.TeachingStatistics
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
