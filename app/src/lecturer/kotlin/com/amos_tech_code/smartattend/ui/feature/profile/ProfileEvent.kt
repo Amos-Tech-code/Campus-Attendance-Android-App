@@ -7,17 +7,19 @@ sealed class ProfileEvent {
     object NavigateToInstitutionSetUp : ProfileEvent()
     object InstitutionUpdated : ProfileEvent()
     object NavigateToEditProfile : ProfileEvent()
+
+    object LogOut : ProfileEvent()
 }
 
 sealed class ProfileUiEvent {
     // Institution Management
     object ToggleAddInstitution : ProfileUiEvent()
-    data class NewInstitutionNameChanged(val name: String) : ProfileUiEvent()
-    data class NewInstitutionDepartmentChanged(val department: String) : ProfileUiEvent()
-    data class NewInstitutionCampusChanged(val campus: String) : ProfileUiEvent()
-    object SaveNewInstitution : ProfileUiEvent()
-    object CancelAddInstitution : ProfileUiEvent()
     data class SelectInstitution(val institutionId: String) : ProfileUiEvent()
+
+    object ShowEditNameSheet : ProfileUiEvent()
+    object HideEditNameSheet : ProfileUiEvent()
+    data class OnEditingNameChanged(val name: String) : ProfileUiEvent()
+    object SaveEditedName : ProfileUiEvent()
 
     // Profile Actions
     object EditProfile : ProfileUiEvent()

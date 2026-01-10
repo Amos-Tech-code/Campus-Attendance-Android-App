@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.di
 
 import com.amos_tech_code.smartattend.data.network.ApiService
+import com.amos_tech_code.smartattend.data.network.LiveAttendanceSseClient
 import com.amos_tech_code.smartattend.data.network.utils.AuthInterceptor
 import com.amos_tech_code.smartattend.data.network.utils.ConnectivityObserver
 import com.amos_tech_code.smartattend.data.network.utils.ConnectivityObserverImpl
@@ -60,5 +61,8 @@ val networkModule = module {
 
     // Single instance of Connectivity Observer
     single<ConnectivityObserver> { ConnectivityObserverImpl(get()) }
+
+    single { LiveAttendanceSseClient(get(), get()) }
+
 
 }

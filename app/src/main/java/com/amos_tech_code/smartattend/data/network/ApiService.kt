@@ -78,7 +78,9 @@ interface ApiService {
     suspend fun updateAcademicSetup(@Body request: UpdateAcademicSetupRequest): Response<AcademicSetupResponse>
 
     @GET("lecturer/academic-setup")
-    suspend fun fetchLecturerAcademicSetUp(): Response<LecturerAcademicSetupResponse>
+    suspend fun fetchLecturerAcademicSetUp(
+        @Query("universityId") universityId: String?
+    ): Response<LecturerAcademicSetupResponse>
 
     @POST("attendance/session/start")
     suspend fun startAttendanceSession(@Body request: StartSessionRequest) : Response<StartAttendanceSessionResponse>
@@ -94,6 +96,11 @@ interface ApiService {
 
     @GET("attendance/session/active")
     suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
+
+    @POST("attendance/resolveFlagged")
+    suspend fun resolveFlaggedStudent(
+        @Path("studentId") studentId: String
+    ) : Response<Unit>
 
     /**
      *

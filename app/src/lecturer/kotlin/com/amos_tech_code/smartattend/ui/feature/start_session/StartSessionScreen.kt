@@ -13,11 +13,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -84,6 +87,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -359,6 +364,7 @@ private fun SessionDetailsCard(
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.horizontalScroll(rememberScrollState())
                 ) {
                     (1..16).forEach { weekNumber ->
@@ -380,13 +386,13 @@ private fun SessionDetailsCard(
                         value = state.weekNumber.toString(),
                         onValueChange = {
                             val week = it.toIntOrNull() ?: 0
-                            if (week >= 0) onEvent(SessionUiEvent.WeekNumberChanged(week))
+                            onEvent(SessionUiEvent.WeekNumberChanged(week))
                         },
-                        label = "Week Number",
+                        label = "Other",
                         placeholder = "e.g., 17",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = MaterialTheme.shapes.extraSmall,
-                        modifier = Modifier.height(IntrinsicSize.Min).width(IntrinsicSize.Min)
+                        shape = MaterialTheme.shapes.large,
+                        modifier = Modifier.size(80.dp)
                     )
                 }
             }
@@ -911,7 +917,252 @@ private fun SecuritySettingsCard(
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+private fun TeachingVenueLocationSection(
+    teachingVenue: LocationData?,
+    isCapturing: Boolean,
+    locationError: String?,
+    locationPermissionState: MultiplePermissionsState,
+    context: Context,
+    onCaptureLocation: () -> Unit,
+    onPermissionDenied: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Section Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.LocationOn,
+                "Location",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "Teaching Venue Location",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
 
+        // Handle permission rationale using Accompanist
+        var showRationaleDialog by remember { mutableStateOf(false) }
+        var showSettingsDialog by remember { mutableStateOf(false) }
+
+        // Get the fine location permission status
+        val fineLocationPermission = locationPermissionState.permissions.find {
+            it.permission == Manifest.permission.ACCESS_FINE_LOCATION
+        }
+
+        // Check permission state
+        LaunchedEffect(fineLocationPermission?.status) {
+            fineLocationPermission?.let { permission ->
+                when {
+                    permission.status.isGranted -> {
+                        // Permission granted - do nothing, show location UI
+                        showRationaleDialog = false
+                        showSettingsDialog = false
+                    }
+
+                    permission.status.shouldShowRationale -> {
+                        // User denied once but can still be asked again
+                        // Show rationale to explain why we need permission
+                        showRationaleDialog = true
+                        showSettingsDialog = false
+                    }
+
+                    !permission.status.isGranted && !permission.status.shouldShowRationale -> {
+                        // User permanently denied (Don't ask again)
+                        // Need to guide them to app settings
+                        showSettingsDialog = true
+                        showRationaleDialog = false
+                    }
+                }
+            }
+        }
+
+        // Permission granted - show location state
+        if (fineLocationPermission?.status?.isGranted == true) {
+            LocationContentState(
+                teachingVenue = teachingVenue,
+                isCapturing = isCapturing,
+                locationError = locationError,
+                onCaptureLocation = onCaptureLocation
+            )
+        }
+
+        // Rationale Dialog - show when user can still be asked
+        if (showRationaleDialog) {
+            PermissionRationaleDialog(
+                onDismissRequest = {
+                    showRationaleDialog = false
+                    onPermissionDenied() // Turn off location requirement
+                },
+                onRequestPermission = {
+                    showRationaleDialog = false
+                    locationPermissionState.launchMultiplePermissionRequest()
+                }
+            )
+        }
+
+        // Settings Dialog - show when permanently denied
+        if (showSettingsDialog) {
+            PermissionSettingsDialog(
+                context = context,
+                onDismissRequest = {
+                    showSettingsDialog = false
+                    onPermissionDenied() // Turn off location requirement
+                }
+            )
+        }
+    }
+}
+
+
+/*
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+private fun TeachingVenueLocationSection(
+    teachingVenue: LocationData?,
+    isCapturing: Boolean,
+    locationError: String?,
+    locationPermissionState: MultiplePermissionsState,
+    context: Context,
+    onCaptureLocation: () -> Unit,
+    onPermissionDenied: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Section Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.LocationOn,
+                "Location",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "Teaching Venue Location",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        // Handle permission rationale using Accompanist
+        var showRationaleDialog by remember { mutableStateOf(false) }
+        var showSettingsDialog by remember { mutableStateOf(false) }
+
+        locationPermissionState.permissions.forEach { permission ->
+            when (permission.permission) {
+                Manifest.permission.ACCESS_FINE_LOCATION -> {
+                    when {
+                        permission.status.isGranted -> {
+                            // Permission granted - show location state
+                            LocationContentState(
+                                teachingVenue = teachingVenue,
+                                isCapturing = isCapturing,
+                                locationError = locationError,
+                                onCaptureLocation = onCaptureLocation
+                            )
+                        }
+
+                        permission.status.shouldShowRationale -> {
+                            // Show rationale UI
+                            LaunchedEffect(permission.status) {
+                                showRationaleDialog = true
+                            }
+                        }
+
+                        !permission.status.isGranted && !permission.status.shouldShowRationale -> {
+                            // Permission permanently denied - show settings UI
+                            LaunchedEffect(permission.status) {
+                                showSettingsDialog = true
+                            }
+                        }
+
+                        else -> {
+                            // Show rationale UI
+                            LaunchedEffect(permission.status) {
+                                showRationaleDialog = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Rationale Dialog
+        if (showRationaleDialog) {
+            PermissionRationaleDialog(
+                onDismissRequest = {
+                    showRationaleDialog = false
+                    onPermissionDenied() // Turn off location requirement
+                },
+                onRequestPermission = {
+                    showRationaleDialog = false
+                    locationPermissionState.launchMultiplePermissionRequest()
+                }
+            )
+        }
+
+        // Settings Dialog
+        if (showSettingsDialog) {
+            PermissionSettingsDialog(
+                context = context,
+                onDismissRequest = {
+                    showSettingsDialog = false
+                    onPermissionDenied() // Turn off location requirement
+                }
+            )
+        }
+    }
+}
+*/
+
+@Composable
+private fun LocationContentState(
+    teachingVenue: LocationData?,
+    isCapturing: Boolean,
+    locationError: String?,
+    onCaptureLocation: () -> Unit
+) {
+    when {
+        isCapturing -> {
+            LocationCapturingState()
+        }
+        teachingVenue != null -> {
+            LocationCapturedState(
+                location = teachingVenue,
+                onRecapture = onCaptureLocation
+            )
+        }
+        else -> {
+            LocationNotCapturedState(
+                onCaptureLocation = onCaptureLocation,
+                error = locationError
+            )
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationRadiusSelection(
     radius: Int,
@@ -936,25 +1187,50 @@ private fun LocationRadiusSelection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                text = "${radius}m",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Box(
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "${radius}m",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
 
         Slider(
             value = radius.toFloat(),
             onValueChange = { onRadiusChanged(it.toInt()) },
-            valueRange = 10f..200f,
-            steps = 19,
+            valueRange = 10f..210f,
+            steps = 200,
             modifier = Modifier.fillMaxWidth(),
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,
                 activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent
+            ),
+            thumb = {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .shadow(4.dp, shape = CircleShape)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape
+                        )
+                        .border(
+                            width = 3.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape
+                        )
+                )
+            }
         )
 
         Row(
@@ -962,11 +1238,10 @@ private fun LocationRadiusSelection(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("10m", style = MaterialTheme.typography.labelSmall)
-            Text("200m", style = MaterialTheme.typography.labelSmall)
+            Text("210m", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
-
 
 @Composable
 private fun SelectionField(
@@ -1090,132 +1365,6 @@ private fun DurationSelection(
                     )
                 )
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun TeachingVenueLocationSection(
-    teachingVenue: LocationData?,
-    isCapturing: Boolean,
-    locationError: String?,
-    locationPermissionState: MultiplePermissionsState,
-    context: Context,
-    onCaptureLocation: () -> Unit,
-    onPermissionDenied: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Section Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                Icons.Default.LocationOn,
-                "Location",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = "Teaching Venue Location",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        // Handle permission rationale using Accompanist
-        var showRationaleDialog by remember { mutableStateOf(false) }
-        var showSettingsDialog by remember { mutableStateOf(false) }
-
-        locationPermissionState.permissions.forEach { permission ->
-            when (permission.permission) {
-                Manifest.permission.ACCESS_FINE_LOCATION -> {
-                    when {
-                        permission.status.isGranted -> {
-                            // Permission granted - show location state
-                            LocationContentState(
-                                teachingVenue = teachingVenue,
-                                isCapturing = isCapturing,
-                                locationError = locationError,
-                                onCaptureLocation = onCaptureLocation
-                            )
-                        }
-
-                        permission.status.shouldShowRationale -> {
-                            // Show rationale UI
-                            LaunchedEffect(permission.status) {
-                                showRationaleDialog = true
-                            }
-                        }
-
-                        else -> {
-                            // Permission permanently denied - show settings UI
-                            LaunchedEffect(permission.status) {
-                                showSettingsDialog = true
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Rationale Dialog
-        if (showRationaleDialog) {
-            PermissionRationaleDialog(
-                onDismissRequest = {
-                    showRationaleDialog = false
-                    onPermissionDenied() // Turn off location requirement
-                },
-                onRequestPermission = {
-                    showRationaleDialog = false
-                    locationPermissionState.launchMultiplePermissionRequest()
-                }
-            )
-        }
-
-        // Settings Dialog
-        if (showSettingsDialog) {
-            PermissionSettingsDialog(
-                context = context,
-                onDismissRequest = {
-                    showSettingsDialog = false
-                    onPermissionDenied() // Turn off location requirement
-                }
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun LocationContentState(
-    teachingVenue: LocationData?,
-    isCapturing: Boolean,
-    locationError: String?,
-    onCaptureLocation: () -> Unit
-) {
-    when {
-        isCapturing -> {
-            LocationCapturingState()
-        }
-        teachingVenue != null -> {
-            LocationCapturedState(
-                location = teachingVenue,
-                onRecapture = onCaptureLocation
-            )
-        }
-        else -> {
-            LocationNotCapturedState(
-                onCaptureLocation = onCaptureLocation,
-                error = locationError
-            )
         }
     }
 }

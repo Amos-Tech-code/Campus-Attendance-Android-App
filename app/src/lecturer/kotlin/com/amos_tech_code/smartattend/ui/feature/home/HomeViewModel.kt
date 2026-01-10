@@ -1,7 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
 import androidx.lifecycle.ViewModel
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.ui.feature.setup.ActivityStatus
 import com.amos_tech_code.smartattend.ui.feature.setup.ActivityType
 import com.amos_tech_code.smartattend.ui.feature.setup.LecturerActivity
@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 
 class HomeViewModel(
-    private val session: SmartAttendSession
+    private val session: ClassTrackProSession
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LecturerHomeState())

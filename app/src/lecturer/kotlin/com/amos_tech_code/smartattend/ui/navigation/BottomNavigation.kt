@@ -1,5 +1,8 @@
 package com.amos_tech_code.smartattend.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -19,7 +22,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 // Lecturer Bottom Navigation
 @Composable
 fun BottomNavigation(
-    navController: NavController
+    navController: NavController,
+    isVisible: Boolean = true
 ) {
     val items = listOf(
         BottomNavItem.Dashboard,
@@ -30,63 +34,70 @@ fun BottomNavigation(
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination
 
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 8.dp
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = slideInVertically(initialOffsetY = { it }),
+        exit = slideOutVertically(targetOffsetY = { it })
     ) {
-        items.forEach { item ->
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 8.dp
+        ) {
+            items.forEach { item ->
 
-            val selected = currentRoute?.hierarchy?.any { it.route == item.route::class.qualifiedName } == true
+                val selected =
+                    currentRoute?.hierarchy?.any { it.route == item.route::class.qualifiedName } == true
 
-            NavigationBarItem(
-                selected = selected,
-                onClick = {
-                    navController.navigate(item.route) {
-                        navController.graph.startDestinationRoute?.let { route ->
-                            popUpTo(route) {
-                                saveState = true
-                            }
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if (item.badgeCount > 0) {
-                                Badge {
-                                    Text(
-                                        text = item.badgeCount.toString(),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onError
-                                    )
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = {
+                        navController.navigate(item.route) {
+                            navController.graph.startDestinationRoute?.let { route ->
+                                popUpTo(route) {
+                                    saveState = true
                                 }
                             }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                            contentDescription = item.title,
-                            modifier = Modifier.size(24.dp)
+                    },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (item.badgeCount > 0) {
+                                    Badge {
+                                        Text(
+                                            text = item.badgeCount.toString(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onError
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                contentDescription = item.title,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.labelSmall
                         )
-                    }
-                },
-                label = {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelSmall
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
                 )
-            )
+            }
         }
     }
 }

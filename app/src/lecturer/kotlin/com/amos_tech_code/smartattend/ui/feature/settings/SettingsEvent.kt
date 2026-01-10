@@ -15,7 +15,6 @@ sealed class SettingsUiEvent {
     data class DefaultDurationChanged(val duration: Int) : SettingsUiEvent()
     data class DefaultRadiusChanged(val radius: Int) : SettingsUiEvent()
     data class PushNotificationsChanged(val enabled: Boolean) : SettingsUiEvent()
-    data class EmailNotificationsChanged(val enabled: Boolean) : SettingsUiEvent()
     data class DeviceChangeAlertsChanged(val enabled: Boolean) : SettingsUiEvent()
     data class DeviceVerificationChanged(val enabled: Boolean) : SettingsUiEvent()
     data class LocationRequirementChanged(val enabled: Boolean) : SettingsUiEvent()

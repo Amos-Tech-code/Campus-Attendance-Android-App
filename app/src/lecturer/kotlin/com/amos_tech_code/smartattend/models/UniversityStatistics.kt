@@ -1,4 +1,4 @@
-package com.amos_tech_code.smartattend.data.models
+package com.amos_tech_code.smartattend.models
 
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
 

@@ -11,6 +11,6 @@ val repositoryModule = module {
 
     single { AcademicSetUpRepository(get(), get(), get(), get()) }
 
-    single { AttendanceRepository(get()) }
+    single { AttendanceRepository(get(), get()) }
 
 }

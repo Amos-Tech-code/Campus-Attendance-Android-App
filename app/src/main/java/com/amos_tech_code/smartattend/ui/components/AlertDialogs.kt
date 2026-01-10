@@ -418,9 +418,6 @@ fun WarningAlertDialog(
 }
 
 
-
-
-
 @Composable
 fun PermissionRationaleDialog(
     onDismissRequest: () -> Unit,
@@ -432,7 +429,7 @@ fun PermissionRationaleDialog(
             Text("Location Permission Required")
         },
         text = {
-            Text("This app needs location access to capture your teaching venue for GPS-based attendance tracking. Your location data is only used to verify student proximity during sessions.")
+            Text("This app needs location access to capture your teaching venue for GPS-based attendance tracking.\nYour location data is only used to verify student proximity during sessions.")
         },
         confirmButton = {
             TextButton(
@@ -465,7 +462,29 @@ fun PermissionSettingsDialog(
             Text("Location Permission Required")
         },
         text = {
-            Text("Location permission has been permanently denied. Please enable it in app settings to use GPS-based attendance features.")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "You've previously denied location permission.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "To use GPS-based attendance features:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    "1. Go to App Settings",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "2. Tap 'Permissions'",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "3. Enable 'Location' permission",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         },
         confirmButton = {
             TextButton(

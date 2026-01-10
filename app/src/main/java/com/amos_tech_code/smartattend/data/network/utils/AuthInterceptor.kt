@@ -1,11 +1,11 @@
 package com.amos_tech_code.smartattend.data.network.utils
 
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.SessionProvider
 import okhttp3.Interceptor
 import okhttp3.Response
 
 class AuthInterceptor(
-    private val session: SmartAttendSession
+    private val session: SessionProvider
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {

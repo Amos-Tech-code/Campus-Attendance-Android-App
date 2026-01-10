@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SetupViewModel(
-    private val session: SmartAttendSession,
+    private val session: ClassTrackProSession,
     private val academicSetUpRepository: AcademicSetUpRepository
 ) :
     ViewModel() {

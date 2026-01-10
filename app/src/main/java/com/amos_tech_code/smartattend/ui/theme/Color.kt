@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.theme
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 
 // Primary Brand Colors - Professional Blue (Trust, Security, Education)
@@ -80,12 +81,44 @@ val Data3 = Color(0xFF4CC9F0)  // Cyan
 val Data4 = Color(0xFF7209B7)  // Violet
 val Data5 = Color(0xFFF72585)  // Pink
 
-// Status Colors
-val PresentColor = Color(0xFF00C853)     // Green for present
-val AbsentColor = Color(0xFFF44336)      // Red for absent
-val PendingColor = Color(0xFFFF9800)     // Orange for pending
-val FlaggedColor = Color(0xFF9C27B0)     // Purple for flagged
+// Colors.kt
+val LiveAttendanceGreen = Color(0xFF10B981)
+val LiveAttendanceGreenLight = Color(0xFFD1FAE5)
+val LiveAttendanceAmber = Color(0xFFF59E0B)
+val LiveAttendanceAmberLight = Color(0xFFFEF3C7)
+val LiveAttendanceRed = Color(0xFFEF4444)
+val LiveAttendanceRedLight = Color(0xFFFEE2E2)
+val LiveAttendanceBlue = Color(0xFF3B82F6)
+val LiveAttendanceBlueLight = Color(0xFFDBEAFE)
+val LiveAttendancePurple = Color(0xFF8B5CF6)
+val LiveAttendancePurpleLight = Color(0xFFEDE9FE)
 
-// Accessibility Overlays
-val Scrim = Color(0xFF1A1B1F).copy(alpha = 0.6f)
-val DisabledAlpha = 0.38f
+val PresentColor = LiveAttendanceGreen
+val PendingColor = LiveAttendanceAmber
+val AbsentColor = LiveAttendanceRed
+val NeutralColor = Color(0xFF6B7280)
+val NeutralLightColor = Color(0xFFF3F4F6)
+
+// Theme.kt
+val MaterialTheme.attendanceColors
+    get() = AttendanceColors(
+        present = LiveAttendanceGreen,
+        presentLight = LiveAttendanceGreenLight,
+        pending = LiveAttendanceAmber,
+        pendingLight = LiveAttendanceAmberLight,
+        absent = LiveAttendanceRed,
+        absentLight = LiveAttendanceRedLight,
+        flagged = LiveAttendanceRed,
+        flaggedLight = LiveAttendanceRedLight
+    )
+
+data class AttendanceColors(
+    val present: Color,
+    val presentLight: Color,
+    val pending: Color,
+    val pendingLight: Color,
+    val absent: Color,
+    val absentLight: Color,
+    val flagged: Color,
+    val flaggedLight: Color
+)

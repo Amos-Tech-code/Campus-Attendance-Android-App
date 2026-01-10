@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.settings
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendSecondaryButton
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
@@ -107,19 +109,6 @@ fun SettingsScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
-                },
-                actions = {
-                    // Reset to Defaults Button
-                    IconButton(
-                        onClick = { viewModel.onEvent(SettingsUiEvent.ResetToDefaults) },
-                        enabled = !state.isResetting
-                    ) {
-                        if (state.isResetting) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        } else {
-                            Icon(Icons.Default.RestartAlt, "Reset to Defaults")
-                        }
-                    }
                 }
             )
         }
@@ -152,11 +141,10 @@ fun SettingsScreen(
                 // Attendance Settings
                 SettingsSection(
                     title = "Attendance Settings",
-                    //subtitle = "Configure how attendance sessions work",
                     modifier = Modifier.padding(16.dp)
                 ) {
                     // Location Accuracy - Improved with visual indicators
-                    SettingsItem(
+                    SettingsItem1(
                         icon = Icons.Default.LocationOn,
                         title = "Location Precision",
                         subtitle = "GPS accuracy requirement for attendance",
@@ -208,8 +196,7 @@ fun SettingsScreen(
                         }
                     )
 
-                    // Session Duration - Improved with visual cards
-                    SettingsItem(
+                    SettingsItem1(
                         icon = Icons.Default.Schedule,
                         title = "Default Session Duration",
                         subtitle = "How long attendance codes remain valid",
@@ -220,7 +207,8 @@ fun SettingsScreen(
                             ) {
                                 // Duration cards in a row
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.horizontalScroll(rememberScrollState())
                                 ) {
                                     listOf(
                                         "15 min" to 0,
@@ -248,8 +236,7 @@ fun SettingsScreen(
                         }
                     )
 
-                    // Default Radius - Improved with better slider and preview
-                    SettingsItem(
+                    SettingsItem1(
                         icon = Icons.Default.Radar,
                         title = "Attendance Radius",
                         subtitle = "Maximum distance from classroom allowed",
@@ -326,20 +313,6 @@ fun SettingsScreen(
                                 checked = state.pushNotifications,
                                 onCheckedChange = {
                                     viewModel.onEvent(SettingsUiEvent.PushNotificationsChanged(it))
-                                }
-                            )
-                        }
-                    )
-
-                    SettingsItem(
-                        icon = Icons.Default.Email,
-                        title = "Email Notifications",
-                        subtitle = "Receive email summaries",
-                        action = {
-                            Switch(
-                                checked = state.emailNotifications,
-                                onCheckedChange = {
-                                    viewModel.onEvent(SettingsUiEvent.EmailNotificationsChanged(it))
                                 }
                             )
                         }
@@ -482,8 +455,8 @@ fun SettingsScreen(
                     SmartAttendPrimaryButton(
                         text = "Save Settings",
                         onClick = { viewModel.onEvent(SettingsUiEvent.SaveSettings) },
-                        modifier = Modifier.fillMaxWidth(),
-                        isLoading = state.isSaving
+                        isLoading = state.isSaving,
+                        size = SmartAttendButtonSize.Medium
                     )
 
                     // Reset to Defaults Button
@@ -509,15 +482,110 @@ private fun SettingsSection(
     Column(modifier = modifier) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        Card(
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        content()
+    }
+}
+
+@Composable
+private fun SettingsItem1(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    action: @Composable () -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column {
-                content()
+            // Header part of the item
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+            }
+            // Action part, now neatly below the header
+            Box(modifier = Modifier.padding(start = 40.dp)) { // Indent action to align with text
+                action()
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    action: @Composable () -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header part of the item
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                action()
+
             }
         }
     }
@@ -565,48 +633,5 @@ private fun DurationCard(
                 }
             )
         }
-    }
-}
-
-
-@Composable
-private fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    action: @Composable () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        action()
     }
 }

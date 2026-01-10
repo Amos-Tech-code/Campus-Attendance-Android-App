@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.amos_tech_code.smartattend.domain.models.LocationData
 
-
 @Composable
 fun LocationCapturingState() {
     Card(
@@ -230,8 +229,6 @@ fun LocationNotCapturedState(
         }
     }
 }
-
-
 
 // Helper function to calculate time ago
 fun calculateTimeAgo(timestamp: Long): String {

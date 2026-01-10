@@ -1,12 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.settings
 
-//sealed class SettingsState {
-//    data object Nothing : SettingsState()
-//    data object Loading : SettingsState()
-//    data object Success : SettingsState()
-//    data class Error(val message: String) : SettingsState()
-//}
-
 // Settings Data Classes
 data class SettingsState(
     // Attendance Settings
@@ -16,8 +9,7 @@ data class SettingsState(
 
     // Notification Settings
     val pushNotifications: Boolean = true,
-    val emailNotifications: Boolean = true,
-    val deviceChangeAlerts: Boolean = true,
+    val deviceChangeAlerts: Boolean = false,
 
     // Security Settings
     val requireDeviceVerification: Boolean = true,

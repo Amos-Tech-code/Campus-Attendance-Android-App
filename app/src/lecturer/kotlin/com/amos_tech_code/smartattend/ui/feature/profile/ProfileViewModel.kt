@@ -2,7 +2,7 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.domain.models.University
 import kotlinx.coroutines.channels.Channel
@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ProfileViewModel(
-    private val session: SmartAttendSession,
+    private val session: ClassTrackProSession,
     private val academicSetUpRepository: AcademicSetUpRepository
 ) : ViewModel() {
 
@@ -34,32 +34,8 @@ class ProfileViewModel(
                 toggleAddInstitution()
             }
 
-            is ProfileUiEvent.NewInstitutionNameChanged -> {
-                updateNewInstitutionName(event.name)
-            }
-
-            is ProfileUiEvent.NewInstitutionDepartmentChanged -> {
-                updateNewInstitutionDepartment(event.department)
-            }
-
-            is ProfileUiEvent.NewInstitutionCampusChanged -> {
-                updateNewInstitutionCampus(event.campus)
-            }
-
-            ProfileUiEvent.SaveNewInstitution -> {
-                saveNewInstitution()
-            }
-
-            ProfileUiEvent.CancelAddInstitution -> {
-                cancelAddInstitution()
-            }
-
             is ProfileUiEvent.SelectInstitution -> {
                 selectInstitution(event.institutionId)
-            }
-
-            ProfileUiEvent.EditProfile -> {
-                editProfile()
             }
 
             ProfileUiEvent.RefreshData -> {
@@ -68,6 +44,31 @@ class ProfileViewModel(
 
             ProfileUiEvent.ExportProfileData -> {
                 exportProfileData()
+            }
+
+            ProfileUiEvent.EditProfile -> {
+                // This now triggers the bottom sheet
+                onEvent(ProfileUiEvent.ShowEditNameSheet)
+            }
+
+            // Handle new events
+            ProfileUiEvent.ShowEditNameSheet -> {
+                _state.update {
+                    it.copy(
+                        showEditNameSheet = true,
+                        // Pre-fill the text field with the current name
+                        editingName = it.lecturer.name
+                    )
+                }
+            }
+            ProfileUiEvent.HideEditNameSheet -> {
+                _state.update { it.copy(showEditNameSheet = false) }
+            }
+            is ProfileUiEvent.OnEditingNameChanged -> {
+                _state.update { it.copy(editingName = event.name) }
+            }
+            ProfileUiEvent.SaveEditedName -> {
+                saveNewName()
             }
         }
     }
@@ -79,7 +80,7 @@ class ProfileViewModel(
             try {
                 val lecturer = loadLecturerData()
                 val institutions = loadInstitutions()
-                val teachingStats = loadTeachingStatistics()
+                val teachingStats = academicSetUpRepository.getTeachingStatistics()
 
                 val mappedInstitutions = institutions.map { inst ->
                     Institution(
@@ -95,7 +96,15 @@ class ProfileViewModel(
                         lecturer = lecturer,
                         institutions = mappedInstitutions,
                         selectedInstitution = if (mappedInstitutions.size == 1) mappedInstitutions.first() else mappedInstitutions.firstOrNull { inst -> inst.isActive },
-                        teachingStats = teachingStats
+                        teachingStats = TeachingStatisticsUiState(
+                            totalCourses = teachingStats.totalCourses,
+                            totalExpectedStudents = teachingStats.totalExpectedStudents,
+                            currentSemester = teachingStats.currentSemester,
+                            totalProgrammes = teachingStats.totalProgrammes,
+                            totalDepartments = teachingStats.totalDepartments,
+                            activeInstitution = teachingStats.activeInstitution,
+                            isInstitutionActive = teachingStats.isInstitutionActive
+                        )
                     )
                 }
 
@@ -114,109 +123,6 @@ class ProfileViewModel(
     private fun toggleAddInstitution() {
         //_state.update { it.copy(showAddInstitution = !it.showAddInstitution) }
         _event.trySend(ProfileEvent.NavigateToInstitutionSetUp)
-    }
-
-    private fun updateNewInstitutionName(name: String) {
-        _state.update { state ->
-            state.copy(
-                newInstitutionState = state.newInstitutionState.copy(
-                    name = name,
-                    nameError = if (name.isBlank()) "Institution name is required" else null
-                )
-            )
-        }
-    }
-
-    private fun updateNewInstitutionDepartment(department: String) {
-        _state.update { state ->
-            state.copy(
-                newInstitutionState = state.newInstitutionState.copy(
-                    department = department,
-                    departmentError = if (department.isBlank()) "Department is required" else null
-                )
-            )
-        }
-    }
-
-    private fun updateNewInstitutionCampus(campus: String) {
-        _state.update { state ->
-            state.copy(
-                newInstitutionState = state.newInstitutionState.copy(
-                    campus = campus
-                )
-            )
-        }
-    }
-
-    private fun saveNewInstitution() {
-        viewModelScope.launch {
-            val newInstitutionState = _state.value.newInstitutionState
-
-            // Validate inputs
-            if (newInstitutionState.name.isBlank() || newInstitutionState.department.isBlank()) {
-                _state.update { state ->
-                    state.copy(
-                        newInstitutionState = state.newInstitutionState.copy(
-                            nameError = if (newInstitutionState.name.isBlank()) "Institution name is required" else null,
-                            departmentError = if (newInstitutionState.department.isBlank()) "Department is required" else null
-                        )
-                    )
-                }
-                return@launch
-            }
-
-            _state.update { state ->
-                state.copy(
-                    newInstitutionState = state.newInstitutionState.copy(isLoading = true),
-                    isSavingInstitution = true
-                )
-            }
-
-            try {
-                // Simulate API call
-                delay(1000)
-
-                val newInstitution = Institution(
-                    id = "inst_${System.currentTimeMillis()}",
-                    name = newInstitutionState.name,
-                    department = newInstitutionState.department,
-                    campus = newInstitutionState.campus.ifBlank { "Main Campus" },
-                    isActive = false
-                )
-
-                val updatedInstitutions = _state.value.institutions + newInstitution
-
-                _state.update { state ->
-                    state.copy(
-                        institutions = updatedInstitutions,
-                        showAddInstitution = false,
-                        newInstitutionState = NewInstitutionState(),
-                        isSavingInstitution = false
-                    )
-                }
-
-                _event.send(ProfileEvent.InstitutionUpdated)
-                _event.send(ProfileEvent.ShowSuccessMessage("Institution added successfully"))
-
-            } catch (e: Exception) {
-                _state.update { state ->
-                    state.copy(
-                        newInstitutionState = state.newInstitutionState.copy(isLoading = false),
-                        isSavingInstitution = false
-                    )
-                }
-                _event.send(ProfileEvent.ShowErrorMessage("Failed to add institution: ${e.message}"))
-            }
-        }
-    }
-
-    private fun cancelAddInstitution() {
-        _state.update { state ->
-            state.copy(
-                showAddInstitution = false,
-                newInstitutionState = NewInstitutionState()
-            )
-        }
     }
 
     private fun selectInstitution(institutionId: String) {
@@ -254,9 +160,30 @@ class ProfileViewModel(
         }
     }
 
-    private fun editProfile() {
-        // Navigate to edit profile screen
-        _event.trySend(ProfileEvent.NavigateToEditProfile)
+    private fun saveNewName() {
+        val newName = state.value.editingName.trim()
+        if (newName.isBlank()) {
+            viewModelScope.launch {
+                _event.send(ProfileEvent.ShowErrorMessage("Name cannot be empty"))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            // Here you would typically call a repository method to save the name
+            // e.g., lecturerRepository.updateName(newName)
+
+            // For now, we'll just update the local state and session
+            //session.saveName(newName) // Assuming you have a method like this in SmartAttendSession
+
+            _state.update {
+                it.copy(
+                    lecturer = it.lecturer.copy(name = newName),
+                    showEditNameSheet = false // Close the sheet on success
+                )
+            }
+            _event.send(ProfileEvent.ShowSuccessMessage("Name updated successfully"))
+        }
     }
 
     private fun exportProfileData() {
@@ -285,14 +212,9 @@ class ProfileViewModel(
         return academicSetUpRepository.getUniversities()
     }
 
-    private fun loadTeachingStatistics(): TeachingStatistics {
-        return TeachingStatistics(
-            totalCourses = 8,
-            totalStudents = 245,
-            totalSessions = 156,
-            averageAttendance = 87.5f,
-            currentSemester = "Year 4 Semester 1",
-            teachingSince = "2025"
-        )
+    fun logOut() {
+        session.clearSession()
+        _event.trySend(ProfileEvent.LogOut)
     }
+
 }

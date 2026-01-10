@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class StartSessionViewModel(
-    private val session: SmartAttendSession,
+    private val session: ClassTrackProSession,
     val locationService: LocationService,
     private val attendanceRepository: AttendanceRepository,
     private val academicSetUpRepository: AcademicSetUpRepository
@@ -46,6 +46,15 @@ class StartSessionViewModel(
 
     init {
         loadAcademicSetup()
+
+        // Load defaults from session
+        _state.update {
+            it.copy(
+                durationMinutes = listOf(15, 30, 45, 60)[session.getDefaultDuration()],
+                allowedRadius = session.getDefaultRadius(),
+                requireLocation = session.getRequireLocation()
+            )
+        }
     }
 
     fun onEvent(event: SessionUiEvent) {
@@ -271,6 +280,7 @@ class StartSessionViewModel(
     }
 
     private fun captureTeachingVenue(activity: Activity) {
+        if(!state.value.requireLocation) return
         _state.update { it.copy(isCapturingLocation = true, locationError = null) }
 
         viewModelScope.launch {

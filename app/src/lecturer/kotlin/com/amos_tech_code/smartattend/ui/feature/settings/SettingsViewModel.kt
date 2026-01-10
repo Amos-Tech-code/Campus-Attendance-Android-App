@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.ui.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +12,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(
+    private val session: ClassTrackProSession
+) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -37,9 +40,7 @@ class SettingsViewModel : ViewModel() {
             is SettingsUiEvent.PushNotificationsChanged -> {
                 updatePushNotifications(event.enabled)
             }
-            is SettingsUiEvent.EmailNotificationsChanged -> {
-                updateEmailNotifications(event.enabled)
-            }
+
             is SettingsUiEvent.DeviceChangeAlertsChanged -> {
                 updateDeviceChangeAlerts(event.enabled)
             }
@@ -67,15 +68,20 @@ class SettingsViewModel : ViewModel() {
     private fun loadSettings() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-
             try {
-                // Simulate loading settings from local storage or backend
-                delay(800)
-
-                // Load default settings (in real app, load from SharedPreferences or backend)
-                val defaultSettings = getDefaultSettings()
-                _state.update { defaultSettings.copy(isLoading = false) }
-
+                // Load settings directly from the session
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        locationAccuracy = session.getLocationAccuracy(),
+                        defaultDuration = session.getDefaultDuration(),
+                        defaultRadius = session.getDefaultRadius(),
+                        pushNotifications = session.getPushNotifications(),
+                        deviceChangeAlerts = session.getDeviceChangeAlerts(),
+                        requireDeviceVerification = session.getRequireDeviceVerification(),
+                        requireLocation = session.getRequireLocation()
+                    )
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false) }
                 _event.send(SettingsEvent.ShowErrorMessage("Failed to load settings: ${e.message}"))
@@ -99,9 +105,6 @@ class SettingsViewModel : ViewModel() {
         _state.update { it.copy(pushNotifications = enabled) }
     }
 
-    private fun updateEmailNotifications(enabled: Boolean) {
-        _state.update { it.copy(emailNotifications = enabled) }
-    }
 
     private fun updateDeviceChangeAlerts(enabled: Boolean) {
         _state.update { it.copy(deviceChangeAlerts = enabled) }
@@ -165,20 +168,12 @@ class SettingsViewModel : ViewModel() {
     private fun saveSettings() {
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
-
             try {
-                // Simulate saving to backend/local storage
-                delay(1000)
-
-                val currentState = _state.value
-
-                // In real app, save to SharedPreferences or backend API
-                saveSettingsToStorage(currentState)
-
+                // Save the current state to the session
+                session.saveSettings(_state.value)
+                delay(500) // Simulate save delay
                 _state.update { it.copy(isSaving = false) }
                 _event.send(SettingsEvent.SettingsUpdated)
-                _event.send(SettingsEvent.ShowSuccessMessage("Settings saved successfully"))
-
             } catch (e: Exception) {
                 _state.update { it.copy(isSaving = false) }
                 _event.send(SettingsEvent.ShowErrorMessage("Failed to save settings: ${e.message}"))
@@ -186,49 +181,18 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
+
     private fun resetToDefaults() {
         viewModelScope.launch {
             _state.update { it.copy(isResetting = true) }
-
-            try {
-                // Simulate reset process
-                delay(800)
-
-                val defaultSettings = getDefaultSettings()
-                _state.update { defaultSettings.copy(isResetting = false) }
-
-                _event.send(SettingsEvent.ShowSuccessMessage("Settings reset to defaults"))
-
-            } catch (e: Exception) {
-                _state.update { it.copy(isResetting = false) }
-                _event.send(SettingsEvent.ShowErrorMessage("Failed to reset settings: ${e.message}"))
-            }
+            // Create a default state, save it, then update the UI
+            val defaultSettings = SettingsState()
+            session.saveSettings(defaultSettings)
+            delay(500)
+            _state.update { defaultSettings.copy(isResetting = false) }
+            _event.send(SettingsEvent.ShowSuccessMessage("Settings reset to defaults"))
         }
     }
 
-    // Helper functions
-    private fun getDefaultSettings(): SettingsState {
-        return SettingsState(
-            locationAccuracy = 1, // Medium (25m)
-            defaultDuration = 1, // 30 minutes
-            defaultRadius = 50,
-            pushNotifications = true,
-            emailNotifications = true,
-            deviceChangeAlerts = true,
-            requireDeviceVerification = true,
-            requireLocation = true,
-            appVersion = "2.1.0",
-            isLoading = false,
-            isSaving = false,
-            isExportingData = false,
-            isClearingCache = false,
-            isResetting = false
-        )
-    }
-
-    private fun saveSettingsToStorage(settings: SettingsState) {
-        // In real app, save to SharedPreferences or backend
-        // For now, we'll just simulate the save operation
-    }
 }
 

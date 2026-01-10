@@ -12,7 +12,7 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeUnitC
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
-import com.amos_tech_code.smartattend.data.models.UniversityStatistics
+import com.amos_tech_code.smartattend.models.UniversityStatistics
 
 @Dao
 interface LecturerAcademicsDao {

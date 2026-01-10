@@ -27,7 +27,7 @@ fun LoadingDialog(
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            dismissOnBackPress = false,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     ) {

@@ -6,7 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AuthRepository
@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 class SignInViewModel(
     private val repository: AuthRepository,
-    private val session: SmartAttendSession
+    private val session: ClassTrackProSession
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<SignInState>(SignInState.Nothing)

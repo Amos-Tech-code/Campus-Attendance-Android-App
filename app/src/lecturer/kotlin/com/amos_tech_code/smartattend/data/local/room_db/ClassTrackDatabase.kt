@@ -13,16 +13,16 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEnti
 @Database(
     entities = [
         UniversityEntity::class,
-        AcademicTermEntity::class, // Added
-        DepartmentEntity::class, // Added
+        AcademicTermEntity::class,
+        DepartmentEntity::class,
         ProgrammeEntity::class,
         UnitEntity::class,
         ProgrammeUnitCrossRef::class
     ],
-    version = 2,
+    version = 1,
     exportSchema = false
 )
-abstract class ClassTrackDatabase : RoomDatabase() {
+abstract class ClassTrackProDatabase : RoomDatabase() {
 
     abstract fun lecturerAcademicsDao() : LecturerAcademicsDao
 
