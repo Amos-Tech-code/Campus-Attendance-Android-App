@@ -12,10 +12,14 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeUnitC
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
+import com.amos_tech_code.smartattend.data.models.UniversityStatistics
 
 @Dao
 interface LecturerAcademicsDao {
 
+    /*------------------------
+        READ OPERATIONS
+    ------------------------*/
     @Transaction
     @Query("SELECT * FROM universities")
     suspend fun getUniversitiesWithProgrammesAndUnits(): List<UniversityWithProgrammesAndUnits>
@@ -36,7 +40,37 @@ interface LecturerAcademicsDao {
     @Query("SELECT * FROM academic_terms WHERE universityId = :universityId AND isActive = 1 LIMIT 1")
     suspend fun getActiveAcademicTermForUniversity(universityId: String): AcademicTermEntity?
 
-    // Insert operations
+    // Single query to get all statistics
+    @Transaction
+    suspend fun getUniversityStatistics(universityId: String): UniversityStatistics {
+        return UniversityStatistics(
+            totalUnits = getTotalUnitsCount(universityId),
+            totalExpectedStudents = getTotalExpectedStudents(universityId),
+            totalProgrammes = getTotalProgrammesCount(universityId),
+            totalDepartments = getTotalDepartmentsCount(universityId),
+            activeTerm = getActiveAcademicTerm(universityId)
+        )
+    }
+
+    // Helper queries for statistics
+    @Query("SELECT COUNT(*) FROM units WHERE universityId = :universityId")
+    suspend fun getTotalUnitsCount(universityId: String): Int
+
+    @Query("SELECT SUM(expectedStudentCount) FROM programmes WHERE universityId = :universityId")
+    suspend fun getTotalExpectedStudents(universityId: String): Int
+
+    @Query("SELECT COUNT(*) FROM programmes WHERE universityId = :universityId")
+    suspend fun getTotalProgrammesCount(universityId: String): Int
+
+    @Query("SELECT COUNT(*) FROM departments WHERE universityId = :universityId")
+    suspend fun getTotalDepartmentsCount(universityId: String): Int
+
+    @Query("SELECT * FROM academic_terms WHERE universityId = :universityId AND isActive = 1 LIMIT 1")
+    suspend fun getActiveAcademicTerm(universityId: String): AcademicTermEntity?
+
+    /*------------------------
+       INSERT OPERATIONS
+   ------------------------*/
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUniversity(university: UniversityEntity)
 
@@ -103,10 +137,16 @@ interface LecturerAcademicsDao {
         insertProgrammeUnits(programmeUnits)
     }
 
+    /*------------------------
+        UPDATE OPERATIONS
+   ------------------------*/
     // Set a specific university as active
     @Query("UPDATE universities SET isActive = CASE WHEN id = :universityId THEN 1 ELSE 0 END")
     suspend fun setActiveUniversity(universityId: String)
 
+    /*------------------------
+        DELETE OPERATIONS
+   ------------------------*/
     // Delete single university setup
     @Transaction
     suspend fun deleteUniversitySetup(universityId: String) {
