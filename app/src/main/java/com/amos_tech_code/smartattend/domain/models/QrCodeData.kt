@@ -10,7 +10,7 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class QRCodeData(
     val sessionCode: String,
-    val secretKey: String,
+    val unitCode: String,
     val sessionId: String,
     val timestamp: Long,
     val version: String
@@ -26,7 +26,7 @@ data class QRCodeData(
 
         fun isValid(qrCodeData: QRCodeData): Boolean {
             return qrCodeData.sessionCode.isNotBlank() &&
-                    qrCodeData.secretKey.isNotBlank() &&
+                    qrCodeData.unitCode.isNotBlank() &&
                     qrCodeData.sessionId.isNotBlank()
                     && System.currentTimeMillis() - qrCodeData.timestamp < 24 * 60 * 60 * 1000 // 24 hours
         }

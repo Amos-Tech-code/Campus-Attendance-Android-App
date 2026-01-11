@@ -137,7 +137,8 @@ fun SessionSuccessScreen(
                     Text(
                         text = if (shouldShowSessionSuccess) "Session Created" else "Session Details",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 navigationIcon = {

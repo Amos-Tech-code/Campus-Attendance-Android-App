@@ -16,7 +16,7 @@ data class StudentAttendanceState(
     // Session Verification
     val verificationResult: VerifyAttendanceResponse? = null,
     val currentSessionCode: String? = null,
-    val currentSecretKey: String? = null,
+    val currentUnitCode: String? = null,
 
     // QR Scanner State
     val qrScannerState: QRScannerState = QRScannerState.IDLE,
@@ -25,11 +25,16 @@ data class StudentAttendanceState(
     // Code Entry State
     val codeEntryState: CodeEntryState = CodeEntryState.IDLE,
     val sessionCode: String = "",
-    val secretKey: String = "",
+    val unitCode: String = "",
     val codeEntryErrorMessage: String? = null,
 
     // Programme Selection
     val showProgrammeSelection: Boolean = false,
+
+    // Location States
+    val showLocationCapture: Boolean = false,
+    val locationState: LocationState = LocationState.IDLE,
+    val locationError: String? = null,
 
     // Attendance Result
     val attendanceResult: MarkAttendanceResponse? = null,
@@ -58,5 +63,14 @@ enum class CodeEntryState {
     VERIFYING_SESSION, // Verifying session with server
     VERIFIED,          // Session verified successfully
     MARKING_ATTENDANCE, // Marking attendance
+    ERROR              // Error occurred
+}
+
+
+enum class LocationState {
+    IDLE,              // Initial state
+    REQUESTING_PERMISSION, // Requesting location permissions
+    CAPTURING,         // Actively capturing location
+    CAPTURED,          // Location successfully captured
     ERROR              // Error occurred
 }

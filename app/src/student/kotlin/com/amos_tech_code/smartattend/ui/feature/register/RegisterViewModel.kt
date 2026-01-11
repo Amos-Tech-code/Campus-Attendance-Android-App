@@ -2,7 +2,7 @@ package com.amos_tech_code.smartattend.ui.feature.register
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AuthRepository
@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 class RegisterViewModel(
     private val authRepository: AuthRepository,
     private val deviceInfoProvider: DeviceInfoProvider,
-    private val session: SmartAttendSession
+    private val session: ClassTrackSession
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegisterState())

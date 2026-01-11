@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
@@ -30,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -95,23 +97,16 @@ fun AttendanceScreen(
                     )
                 }
             }
+            // Add location capture screen when needed
+            state.showLocationCapture -> {
+                LocationCaptureScreen(
+                    viewModel = viewModel,
+                    isFromQR = state.showQRScanner,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
+            }
             else -> {
                 MainAttendanceScaffold(navController = navController, viewModel = viewModel, state = state)
-            }
-        }
-
-        // Overlay dialog on top of any screen
-        if (state.showProgrammeSelection) {
-            state.verificationResult?.availableProgrammes?.let { programmes ->
-                ProgrammeSelectionDialog(
-                    programmes = programmes,
-                    onProgrammeSelected = { programmeId ->
-                        viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
-                    },
-                    onDismiss = { // If the user dismisses the dialog, reset the state
-                        viewModel.onEvent(AttendanceUiEvent.ResetState)
-                    }
-                )
             }
         }
     }
@@ -255,29 +250,6 @@ private fun AttendanceMethodsSection(
 }
 
 @Composable
-fun ActiveSessionsSection(
-    sessions: List<Session>,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Active Sessions",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        SmartAttendHeightSpacer(12.dp)
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(sessions) {
-                // Replace with your ActiveSessionCard
-            }
-        }
-    }
-}
-
-@Composable
 private fun AttendanceMethodCard(
     modifier: Modifier = Modifier,
     icon: ImageVector,
@@ -301,6 +273,29 @@ private fun AttendanceMethodCard(
             Text(text = title, fontWeight = FontWeight.Bold)
             SmartAttendHeightSpacer(4.dp)
             Text(text = description, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+fun ActiveSessionsSection(
+    sessions: List<Session>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Active Sessions",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        SmartAttendHeightSpacer(12.dp)
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(sessions) {
+                // Replace with your ActiveSessionCard
+            }
         }
     }
 }
@@ -331,7 +326,6 @@ fun RecentAttendanceSection(recentAttendance: List<RecentAttendance>, modifier: 
         }
     }
 }
-
 
 @Composable
 private fun RecentAttendanceItem(attendance: RecentAttendance) {
@@ -396,30 +390,62 @@ private fun RecentAttendanceItem(attendance: RecentAttendance) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun IconText(
-    icon: ImageVector,
-    text: String,
-    color: Color
+fun LocationCaptureScreen(
+    viewModel: AttendanceViewModel,
+    isFromQR: Boolean,
+    onBack: () -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = color
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = color
+    val state by viewModel.attendanceState.collectAsStateWithLifecycle()
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Location Verification",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        LocationCaptureOverlay(
+            locationState = state.locationState,
+            location = state.studentLocation,
+            locationError = state.locationError,
+            onCaptureLocation = { viewModel.onEvent(AttendanceUiEvent.RequestLocation) },
+            onRecapture = { viewModel.onEvent(AttendanceUiEvent.RetryLocationCapture) },
+            onProceed = {
+                // Determine which flow to return to
+                if (isFromQR) {
+                    state.currentSessionCode?.let { sessionCode ->
+                        state.currentUnitCode?.let { unitCode ->
+                            viewModel.markAttendanceDirectlyFromQR(sessionCode, unitCode)
+                        }
+                    }
+                } else {
+                    state.currentSessionCode?.let { sessionCode ->
+                        state.currentUnitCode?.let { unitCode ->
+                            viewModel.markAttendanceDirectlyFromCode(sessionCode, unitCode)
+                        }
+                    }
+                }
+            },
+            isProceedEnabled = state.studentLocation != null,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         )
     }
 }
-
 
 @Composable
 fun ErrorMessageCard(message: String, onRetry: () -> Unit) {

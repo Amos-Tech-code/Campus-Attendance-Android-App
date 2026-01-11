@@ -98,7 +98,8 @@ fun NotificationScreen(
                     Text(
                         text = "Notifications",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 actions = {

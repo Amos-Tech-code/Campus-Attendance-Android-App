@@ -16,6 +16,7 @@ interface LocationService {
     )
     suspend fun getCurrentLocation(): LocationData
     suspend fun getAddressFromLocation(latitude: Double, longitude: Double): String?
+
     fun shouldRequestLocationPermission(): Boolean
 
     fun getPermissionState(activity: Activity): LocationPermissionState

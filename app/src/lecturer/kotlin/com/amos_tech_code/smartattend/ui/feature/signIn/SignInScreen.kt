@@ -144,9 +144,9 @@ fun SignInScreen(
                     ) {
                         Text(
                             text = "SmartAttendance",
-                            style = MaterialTheme.typography.displaySmall,
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }

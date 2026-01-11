@@ -3,7 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
-import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
+import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.domain.models.University
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -121,7 +121,6 @@ class ProfileViewModel(
     }
 
     private fun toggleAddInstitution() {
-        //_state.update { it.copy(showAddInstitution = !it.showAddInstitution) }
         _event.trySend(ProfileEvent.NavigateToInstitutionSetUp)
     }
 

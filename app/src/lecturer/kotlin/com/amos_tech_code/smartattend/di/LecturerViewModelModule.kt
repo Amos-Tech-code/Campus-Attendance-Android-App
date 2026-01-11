@@ -12,7 +12,7 @@ import com.amos_tech_code.smartattend.ui.feature.student_lookup.StudentLookupVie
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-val viewModelModule = module {
+val lecturerViewModelModule = module {
 
     viewModel { SignInViewModel(get(), get()) }
 

@@ -37,16 +37,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
+import com.amos_tech_code.smartattend.domain.models.LocationData
+import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
+import com.amos_tech_code.smartattend.ui.components.LocationCapturedState
+import com.amos_tech_code.smartattend.ui.components.LocationCapturingState
+import com.amos_tech_code.smartattend.ui.components.LocationNotCapturedState
 import com.amos_tech_code.smartattend.ui.components.SmartAttendOutlinedButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
@@ -59,6 +66,11 @@ fun CodeEntryScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
+
+    // Check if location is required after verification
+    val requiresLocation = state.verificationResult?.requiresLocation == true
+    val hasLocation = state.studentLocation != null
+
     val onNavigateBackEnabled = !(state.codeEntryState == CodeEntryState.MARKING_ATTENDANCE || state.codeEntryState == CodeEntryState.VERIFYING_SESSION)
     BackHandler(enabled = onNavigateBackEnabled) {
         onBack()
@@ -107,13 +119,13 @@ fun CodeEntryScreen(
                 CodeEntryState.IDLE -> {
                     CodeEntryFormSection(
                         sessionCode = state.sessionCode,
-                        secretKey = state.secretKey,
+                        unitCode = state.unitCode,
                         onSessionCodeChanged = { viewModel.onEvent(AttendanceUiEvent.UpdateSessionCode(it)) },
-                        onSecretKeyChanged = { viewModel.onEvent(AttendanceUiEvent.UpdateSecretKey(it)) },
+                        onUnitCodeChanged = { viewModel.onEvent(AttendanceUiEvent.UpdateUnitCode(it)) },
                         onVerifySession = {
-                            viewModel.onEvent(AttendanceUiEvent.VerifySession(state.sessionCode, state.secretKey))
+                            viewModel.onEvent(AttendanceUiEvent.VerifySession(state.sessionCode, state.unitCode))
                         },
-                        isFormValid = state.sessionCode.isNotBlank() && state.secretKey.isNotBlank(),
+                        isFormValid = state.sessionCode.isNotBlank() && state.unitCode.isNotBlank(),
                         isLoading = state.isLoading
                     )
                 }
@@ -142,8 +154,8 @@ fun CodeEntryScreen(
                     CodeEntryErrorSection(
                         errorMessage = state.codeEntryErrorMessage ?: "Unknown error occurred",
                         onRetry = {
-                            if (state.sessionCode.isNotBlank() && state.secretKey.isNotBlank()) {
-                                viewModel.onEvent(AttendanceUiEvent.VerifySession(state.sessionCode, state.secretKey))
+                            if (state.sessionCode.isNotBlank() && state.unitCode.isNotBlank()) {
+                                viewModel.onEvent(AttendanceUiEvent.VerifySession(state.sessionCode, state.unitCode))
                             } else {
                                 viewModel.resetCodeEntry()
                             }
@@ -157,6 +169,60 @@ fun CodeEntryScreen(
             if (state.codeEntryState == CodeEntryState.VERIFIED) {
                 state.verificationResult?.let { verification ->
                     SessionInfoSection(verification = verification)
+                }
+            }
+
+            // Overlay dialog on top of any screen
+            if (state.showProgrammeSelection) {
+                state.verificationResult?.availableProgrammes?.let { programmes ->
+                    ProgrammeSelectionDialog(
+                        programmes = programmes,
+                        onProgrammeSelected = { programmeId ->
+                            viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                        },
+                        onDismiss = { // If the user dismisses the dialog, reset the state
+                            viewModel.onEvent(AttendanceUiEvent.ResetState)
+                        }
+                    )
+                }
+            }
+
+            // Show location capture section when needed
+            if (state.codeEntryState == CodeEntryState.VERIFIED && requiresLocation) {
+                LocationCaptureSection(
+                    locationState = state.locationState,
+                    location = state.studentLocation,
+                    locationError = state.locationError,
+                    onCaptureLocation = { viewModel.onEvent(AttendanceUiEvent.RequestLocation) },
+                    onRecapture = { viewModel.onEvent(AttendanceUiEvent.RetryLocationCapture) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                // Enable marking attendance only when location is captured
+                if (hasLocation) {
+                    SmartAttendPrimaryButton(
+                        text = "Mark Attendance",
+                        onClick = {
+                            state.currentSessionCode?.let { sessionCode ->
+                                state.currentUnitCode?.let { unitCode ->
+                                    viewModel.onEvent(
+                                        AttendanceUiEvent.MarkAttendance(
+                                            MarkAttendanceRequest(
+                                                sessionCode = sessionCode,
+                                                unitCode = unitCode,
+                                                deviceId = "", // Will be filled by ViewModel
+                                                studentLat = state.studentLocation?.latitude,
+                                                studentLng = state.studentLocation?.longitude,
+                                                methodUsed = AttendanceMethod.MANUAL_CODE
+                                            )
+                                        )
+                                    )
+                                }
+                            }
+                        },
+                        isLoading = state.codeEntryState == CodeEntryState.MARKING_ATTENDANCE,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
             }
         }
@@ -245,9 +311,9 @@ fun CodeEntryHeaderSection(codeEntryState: CodeEntryState) {
 @Composable
 fun CodeEntryFormSection(
     sessionCode: String,
-    secretKey: String,
+    unitCode: String,
     onSessionCodeChanged: (String) -> Unit,
-    onSecretKeyChanged: (String) -> Unit,
+    onUnitCodeChanged: (String) -> Unit,
     onVerifySession: () -> Unit,
     isFormValid: Boolean,
     isLoading: Boolean
@@ -263,27 +329,23 @@ fun CodeEntryFormSection(
             label = "Session Code",
             placeholder = "Enter 6-digit code",
             leadingIcon = { Icon(Icons.Default.Code, "Session Code") },
-            singleLine = true,
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                autoCorrect = false
+                imeAction = ImeAction.Next
             ),
-            supportingMessage = "${sessionCode.length}/6"
+            supportingMessage = "${sessionCode.length}/6",
         )
 
         // Secret Key Input
         SmartAttendTextField(
-            value = secretKey,
-            onValueChange = onSecretKeyChanged,
-            label = "Secret Key",
-            placeholder = "Enter 8-character key",
-            leadingIcon = { Icon(Icons.Default.Key, "Secret Key") },
-            singleLine = true,
+            value = unitCode,
+            onValueChange = onUnitCodeChanged,
+            label = "Unit code",
+            placeholder = "Enter unit code",
+            leadingIcon = { Icon(Icons.Default.Book, "unit code") },
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                autoCorrect = false
+                capitalization = KeyboardCapitalization.Characters
             ),
-            supportingMessage = "${secretKey.length}/8"
+            supportingMessage = "Unit code for the session"
         )
 
         // Info Card
@@ -300,7 +362,7 @@ fun CodeEntryFormSection(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "• Session Code: 6-digit code displayed by lecturer\n• Secret Key: 8-character key shared by lecturer",
+                    text = "• Session Code: 6-digit code displayed by lecturer\n• Unit Code: Unit code of the Unit you are marking attendance.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -476,6 +538,59 @@ fun SessionInfoSection(verification: VerifyAttendanceResponse) {
                     value = "Please select your programme to continue"
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun LocationCaptureSection(
+    locationState: LocationState,
+    location: LocationData?,
+    locationError: String?,
+    onCaptureLocation: () -> Unit,
+    onRecapture: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Location Verification",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        when (locationState) {
+            LocationState.IDLE -> {
+                LocationNotCapturedState(
+                    onCaptureLocation = onCaptureLocation,
+                    error = null
+                )
+            }
+
+            LocationState.CAPTURING -> {
+                LocationCapturingState()
+            }
+
+            LocationState.CAPTURED -> {
+                location?.let {
+                    LocationCapturedState(
+                        location = it,
+                        onRecapture = onRecapture
+                    )
+                }
+            }
+
+            LocationState.ERROR -> {
+                LocationNotCapturedState(
+                    onCaptureLocation = onCaptureLocation,
+                    error = locationError
+                )
+            }
+
+            else -> {}
         }
     }
 }

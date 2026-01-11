@@ -3,13 +3,15 @@ package com.amos_tech_code.smartattend.ui.feature.attendance
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.models.QRCodeData
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
+import com.amos_tech_code.smartattend.services.LocationService
 import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
 import com.amos_tech_code.smartattend.utils.VibrationHelper
 import kotlinx.coroutines.channels.Channel
@@ -22,7 +24,8 @@ import kotlinx.coroutines.launch
 class AttendanceViewModel(
     private val attendanceRepository: AttendanceRepository,
     private val deviceInfoProvider: DeviceInfoProvider,
-    private val session: SmartAttendSession,
+    private val locationService: LocationService,
+    private val session: ClassTrackSession,
     context: Context
 ) : ViewModel()
 {
@@ -45,16 +48,16 @@ class AttendanceViewModel(
                     )
                 }
             }
-            is AttendanceUiEvent.UpdateSecretKey -> {
+            is AttendanceUiEvent.UpdateUnitCode -> {
                 _attendanceState.update {
                     it.copy(
-                        secretKey = event.secretKey.take(8),
+                        unitCode = event.unitCode.take(8),
                         codeEntryErrorMessage = null
                     )
                 }
             }
             is AttendanceUiEvent.VerifySession -> {
-                verifySession(event.sessionCode, event.secretKey)
+                verifySession(event.sessionCode, event.unitCode)
             }
             is AttendanceUiEvent.MarkAttendance -> {
                 markAttendance(event.request)
@@ -68,8 +71,32 @@ class AttendanceViewModel(
             AttendanceUiEvent.ResetState -> {
                 _attendanceState.update { StudentAttendanceState() }
             }
-            is AttendanceUiEvent.UpdateLocation -> {
-                _attendanceState.update { it.copy(studentLocation = event.location) }
+
+            AttendanceUiEvent.RequestLocation -> {
+                requestLocation()
+            }
+
+            is AttendanceUiEvent.LocationCaptured -> {
+                _attendanceState.update {
+                    it.copy(
+                        locationState = LocationState.CAPTURED,
+                        studentLocation = event.location,
+                        locationError = null
+                    )
+                }
+            }
+
+            AttendanceUiEvent.RetryLocationCapture -> {
+                requestLocation()
+            }
+
+            is AttendanceUiEvent.LocationError -> {
+                _attendanceState.update {
+                    it.copy(
+                        locationState = LocationState.ERROR,
+                        locationError = event.error
+                    )
+                }
             }
         }
     }
@@ -93,7 +120,7 @@ class AttendanceViewModel(
                 showQRScanner = false,
                 codeEntryState = CodeEntryState.IDLE,
                 sessionCode = "",
-                secretKey = "",
+                unitCode = "",
                 codeEntryErrorMessage = null
             )
         }
@@ -132,42 +159,42 @@ class AttendanceViewModel(
         }
 
         // Verify the session from QR code
-        verifySessionFromQR(qrCodeData.sessionCode, qrCodeData.secretKey)
+        verifySessionFromQR(qrCodeData.sessionCode, qrCodeData.unitCode)
     }
 
-    private fun verifySessionFromQR(sessionCode: String, secretKey: String) {
+    private fun verifySessionFromQR(sessionCode: String, unitCode: String) {
         _attendanceState.update {
             it.copy(
                 qrScannerState = QRScannerState.VERIFYING_SESSION,
                 isLoading = true,
                 errorMessage = null,
                 currentSessionCode = sessionCode,
-                currentSecretKey = secretKey
+                currentUnitCode = unitCode
             )
         }
 
-        verifySessionInternal(sessionCode, secretKey, isFromQR = true)
+        verifySessionInternal(sessionCode, unitCode, isFromQR = true)
     }
 
-    private fun verifySession(sessionCode: String, secretKey: String) {
+    private fun verifySession(sessionCode: String, unitCode: String) {
         _attendanceState.update {
             it.copy(
                 codeEntryState = CodeEntryState.VERIFYING_SESSION,
                 isLoading = true,
                 codeEntryErrorMessage = null,
                 currentSessionCode = sessionCode,
-                currentSecretKey = secretKey
+                currentUnitCode = unitCode
             )
         }
 
-        verifySessionInternal(sessionCode, secretKey, isFromQR = false)
+        verifySessionInternal(sessionCode, unitCode, isFromQR = false)
     }
 
-    private fun verifySessionInternal(sessionCode: String, secretKey: String, isFromQR: Boolean) {
+    private fun verifySessionInternal(sessionCode: String, unitCode: String, isFromQR: Boolean) {
         viewModelScope.launch {
             try {
                 val result = attendanceRepository.verifyAttendanceSession(
-                    VerifySessionRequest(sessionCode, secretKey)
+                    VerifySessionRequest(sessionCode, unitCode)
                 )
 
                 when (result) {
@@ -199,9 +226,9 @@ class AttendanceViewModel(
                         // If no programme selection needed, proceed to mark attendance
                         if (!requiresProgrammeSelection) {
                             if (isFromQR) {
-                                markAttendanceDirectlyFromQR(sessionCode, secretKey)
+                                markAttendanceDirectlyFromQR(sessionCode, unitCode)
                             } else {
-                                markAttendanceDirectlyFromCode(sessionCode, secretKey)
+                                markAttendanceDirectlyFromCode(sessionCode, unitCode)
                             }
                         }
                     }
@@ -249,7 +276,24 @@ class AttendanceViewModel(
         }
     }
 
-    private fun markAttendanceDirectlyFromQR(sessionCode: String, secretKey: String) {
+    fun markAttendanceDirectlyFromQR(sessionCode: String, unitCode: String) {
+
+        // Check if location is required
+        val verificationResult = _attendanceState.value.verificationResult
+        val requiresLocation = verificationResult?.requiresLocation == true
+
+        if (requiresLocation && _attendanceState.value.studentLocation == null) {
+            // Show location capture UI
+            _attendanceState.update {
+                it.copy(
+                    qrScannerState = QRScannerState.VERIFIED,
+                    showLocationCapture = true
+                )
+            }
+            return
+        }
+
+        // Proceed with marking attendance
         var shouldMark = false
         _attendanceState.update {
             if (it.qrScannerState == QRScannerState.VERIFIED) {
@@ -266,19 +310,13 @@ class AttendanceViewModel(
         if (!shouldMark) return
 
         viewModelScope.launch {
-            val request = MarkAttendanceRequest(
-                sessionCode = sessionCode,
-                secretKey = secretKey,
-                deviceId = session.getDeviceId() ?: deviceInfoProvider.getDeviceInfo().deviceId,
-                studentLat = _attendanceState.value.studentLocation?.latitude,
-                studentLng = _attendanceState.value.studentLocation?.longitude
-            )
-
+            val request = createMarkAttendanceRequest(sessionCode, unitCode)
             markAttendanceFromQR(request)
         }
+
     }
 
-    private fun markAttendanceDirectlyFromCode(sessionCode: String, secretKey: String) {
+    fun markAttendanceDirectlyFromCode(sessionCode: String, unitCode: String) {
         var shouldMark = false
         _attendanceState.update {
             if (it.codeEntryState == CodeEntryState.VERIFIED) {
@@ -295,14 +333,7 @@ class AttendanceViewModel(
         if (!shouldMark) return
 
         viewModelScope.launch {
-            val request = MarkAttendanceRequest(
-                sessionCode = sessionCode,
-                secretKey = secretKey,
-                deviceId = session.getDeviceId() ?: deviceInfoProvider.getDeviceInfo().deviceId,
-                studentLat = _attendanceState.value.studentLocation?.latitude,
-                studentLng = _attendanceState.value.studentLocation?.longitude
-            )
-
+            val request = createMarkAttendanceRequest(sessionCode, unitCode)
             markAttendanceFromCode(request)
         }
     }
@@ -405,7 +436,7 @@ class AttendanceViewModel(
                 codeEntryState = CodeEntryState.IDLE,
                 codeEntryErrorMessage = null,
                 sessionCode = "",
-                secretKey = ""
+                unitCode = ""
             )
         }
     }
@@ -429,15 +460,8 @@ class AttendanceViewModel(
 
         viewModelScope.launch {
             state.currentSessionCode?.let { sessionCode ->
-                state.currentSecretKey?.let { secretKey ->
-                    val request = MarkAttendanceRequest(
-                        sessionCode = sessionCode,
-                        secretKey = secretKey,
-                        deviceId = session.getDeviceId() ?: deviceInfoProvider.getDeviceInfo().deviceId,
-                        programmeId = programmeId,
-                        studentLat = state.studentLocation?.latitude,
-                        studentLng = state.studentLocation?.longitude
-                    )
+                state.currentUnitCode?.let { unitCode ->
+                    val request = createMarkAttendanceRequest(sessionCode, unitCode, programmeId)
 
                     // Determine which flow we're in and mark accordingly
                     if (isQrFlow) {
@@ -489,6 +513,25 @@ class AttendanceViewModel(
         }
     }
 
+    private suspend fun createMarkAttendanceRequest(
+        sessionCode: String,
+        unitCode: String,
+        programmeId: String? = null
+    ): MarkAttendanceRequest {
+        return MarkAttendanceRequest(
+            sessionCode = sessionCode,
+            unitCode = unitCode,
+            deviceId = session.getDeviceId() ?: deviceInfoProvider.getDeviceInfo().deviceId,
+            programmeId = programmeId,
+            studentLat = _attendanceState.value.studentLocation?.latitude,
+            studentLng = _attendanceState.value.studentLocation?.longitude,
+            methodUsed = if (_attendanceState.value.showQRScanner)
+                AttendanceMethod.QR_CODE
+            else
+                AttendanceMethod.MANUAL_CODE
+        )
+    }
+
     private fun extractApiErrorMessage(error: ApiError) : String {
         return when (error) {
             is ApiError.NetworkError -> {
@@ -503,4 +546,23 @@ class AttendanceViewModel(
 
         }
     }
+
+    private fun requestLocation() {
+        _attendanceState.update {
+            it.copy(
+                locationState = LocationState.CAPTURING,
+                locationError = null
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val location = locationService.getCurrentLocation()
+                onEvent(AttendanceUiEvent.LocationCaptured(location))
+            } catch (e: Exception) {
+                onEvent(AttendanceUiEvent.LocationError(e.message ?: "Failed to get location"))
+            }
+        }
+    }
+
 }

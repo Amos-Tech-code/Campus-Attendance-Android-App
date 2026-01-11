@@ -125,4 +125,5 @@ fun academicSetupResponseToEntities(response: AcademicSetupResponse, universityI
     }
 
     return Pair(university, Triple(departments.distinctBy { it.id }, programmes, units))
+
 }

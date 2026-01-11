@@ -32,8 +32,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NoPhotography
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -61,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendOutlinedButton
@@ -86,6 +91,10 @@ fun QRScannerScreen(
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    // Check location requirements
+    val requiresLocation = state.verificationResult?.requiresLocation == true
+    val hasLocation = state.studentLocation != null
+    val shouldShowLocationCapture = state.qrScannerState == QRScannerState.VERIFIED && requiresLocation
 
     val cameraPermissionState = rememberPermissionState(
         permission = android.Manifest.permission.CAMERA
@@ -171,9 +180,44 @@ fun QRScannerScreen(
                     )
                 }
 
+                shouldShowLocationCapture -> {
+                    LocationCaptureOverlay(
+                        locationState = state.locationState,
+                        location = state.studentLocation,
+                        locationError = state.locationError,
+                        onCaptureLocation = { viewModel.onEvent(AttendanceUiEvent.RequestLocation) },
+                        onRecapture = { viewModel.onEvent(AttendanceUiEvent.RetryLocationCapture) },
+                        onProceed = {
+                            // Proceed to mark attendance after location capture
+                            state.currentSessionCode?.let { sessionCode ->
+                                state.currentUnitCode?.let { unitCode ->
+                                    viewModel.markAttendanceDirectlyFromQR(sessionCode, unitCode)
+                                }
+                            }
+                        },
+                        isProceedEnabled = hasLocation,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
                 else -> {
                     PermissionDeniedContent(onBack = onBack, context = context)
                 }
+            }
+        }
+
+        // Overlay dialog on top of any screen
+        if (state.showProgrammeSelection) {
+            state.verificationResult?.availableProgrammes?.let { programmes ->
+                ProgrammeSelectionDialog(
+                    programmes = programmes,
+                    onProgrammeSelected = { programmeId ->
+                        viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                    },
+                    onDismiss = { // If the user dismisses the dialog, reset the state
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                    }
+                )
             }
         }
     }
@@ -279,7 +323,6 @@ fun QRScannerContent(
         }
     }
 }
-
 
 
 @Composable
@@ -426,10 +469,12 @@ fun AnimatedScannerFrame(scannerState: QRScannerState) {
     }
 }
 
+
 @Composable
 fun ScanningContent() {
     // Just show the animated frame, no additional content
 }
+
 
 @Composable
 fun ScannedContent() {
@@ -528,6 +573,82 @@ fun InstructionsContent() {
         modifier = Modifier
             //.padding(bottom = 100.dp)
     )
+}
+
+@Composable
+fun LocationCaptureOverlay(
+    locationState: LocationState,
+    location: LocationData?,
+    locationError: String?,
+    onCaptureLocation: () -> Unit,
+    onRecapture: () -> Unit,
+    onProceed: () -> Unit,
+    isProceedEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    // Header
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            "Location Required",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        SmartAttendHeightSpacer(16.dp)
+                        Text(
+                            text = "Location Verification Required",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        SmartAttendHeightSpacer(8.dp)
+                        Text(
+                            text = "This session requires location verification. Please capture your current location.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    // Location Capture Section
+                    LocationCaptureSection(
+                        locationState = locationState,
+                        location = location,
+                        locationError = locationError,
+                        onCaptureLocation = onCaptureLocation,
+                        onRecapture = onRecapture,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Proceed Button
+                    SmartAttendPrimaryButton(
+                        text = "Proceed to Mark Attendance",
+                        onClick = onProceed,
+                        enabled = isProceedEnabled,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
 }
 
 

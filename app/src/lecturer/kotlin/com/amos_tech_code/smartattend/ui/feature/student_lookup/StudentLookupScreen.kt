@@ -103,7 +103,8 @@ fun StudentLookupScreen(
                     Text(
                         text = "Student Lookup",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 navigationIcon = {

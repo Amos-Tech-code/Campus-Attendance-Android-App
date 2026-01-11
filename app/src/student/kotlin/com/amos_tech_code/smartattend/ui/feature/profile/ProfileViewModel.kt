@@ -1,7 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.profile
 
 import androidx.lifecycle.ViewModel
-import com.amos_tech_code.smartattend.data.local.shared_prefs.SmartAttendSession
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.ui.feature.home.Student
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 
 class ProfileViewModel(
-    private val session: SmartAttendSession
+    private val session: ClassTrackSession
 ) : ViewModel() {
 
     private val _profileState = MutableStateFlow(StudentProfileState())

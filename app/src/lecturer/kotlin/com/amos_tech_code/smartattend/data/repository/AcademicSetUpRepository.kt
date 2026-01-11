@@ -1,4 +1,4 @@
-package com.amos_tech_code.smartattend.data.repositories
+package com.amos_tech_code.smartattend.data.repository
 
 import android.util.Log
 import com.amos_tech_code.smartattend.data.local.room_db.dao.LecturerAcademicsDao
@@ -41,7 +41,7 @@ class AcademicSetUpRepository(
     /**
      * Fetches a list of university suggestions from the network based on a search query.
      * @param request The request containing the search query and limit.
-     * @return An [ApiResult] containing a list of [UniversitySuggestion] on success, or an error on failure.
+     * @return An [com.amos_tech_code.smartattend.data.network.utils.ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.UniversitySuggestion] on success, or an error on failure.
      */
     suspend fun fetchMatchingUniversities(request: UniversitySuggestionRequest): ApiResult<List<UniversitySuggestion>> {
         return safeApiCall {
@@ -55,7 +55,7 @@ class AcademicSetUpRepository(
     /**
      * Fetches a list of department suggestions from the network for a given university.
      * @param request The request containing the university ID, search query, and limit.
-     * @return An [ApiResult] containing a list of [DepartmentSuggestion] on success, or an error on failure.
+     * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion] on success, or an error on failure.
      */
     suspend fun fetchMatchingDepartments(request: DepartmentSuggestionRequest): ApiResult<List<DepartmentSuggestion>> {
         return safeApiCall {
@@ -70,7 +70,7 @@ class AcademicSetUpRepository(
     /**
      * Fetches a list of programme suggestions from the network for a given university and department.
      * @param request The request containing university ID, optional department ID, search query, and limit.
-     * @return An [ApiResult] containing a list of [ProgrammeSuggestion] on success, or an error on failure.
+     * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion] on success, or an error on failure.
      */
     suspend fun fetchMatchingProgrammes(request: ProgrammeSuggestionRequest): ApiResult<List<ProgrammeSuggestion>> {
         return safeApiCall {
@@ -86,7 +86,7 @@ class AcademicSetUpRepository(
     /**
      * Fetches a list of unit suggestions from the network for a given context (university, department, programme).
      * @param request The request containing university, optional department/programme IDs, search query, and limit.
-     * @return An [ApiResult] containing a list of [UnitSuggestion] on success, or an error on failure.
+     * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.UnitSuggestion] on success, or an error on failure.
      */
     suspend fun fetchMatchingUnits(request: UnitSuggestionRequest): ApiResult<List<UnitSuggestion>> {
         return safeApiCall {
@@ -103,8 +103,8 @@ class AcademicSetUpRepository(
     /**
      * Uploads a new academic setup for the lecturer to the remote server.
      * On success, it asynchronously saves the new setup to the local database.
-     * @param request The [AcademicSetUpRequest] containing the full academic hierarchy to upload.
-     * @return An [ApiResult] with [AcademicSetupResponse] on success, or an error on failure.
+     * @param request The [com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest] containing the full academic hierarchy to upload.
+     * @return An [ApiResult] with [com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse] on success, or an error on failure.
      */
     suspend fun uploadAcademicSetUp(request: AcademicSetUpRequest): ApiResult<AcademicSetupResponse> {
 
@@ -120,7 +120,7 @@ class AcademicSetUpRepository(
     /**
      * Updates an existing academic setup for a specific university on the remote server.
      * On success, it asynchronously updates the setup in the local database.
-     * @param request The [UpdateAcademicSetupRequest] containing the updated academic details.
+     * @param request The [com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest] containing the updated academic details.
      * @return An [ApiResult] with [AcademicSetupResponse] on success, or an error on failure.
      */
     suspend fun updateAcademicSetUp(request: UpdateAcademicSetupRequest): ApiResult<AcademicSetupResponse> {
@@ -138,7 +138,7 @@ class AcademicSetUpRepository(
      * Fetches the complete academic setup for the lecturer from the remote server.
      * Can fetch for a specific university or all universities if [universityId] is null.
      * @param universityId The optional ID of the university to fetch. If null, fetches all setups.
-     * @return An [ApiResult] with [LecturerAcademicSetupResponse] on success, or an error on failure.
+     * @return An [ApiResult] with [com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse] on success, or an error on failure.
      */
     suspend fun fetchLecturerAcademicSetUp(universityId: String?): ApiResult<LecturerAcademicSetupResponse> {
 
@@ -335,7 +335,7 @@ class AcademicSetUpRepository(
     /**
      * Retrieves a list of all universities with their complete academic hierarchies (programmes, units, etc.) for the lecturer from the local database.
      * It triggers a network sync if the data hasn't been synced before.
-     * @return A list of [University] domain models.
+     * @return A list of [com.amos_tech_code.smartattend.domain.models.University] domain models.
      */
     suspend fun getAllAcademicsForLecturer(): List<University> {
         // Sync if not done yet
@@ -394,7 +394,7 @@ class AcademicSetUpRepository(
     /**
      * Calculates and retrieves teaching statistics for the currently active university.
      * If no university is active, it returns zeroed-out or default statistics.
-     * @return A [TeachingStatistics] object with totals for courses, students, and semester info.
+     * @return A [com.amos_tech_code.smartattend.models.TeachingStatistics] object with totals for courses, students, and semester info.
      */
     suspend fun getTeachingStatistics(): TeachingStatistics {
         return try {

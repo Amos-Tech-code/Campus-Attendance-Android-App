@@ -215,7 +215,8 @@ fun StartSessionScreen(
                         Text(
                             text = "Start New Session",
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(

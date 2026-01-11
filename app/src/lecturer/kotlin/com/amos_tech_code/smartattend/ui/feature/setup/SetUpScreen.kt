@@ -1132,7 +1132,7 @@ private fun SetupTopBar(navController: NavController) {
                 text = "Academic Setup",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
         },
         navigationIcon = {

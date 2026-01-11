@@ -9,14 +9,14 @@ import com.amos_tech_code.smartattend.ui.feature.register.RegisterViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-val viewModelModule = module {
+val studentViewModelModule = module {
 
     viewModel { RegisterViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get(), get(), get()) }
 
     viewModel { HomeViewModel(get()) }
     viewModel { AttendanceViewModel(
-        get(), get(), get(), get()
+        get(), get(), get(), get(), get()
     )}
     viewModel { HistoryViewModel() }
     viewModel { ProfileViewModel(get()) }

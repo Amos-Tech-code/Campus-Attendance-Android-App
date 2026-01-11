@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.settings
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,12 +45,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -100,7 +105,8 @@ fun SettingsScreen(
                     Text(
                         text = "Settings",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 navigationIcon = {
@@ -264,19 +270,40 @@ fun SettingsScreen(
                                 Column {
                                     Slider(
                                         value = state.defaultRadius.toFloat(),
-                                        onValueChange = {
-                                            viewModel.onEvent(SettingsUiEvent.DefaultRadiusChanged(it.toInt()))
-                                        },
-                                        valueRange = 10f..200f,
-                                        steps = 19,
-                                        modifier = Modifier.width(200.dp)
+                                        onValueChange = {  viewModel.onEvent(SettingsUiEvent.DefaultRadiusChanged(it.toInt())) },
+                                        valueRange = 10f..210f,
+                                        steps = 200,
+                                        modifier = Modifier.width(200.dp),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            activeTickColor = Color.Transparent,
+                                            inactiveTickColor = Color.Transparent
+                                        ),
+                                        thumb = {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .shadow(4.dp, shape = CircleShape)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        shape = CircleShape
+                                                    )
+                                                    .border(
+                                                        width = 3.dp,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                        }
                                     )
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text("10m", style = MaterialTheme.typography.labelSmall)
-                                        Text("200m", style = MaterialTheme.typography.labelSmall)
+                                        Text("210m", style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
 

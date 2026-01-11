@@ -12,7 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
-import com.amos_tech_code.smartattend.data.repositories.AcademicSetUpRepository
+import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest

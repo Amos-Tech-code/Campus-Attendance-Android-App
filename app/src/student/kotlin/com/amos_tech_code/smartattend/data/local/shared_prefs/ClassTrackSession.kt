@@ -1,5 +1,8 @@
+package com.amos_tech_code.smartattend.data.local.shared_prefs
+
 import android.content.Context
 import androidx.core.content.edit
+import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.domain.request.DeviceInfo
 
 class ClassTrackSession(context: Context) : SessionProvider {
@@ -11,11 +14,11 @@ class ClassTrackSession(context: Context) : SessionProvider {
         private const val KEY_NAME = "name"
         private const val KEY_PROFILE_COMPLETE = "profile_complete"
 
-        // ✅ Added key for student session
+        // Added key for student session
         private const val KEY_REG_NO = "reg_no"
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
         private const val TOKEN_VALIDITY_DAYS = 10
-        // ✅ Added key for student device info
+        // Added key for student device info
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_DEVICE_MODEL = "device_model"
         private const val KEY_DEVICE_OS = "device_os"
@@ -27,18 +30,6 @@ class ClassTrackSession(context: Context) : SessionProvider {
             apply()
         }
     }
-
-    fun setAcademicSyncStatus(isSynced: Boolean) {
-        prefs.edit {
-            putBoolean(KEY_ACADEMIC_SYNC_STATUS, isSynced)
-            apply()
-        }
-    }
-
-    fun getAcademicSyncStatus(): Boolean {
-        return prefs.getBoolean(KEY_ACADEMIC_SYNC_STATUS, false)
-    }
-
 
     fun saveStudentSession(
         token: String,
@@ -82,7 +73,7 @@ class ClassTrackSession(context: Context) : SessionProvider {
     fun getDeviceOs() : String? = prefs.getString(KEY_DEVICE_OS, null)
 
 
-    // ✅ Check if user is logged in (token exists & not expired)
+    // Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null
 
 }

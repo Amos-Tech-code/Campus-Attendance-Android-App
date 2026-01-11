@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.local.room_db.ClassTrackProDatabase
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
+import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.koin.dsl.module
@@ -32,5 +33,9 @@ val lecturerDataModule  = module {
 
     // Provide DAO
     single { get<ClassTrackProDatabase>().lecturerAcademicsDao() }
+
+    // Provide Repository
+    single { AcademicSetUpRepository(get(), get(), get(), get()) }
+
 
 }

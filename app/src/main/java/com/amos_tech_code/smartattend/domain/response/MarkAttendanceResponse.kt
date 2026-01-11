@@ -4,7 +4,6 @@ import com.amos_tech_code.smartattend.domain.models.FlagType
 import com.amos_tech_code.smartattend.domain.models.SeverityLevel
 import kotlinx.serialization.Serializable
 
-// Enhanced Response DTO
 @Serializable
 data class MarkAttendanceResponse(
     val success: Boolean,
@@ -23,6 +22,7 @@ data class VerificationResult(
     val locationVerified: Boolean,
     val deviceVerified: Boolean,
     val methodVerified: Boolean,
+    val attendanceTimeVerified: Boolean,
     val overallVerified: Boolean
 )
 
@@ -45,6 +45,7 @@ data class ProgrammeInfoResponse(
 data class VerifyAttendanceResponse(
     val requiresProgrammeSelection: Boolean,
     val availableProgrammes: List<ProgrammeInfoResponse>,
+    val requiresLocation: Boolean,
     val sessionInfo: SessionInfo
 )
 
