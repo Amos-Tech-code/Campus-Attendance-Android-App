@@ -28,7 +28,7 @@ data class QRCodeData(
             return qrCodeData.sessionCode.isNotBlank() &&
                     qrCodeData.unitCode.isNotBlank() &&
                     qrCodeData.sessionId.isNotBlank()
-                    && System.currentTimeMillis() - qrCodeData.timestamp < 24 * 60 * 60 * 1000 // 24 hours
+                    //&& System.currentTimeMillis() - qrCodeData.timestamp < 24 * 60 * 60 * 1000 // 24 hours
         }
     }
 }

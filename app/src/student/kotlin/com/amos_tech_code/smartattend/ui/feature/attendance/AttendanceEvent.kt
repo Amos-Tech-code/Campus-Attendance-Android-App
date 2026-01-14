@@ -1,13 +1,10 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
 import com.amos_tech_code.smartattend.domain.models.LocationData
-import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
-import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 
 // UI Events
 sealed class AttendanceUiEvent {
     data class VerifySession(val sessionCode: String, val unitCode: String) : AttendanceUiEvent()
-    data class MarkAttendance(val request: MarkAttendanceRequest) : AttendanceUiEvent()
     data class ProgrammeSelected(val programmeId: String) : AttendanceUiEvent()
     data class QRCodeScanned(val qrData: String) : AttendanceUiEvent()
     data class UpdateSessionCode(val sessionCode: String) : AttendanceUiEvent()
@@ -17,11 +14,14 @@ sealed class AttendanceUiEvent {
     data class LocationCaptured(val location: LocationData) : AttendanceUiEvent()
     object RetryLocationCapture : AttendanceUiEvent()
     data class LocationError(val error: String) : AttendanceUiEvent()
+    object MarkAttendanceVerifiedSession : AttendanceUiEvent()
+    object ContinueWithCapturedLocation : AttendanceUiEvent()
+    object CancelLocationCapture : AttendanceUiEvent()
+    data class RetryVerifySession(val sessionCode: String, val unitCode: String) : AttendanceUiEvent()
+    data object RetryMarkAttendance : AttendanceUiEvent()
 }
 
 // View Events
 sealed class AttendanceEvent {
-
     data class ShowErrorMessage(val message: String) : AttendanceEvent()
-
 }

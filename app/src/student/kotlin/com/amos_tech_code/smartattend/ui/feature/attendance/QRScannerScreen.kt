@@ -23,6 +23,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NoPhotography
 import androidx.compose.material.icons.filled.Verified
@@ -58,7 +60,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,20 +87,18 @@ import java.util.concurrent.Executors
 @Composable
 fun QRScannerScreen(
     viewModel: AttendanceViewModel,
+    context: Context,
     onBack: () -> Unit
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    // Check location requirements
-    val requiresLocation = state.verificationResult?.requiresLocation == true
-    val hasLocation = state.studentLocation != null
-    val shouldShowLocationCapture = state.qrScannerState == QRScannerState.VERIFIED && requiresLocation
-
     val cameraPermissionState = rememberPermissionState(
         permission = android.Manifest.permission.CAMERA
     )
-    val onNavigateBackEnabled = !(state.qrScannerState == QRScannerState.MARKING_ATTENDANCE || state.qrScannerState == QRScannerState.VERIFYING_SESSION)
+
+    // Navigation back should work in most states except when actively marking
+    val onNavigateBackEnabled = state.qrScannerState != QRScannerState.MARKING_ATTENDANCE &&
+            state.codeEntryState != CodeEntryState.VERIFYING_SESSION
 
     // Check camera permission
     LaunchedEffect(Unit) {
@@ -108,9 +107,7 @@ fun QRScannerScreen(
         }
     }
 
-    BackHandler(
-        enabled = onNavigateBackEnabled
-    ) {
+    BackHandler(enabled = onNavigateBackEnabled) {
         onBack()
     }
 
@@ -123,7 +120,6 @@ fun QRScannerScreen(
                             QRScannerState.SCANNING -> "Scanning QR Code..."
                             QRScannerState.SCANNED -> "QR Code Scanned"
                             QRScannerState.VERIFYING_SESSION -> "Verifying Session..."
-                            QRScannerState.VERIFIED -> "Session Verified"
                             QRScannerState.MARKING_ATTENDANCE -> "Marking Attendance..."
                             QRScannerState.ERROR -> "Error"
                             else -> "Scan QR Code"
@@ -148,31 +144,9 @@ fun QRScannerScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Show different content based on scanner state
             when {
-                cameraPermissionState.status.isGranted -> {
-                    // Show camera preview only when not in terminal states
-                    if (state.qrScannerState != QRScannerState.ERROR &&
-                        state.qrScannerState != QRScannerState.VERIFIED) {
-                        QRScannerContent(
-                            coroutineScope = coroutineScope,
-                            onQRCodeScanned = { qrData ->
-                                viewModel.onEvent(AttendanceUiEvent.QRCodeScanned(qrData))
-                            },
-                            isScanningEnabled = state.qrScannerState == QRScannerState.IDLE ||
-                                    state.qrScannerState == QRScannerState.SCANNING,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    // Scanner overlay with state feedback
-                    ScannerOverlayWithState(
-                        scannerState = state.qrScannerState,
-                        errorMessage = state.errorMessage,
-                        onRetry = { viewModel.resetQRScanner() },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
+                // Camera permission denied states
                 cameraPermissionState.status.shouldShowRationale -> {
                     PermissionRationaleContent(
                         onRequestPermission = { cameraPermissionState.launchPermissionRequest() },
@@ -180,59 +154,78 @@ fun QRScannerScreen(
                     )
                 }
 
-                shouldShowLocationCapture -> {
-                    LocationCaptureOverlay(
+                !cameraPermissionState.status.isGranted -> {
+                    PermissionDeniedContent(onBack = onBack, context = context)
+                }
+
+                // VERIFIED state - show verification success
+                state.qrScannerState == QRScannerState.VERIFIED -> {
+                    VerifiedSessionState(
+                        verificationResult = state.verificationResult,
                         locationState = state.locationState,
-                        location = state.studentLocation,
-                        locationError = state.locationError,
-                        onCaptureLocation = { viewModel.onEvent(AttendanceUiEvent.RequestLocation) },
-                        onRecapture = { viewModel.onEvent(AttendanceUiEvent.RetryLocationCapture) },
-                        onProceed = {
-                            // Proceed to mark attendance after location capture
-                            state.currentSessionCode?.let { sessionCode ->
-                                state.currentUnitCode?.let { unitCode ->
-                                    viewModel.markAttendanceDirectlyFromQR(sessionCode, unitCode)
-                                }
-                            }
+                        studentLocation = state.studentLocation,
+                        onMarkAttendance = {
+                            viewModel.onEvent(AttendanceUiEvent.MarkAttendanceVerifiedSession)
                         },
-                        isProceedEnabled = hasLocation,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
 
-                else -> {
-                    PermissionDeniedContent(onBack = onBack, context = context)
+                // ERROR state
+                state.qrScannerState == QRScannerState.ERROR -> {
+                    ErrorState(
+                        errorMessage = state.errorMessage,
+                        isMarkingError = state.errorType == AttendanceErrorType.MARKING_ERROR,
+                        onRetryVerify = { viewModel.retryVerifySession() },
+                        onRetryMarkAttendance = { viewModel.retryMarkAttendance() },
+                        onBack = { viewModel.resetQRScanner() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-            }
-        }
 
-        // Overlay dialog on top of any screen
-        if (state.showProgrammeSelection) {
-            state.verificationResult?.availableProgrammes?.let { programmes ->
-                ProgrammeSelectionDialog(
-                    programmes = programmes,
-                    onProgrammeSelected = { programmeId ->
-                        viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
-                    },
-                    onDismiss = { // If the user dismisses the dialog, reset the state
-                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                // Scanning states (IDLE, SCANNING, SCANNED, VERIFYING, MARKING)
+                else -> {
+                    // Only show camera when in appropriate states
+                    if (state.qrScannerState == QRScannerState.IDLE ||
+                        state.qrScannerState == QRScannerState.SCANNING ||
+                        state.qrScannerState == QRScannerState.SCANNED ||
+                        state.qrScannerState == QRScannerState.VERIFYING_SESSION ||
+                        state.qrScannerState == QRScannerState.MARKING_ATTENDANCE) {
+
+                        QRScannerContent(
+                            coroutineScope = coroutineScope,
+                            context = context,
+                            onQRCodeScanned = { qrData ->
+                                viewModel.onEvent(AttendanceUiEvent.QRCodeScanned(qrData))
+                            },
+                            isScanningEnabled = state.qrScannerState == QRScannerState.IDLE ||
+                                    state.qrScannerState == QRScannerState.SCANNING,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Scanner overlay
+                        ScannerOverlayWithState(
+                            scannerState = state.qrScannerState,
+                            errorMessage = state.errorMessage,
+                            onRetry = { viewModel.resetQRScanner() },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                )
+                }
             }
         }
     }
 }
 
-
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
-fun QRScannerContent(
+private fun QRScannerContent(
     coroutineScope: CoroutineScope,
+    context: Context,
     onQRCodeScanned: (String) -> Unit,
     isScanningEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -324,9 +317,8 @@ fun QRScannerContent(
     }
 }
 
-
 @Composable
-fun ScannerOverlayWithState(
+private fun ScannerOverlayWithState(
     scannerState: QRScannerState,
     errorMessage: String?,
     onRetry: () -> Unit,
@@ -356,9 +348,7 @@ fun ScannerOverlayWithState(
                 QRScannerState.VERIFYING_SESSION -> {
                     VerifyingContent("Verifying session...")
                 }
-                QRScannerState.VERIFIED -> {
-                    VerifiedContent()
-                }
+
                 QRScannerState.MARKING_ATTENDANCE -> {
                     VerifyingContent("Marking attendance...")
                 }
@@ -374,9 +364,8 @@ fun ScannerOverlayWithState(
     }
 }
 
-
 @Composable
-fun AnimatedScannerFrame(scannerState: QRScannerState) {
+private fun AnimatedScannerFrame(scannerState: QRScannerState) {
     val infiniteTransition = rememberInfiniteTransition(label = "scanner")
     val scanLineOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -469,15 +458,13 @@ fun AnimatedScannerFrame(scannerState: QRScannerState) {
     }
 }
 
-
 @Composable
-fun ScanningContent() {
+private fun ScanningContent() {
     // Just show the animated frame, no additional content
 }
 
-
 @Composable
-fun ScannedContent() {
+private fun ScannedContent() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -498,7 +485,18 @@ fun ScannedContent() {
 }
 
 @Composable
-fun VerifyingContent(message: String) {
+private fun InstructionsContent() {
+    Text(
+        text = "Position QR code within the frame",
+        style = MaterialTheme.typography.bodyMedium,
+        color = Color.White,
+        modifier = Modifier
+        //.padding(bottom = 100.dp)
+    )
+}
+
+@Composable
+private fun VerifyingContent(message: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -517,28 +515,7 @@ fun VerifyingContent(message: String) {
 }
 
 @Composable
-fun VerifiedContent() {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(
-            Icons.Default.Verified,
-            "Verified",
-            tint = Color(0xFF4CAF50),
-            modifier = Modifier.size(32.dp)
-        )
-        Text(
-            text = "Session Verified",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
+private fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -564,32 +541,15 @@ fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
     }
 }
 
+/*
 @Composable
-fun InstructionsContent() {
-    Text(
-        text = "Position QR code within the frame",
-        style = MaterialTheme.typography.bodyMedium,
-        color = Color.White,
-        modifier = Modifier
-            //.padding(bottom = 100.dp)
-    )
-}
-
-@Composable
-fun LocationCaptureOverlay(
-    locationState: LocationState,
-    location: LocationData?,
-    locationError: String?,
-    onCaptureLocation: () -> Unit,
-    onRecapture: () -> Unit,
-    onProceed: () -> Unit,
-    isProceedEnabled: Boolean,
+fun ErrorState(
+    errorMessage: String?,
+    onRetry: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-    ) {
+    Surface(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -597,63 +557,121 @@ fun LocationCaptureOverlay(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Card(
+            Icon(
+                Icons.Default.ErrorOutline,
+                "Error",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(64.dp)
+            )
+
+            SmartAttendHeightSpacer(16.dp)
+
+            Text(
+                text = "Something went wrong",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            SmartAttendHeightSpacer(8.dp)
+
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            SmartAttendHeightSpacer(24.dp)
+
+            SmartAttendOutlinedButton(
+                text = "Retry",
+                onClick = onRetry,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            SmartAttendHeightSpacer(16.dp)
+
+            SmartAttendPrimaryButton(
+                text = "Go Back",
+                size = SmartAttendButtonSize.Small,
+                onClick = onBack
+            )
+
+        }
+    }
+}
+
+ */
+
+@Composable
+private fun ErrorState(
+    errorMessage: String?,
+    onRetryVerify: () -> Unit,
+    onRetryMarkAttendance: () -> Unit,
+    onBack: () -> Unit,
+    isMarkingError: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Surface(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.ErrorOutline,
+                "Error",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(64.dp)
+            )
+
+            SmartAttendHeightSpacer(16.dp)
+
+            Text(
+                text = if (isMarkingError) "Attendance Failed" else "Something went wrong",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            SmartAttendHeightSpacer(8.dp)
+
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            SmartAttendHeightSpacer(32.dp)
+
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    // Header
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            "Location Required",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        SmartAttendHeightSpacer(16.dp)
-                        Text(
-                            text = "Location Verification Required",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        SmartAttendHeightSpacer(8.dp)
-                        Text(
-                            text = "This session requires location verification. Please capture your current location.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                SmartAttendPrimaryButton(
+                    text = if (isMarkingError) "Retry Marking" else "Retry Verification",
+                    onClick = if (isMarkingError) onRetryMarkAttendance else onRetryVerify,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                    // Location Capture Section
-                    LocationCaptureSection(
-                        locationState = locationState,
-                        location = location,
-                        locationError = locationError,
-                        onCaptureLocation = onCaptureLocation,
-                        onRecapture = onRecapture,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Proceed Button
-                    SmartAttendPrimaryButton(
-                        text = "Proceed to Mark Attendance",
-                        onClick = onProceed,
-                        enabled = isProceedEnabled,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                SmartAttendOutlinedButton(
+                    text = if (isMarkingError) "Back to Verification" else "Go Back",
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
 }
 
-
 @Composable
-fun PermissionRationaleContent(
+private fun PermissionRationaleContent(
     onRequestPermission: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -711,7 +729,7 @@ fun PermissionRationaleContent(
 }
 
 @Composable
-fun PermissionDeniedContent(
+private fun PermissionDeniedContent(
     onBack: () -> Unit,
     context: Context
 ) {

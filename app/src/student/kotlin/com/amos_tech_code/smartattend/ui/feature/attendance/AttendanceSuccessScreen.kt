@@ -1,7 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,11 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,11 +39,8 @@ import com.amos_tech_code.smartattend.domain.models.SeverityLevel
 import com.amos_tech_code.smartattend.domain.response.AttendanceFlag
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.VerificationResult
-import com.amos_tech_code.smartattend.ui.components.SmartAttendOutlinedButton
+import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +48,6 @@ fun AttendanceSuccessScreen(
     result: MarkAttendanceResponse,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -90,10 +79,7 @@ fun AttendanceSuccessScreen(
             SuccessHeaderSection()
 
             // Verification Results
-            VerificationResultsSection(verification = result.verification)
-
-            // Attendance Details
-            AttendanceDetailsSection(result = result)
+            VerificationResultsSection(verification = result.verification, message = result.message)
 
             // Flags/Warnings (if any)
             if (result.flags.isNotEmpty()) {
@@ -101,18 +87,18 @@ fun AttendanceSuccessScreen(
             }
 
             // Action Buttons
-            ActionButtonsSection(
-                onBack = onBack,
-                onShare = {
-                    shareAttendanceResult(context, result)
-                }
+            SmartAttendPrimaryButton(
+                text = "Back to Home",
+                onClick = onBack,
+                size = SmartAttendButtonSize.Medium,
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
     }
 }
 
 @Composable
-fun SuccessHeaderSection() {
+private fun SuccessHeaderSection() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -151,7 +137,10 @@ fun SuccessHeaderSection() {
 }
 
 @Composable
-fun VerificationResultsSection(verification: VerificationResult) {
+private fun VerificationResultsSection(
+    verification: VerificationResult,
+    message: String?
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -218,12 +207,20 @@ fun VerificationResultsSection(verification: VerificationResult) {
                     )
                 }
             }
+
+            message?.let { message ->
+                DetailRow(
+                    icon = Icons.Default.Info,
+                    title = "Message",
+                    value = message
+                )
+            }
         }
     }
 }
 
 @Composable
-fun VerificationItem(
+private fun VerificationItem(
     verified: Boolean,
     title: String,
     description: String
@@ -257,56 +254,7 @@ fun VerificationItem(
 }
 
 @Composable
-fun AttendanceDetailsSection(result: MarkAttendanceResponse) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Attendance Details",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            DetailRow(
-                icon = Icons.Default.Fingerprint,
-                title = "Session ID",
-                value = result.sessionId.take(8) + "..."
-            )
-
-            DetailRow(
-                icon = Icons.Default.Schedule,
-                title = "Attended At",
-                value = formatAttendanceTime(result.attendedAt)
-            )
-
-            result.programmeId?.let { programmeId ->
-                DetailRow(
-                    icon = Icons.Default.School,
-                    title = "Programme",
-                    value = programmeId.take(8) + "..."
-                )
-            }
-
-            result.message?.let { message ->
-                DetailRow(
-                    icon = Icons.Default.Info,
-                    title = "Message",
-                    value = message
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DetailRow(icon: ImageVector, title: String, value: String) {
+private fun DetailRow(icon: ImageVector, title: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
@@ -339,7 +287,7 @@ fun DetailRow(icon: ImageVector, title: String, value: String) {
 }
 
 @Composable
-fun AttendanceFlagsSection(flags: List<AttendanceFlag>) {
+private fun AttendanceFlagsSection(flags: List<AttendanceFlag>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -377,7 +325,7 @@ fun AttendanceFlagsSection(flags: List<AttendanceFlag>) {
 }
 
 @Composable
-fun FlagItem(flag: AttendanceFlag) {
+private fun FlagItem(flag: AttendanceFlag) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
@@ -400,7 +348,7 @@ fun FlagItem(flag: AttendanceFlag) {
             Text(
                 text = flag.message,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.error,
                 lineHeight = 16.sp
             )
         }
@@ -408,81 +356,11 @@ fun FlagItem(flag: AttendanceFlag) {
 }
 
 @Composable
-fun ActionButtonsSection(
-    onBack: () -> Unit,
-    onShare: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        SmartAttendOutlinedButton(
-            text = "Share Attendance",
-            onClick = onShare,
-            modifier = Modifier.fillMaxWidth(),
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Share,
-                    "Share",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        )
-
-        SmartAttendPrimaryButton(
-            text = "Back to Home",
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-// Helper functions
-fun formatAttendanceTime(attendedAt: String): String {
-    return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
-        val date = inputFormat.parse(attendedAt)
-        outputFormat.format(date ?: Date())
-    } catch (e: Exception) {
-        attendedAt
-    }
-}
-
-@Composable
-fun getSeverityColor(severity: SeverityLevel?): Color {
+private fun getSeverityColor(severity: SeverityLevel?): Color {
     return when (severity) {
         SeverityLevel.LOW -> Color(0xFF2196F3) // Blue
         SeverityLevel.MEDIUM -> Color(0xFFFF9800) // Orange
         SeverityLevel.HIGH -> Color(0xFFF44336) // Red
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-}
-
-fun shareAttendanceResult(context: Context, result: MarkAttendanceResponse) {
-    val shareText = buildString {
-        append("✅ Attendance Marked Successfully!\n\n")
-        append("Session: ${result.sessionId.take(8)}...\n")
-        append("Time: ${formatAttendanceTime(result.attendedAt)}\n")
-        append("Status: ${if (result.verification.overallVerified) "VERIFIED" else "NOT VERIFIED"}\n\n")
-
-        if (result.flags.isNotEmpty()) {
-            append("Flags:\n")
-            result.flags.forEach { flag ->
-                append("• ${flag.message}\n")
-            }
-        }
-
-        append("\nShared via SmartAttend")
-    }
-
-    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "Attendance Confirmation")
-        putExtra(Intent.EXTRA_TEXT, shareText)
-    }
-
-    context.startActivity(Intent.createChooser(shareIntent, "Share Attendance Result"))
 }

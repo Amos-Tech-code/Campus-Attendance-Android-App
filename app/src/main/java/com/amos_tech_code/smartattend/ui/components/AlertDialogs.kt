@@ -32,15 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.amos_tech_code.smartattend.R
 
+/*
 @Composable
 fun SuccessAlertDialog(
     title: String = "Success",
@@ -119,6 +118,8 @@ fun SuccessAlertDialog(
         properties = properties
     )
 }
+
+ */
 
 @Composable
 fun ConfirmActionDialog(
@@ -417,9 +418,9 @@ fun WarningAlertDialog(
     )
 }
 
-
 @Composable
-fun PermissionRationaleDialog(
+fun LocationPermissionRationaleDialog(
+    isFromLecturer: Boolean = true,
     onDismissRequest: () -> Unit,
     onRequestPermission: () -> Unit
 ) {
@@ -429,22 +430,42 @@ fun PermissionRationaleDialog(
             Text("Location Permission Required")
         },
         text = {
-            Text("This app needs location access to capture your teaching venue for GPS-based attendance tracking.\nYour location data is only used to verify student proximity during sessions.")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isFromLecturer) {
+                    Text(
+                        "This app needs location access to capture your teaching venue for GPS-based attendance tracking.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Your location data is only used to verify student proximity during sessions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic
+                    )
+                } else {
+                    Text(
+                        "To verify your attendance location, we need access to your device's location.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "This helps us ensure you're in the correct teaching venue.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Your location data is only used during attendance marking and is not stored.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic
+                    )
+                }
+            }
         },
         confirmButton = {
-            TextButton(
-                onClick = onRequestPermission
-            ) {
-                Text("Grant Permission")
+            TextButton(onClick = onRequestPermission) {
+                Text("Allow Location Access")
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                }
-            ) {
-                Text("Deny")
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
             }
         }
     )
@@ -452,7 +473,7 @@ fun PermissionRationaleDialog(
 
 // Helper function to show settings dialog
 @Composable
-fun PermissionSettingsDialog(
+fun LocationPermissionSettingsDialog(
     context: Context,
     onDismissRequest: () -> Unit
 ) {

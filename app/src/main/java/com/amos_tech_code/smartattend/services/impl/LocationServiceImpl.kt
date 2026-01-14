@@ -141,24 +141,24 @@ class LocationServiceImpl(
 
 
     // method to check if we need to request permission
-    override fun shouldRequestLocationPermission(): Boolean {
-        return !hasLocationPermission(context)
-    }
-
-    // method to get permission state
-    override fun getPermissionState(activity: Activity): LocationPermissionState {
-        return when {
-            hasLocationPermission(activity) -> LocationPermissionState.GRANTED
-
-            ActivityCompat.shouldShowRequestPermissionRationale(
-                activity,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) ->
-                LocationPermissionState.DENIED_SHOW_RATIONALE
-
-            else -> LocationPermissionState.DENIED_NEVER_ASK
-        }
-    }
+//    override fun shouldRequestLocationPermission(): Boolean {
+//        return !hasLocationPermission(context)
+//    }
+//
+//    // method to get permission state
+//    override fun getPermissionState(activity: Activity): LocationPermissionState {
+//        return when {
+//            hasLocationPermission(activity) -> LocationPermissionState.GRANTED
+//
+//            ActivityCompat.shouldShowRequestPermissionRationale(
+//                activity,
+//                Manifest.permission.ACCESS_FINE_LOCATION
+//            ) ->
+//                LocationPermissionState.DENIED_SHOW_RATIONALE
+//
+//            else -> LocationPermissionState.DENIED_NEVER_ASK
+//        }
+//    }
 
     private fun hasLocationPermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(

@@ -62,8 +62,6 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
 
 }
 
-
-
 private fun <T> parseErrorBody(response: Response<T>): String {
     return try {
         val errorBody = response.errorBody()?.string()

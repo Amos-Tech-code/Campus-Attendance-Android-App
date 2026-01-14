@@ -12,6 +12,7 @@ data class StudentAttendanceState(
     val recentAttendance: List<RecentAttendance> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val errorType: AttendanceErrorType? = null,
 
     // Session Verification
     val verificationResult: VerifyAttendanceResponse? = null,
@@ -69,8 +70,12 @@ enum class CodeEntryState {
 
 enum class LocationState {
     IDLE,              // Initial state
-    REQUESTING_PERMISSION, // Requesting location permissions
     CAPTURING,         // Actively capturing location
     CAPTURED,          // Location successfully captured
     ERROR              // Error occurred
+}
+
+enum class AttendanceErrorType {
+    VERIFICATION_ERROR,    // Session verification failed
+    MARKING_ERROR,         // Attendance marking failed
 }

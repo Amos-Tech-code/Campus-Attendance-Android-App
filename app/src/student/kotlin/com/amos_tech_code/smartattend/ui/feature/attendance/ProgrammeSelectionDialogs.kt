@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.amos_tech_code.smartattend.domain.response.ProgrammeInfoResponse
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgrammeSelectionDialog(
