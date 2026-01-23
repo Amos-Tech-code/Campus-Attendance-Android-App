@@ -10,10 +10,8 @@ import android.location.LocationManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.amos_tech_code.smartattend.domain.models.LocationData
-import com.amos_tech_code.smartattend.domain.models.LocationPermissionState
 import com.amos_tech_code.smartattend.services.LocationService
 import com.amos_tech_code.smartattend.utils.LocationServiceException
 import com.google.android.gms.common.api.ResolvableApiException

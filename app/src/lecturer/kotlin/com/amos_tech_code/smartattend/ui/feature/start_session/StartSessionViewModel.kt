@@ -1,15 +1,16 @@
 package com.amos_tech_code.smartattend.ui.feature.start_session
 
 import android.app.Activity
-import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
-import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
+import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
 import com.amos_tech_code.smartattend.domain.request.AttendanceLocationRequest
@@ -91,7 +92,7 @@ class StartSessionViewModel(
             }
 
             is SessionUiEvent.CaptureTeachingVenue -> {
-                captureTeachingVenue(event.activity)
+                requestTeachingVenue()
             }
 
             is SessionUiEvent.TeachingVenueCaptured -> {
@@ -279,47 +280,45 @@ class StartSessionViewModel(
         }
     }
 
-    private fun captureTeachingVenue(activity: Activity) {
-        if(!state.value.requireLocation) return
-        _state.update { it.copy(isCapturingLocation = true, locationError = null) }
+    // Location Service Implementation
+    fun isLocationEnabled(): Boolean {
+        return locationService.isLocationEnabled()
+    }
+
+    fun promptEnableGPS(
+        activity: Activity,
+        enableGpsLauncher: ActivityResultLauncher<IntentSenderRequest>
+    ) {
+        locationService.promptEnableGPS(activity, enableGpsLauncher)
+    }
+
+    private fun requestTeachingVenue() {
+        if (!state.value.requireLocation) return
+
+        _state.update {
+            it.copy(
+                isCapturingLocation = true,
+                locationError = null
+            )
+        }
 
         viewModelScope.launch {
-            // 1. Check for location permissions first
-            if (locationService.shouldRequestLocationPermission()) {
-                val permissionState = locationService.getPermissionState(activity)
-                // Stop here; the user needs to grant permission first.
-                // We also reset the loading state as the capture process is paused.
-                _state.update { it.copy(isCapturingLocation = false) }
-                return@launch
-            }
-
-            // 2. Check if the device's GPS is enabled
-            if (!locationService.isLocationEnabled()) {
-                _event.send(StartSessionEvent.RequestEnableGps)
-                // Stop here; the user needs to enable GPS.
-                // Reset loading state.
-                _state.update { it.copy(isCapturingLocation = false) }
-                return@launch
-            }
-
-            // 3. Both checks passed, proceed to get location
             try {
                 val location = locationService.getCurrentLocation()
 
-                // Getting the address is a separate network call, handle its potential failure
-                val address = try {
-                    locationService.getAddressFromLocation(location.latitude, location.longitude)
-                } catch (e: Exception) {
-                    // Log the geocoding error, but don't fail the whole operation
-                    Log.w("StartSessionViewModel", "Failed to get address from geocoder", e)
-                    null // Address is optional
-                }
+                val address = runCatching {
+                    locationService.getAddressFromLocation(
+                        location.latitude,
+                        location.longitude
+                    )
+                }.getOrNull()
 
-                val locationData = location.copy(address = address)
-                onEvent(SessionUiEvent.TeachingVenueCaptured(locationData))
-
+                onEvent(
+                    SessionUiEvent.TeachingVenueCaptured(
+                        location.copy(address = address)
+                    )
+                )
             } catch (e: Exception) {
-                //Log.e("StartSessionViewModel", "Failed to get location", e)
                 val errorMessage = when (e) {
                     is SecurityException -> "Location permission denied."
                     is LocationServiceException -> "Could not get location. Please try again."
@@ -330,6 +329,11 @@ class StartSessionViewModel(
         }
     }
 
+    fun onGpsEnabled() {
+        requestTeachingVenue()
+    }
+
+    // Other Event Handlers
     fun dismissProgrammeSelection() {
         _state.update { it.copy(showProgrammeSelection = false) }
     }

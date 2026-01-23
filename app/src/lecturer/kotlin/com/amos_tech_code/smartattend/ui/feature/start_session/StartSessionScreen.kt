@@ -2,8 +2,7 @@ package com.amos_tech_code.smartattend.ui.feature.start_session
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
-import android.widget.Toast
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -78,6 +77,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,6 +97,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
@@ -108,8 +113,8 @@ import com.amos_tech_code.smartattend.ui.components.LoadingDialog
 import com.amos_tech_code.smartattend.ui.components.LocationCapturedState
 import com.amos_tech_code.smartattend.ui.components.LocationCapturingState
 import com.amos_tech_code.smartattend.ui.components.LocationNotCapturedState
-import com.amos_tech_code.smartattend.ui.components.PermissionRationaleDialog
-import com.amos_tech_code.smartattend.ui.components.PermissionSettingsDialog
+import com.amos_tech_code.smartattend.ui.components.LocationPermissionRationaleDialog
+import com.amos_tech_code.smartattend.ui.components.LocationPermissionSettingsDialog
 import com.amos_tech_code.smartattend.ui.components.ProfileCompletionRequiredDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
@@ -121,10 +126,6 @@ import com.amos_tech_code.smartattend.ui.navigation.LiveAttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.MultiplePermissionsState
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -142,37 +143,48 @@ fun StartSessionScreen(
     val snackBarHostState = remember { SnackbarHostState() }
     val activity = context as? Activity
     val scrollState = rememberScrollState()
+    // State for showing permission dialogs
+    var showRationaleDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
-    // Permission State using Accompanist
-    val locationPermissionState = rememberMultiplePermissionsState(
-        permissions = listOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-    )
-
-    // --- GPS ENABLING LAUNCHER ---
+    // Create launcher for enabling GPS
     val enableGpsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        // After the user interacts with the GPS dialog, check if they enabled it.
-        // If they did, we can retry capturing the location.
-        val activity = context as? Activity
+        if (!state.requireLocation) return@rememberLauncherForActivityResult
         if (result.resultCode == Activity.RESULT_OK && activity != null) {
-            // GPS was enabled, automatically retry the capture
-            viewModel.onEvent(SessionUiEvent.CaptureTeachingVenue(activity))
+            // GPS was enabled, try to capture location
+            viewModel.onGpsEnabled()
         } else {
-            // User cancelled, show a message
-            Toast.makeText(context, "GPS is required to capture location. Turn on location to proceed.", Toast.LENGTH_SHORT).show()
+            // User canceled or GPS still disabled
+            viewModel.onEvent(
+                SessionUiEvent.LocationCaptureFailed("GPS is required for location capture")
+            )
         }
     }
 
-    // Handle permission changes
-    LaunchedEffect(locationPermissionState.allPermissionsGranted) {
-        if (locationPermissionState.allPermissionsGranted) {
-            // Permission granted, proceed with location capture
-            activity?.let {
-                viewModel.onEvent(SessionUiEvent.CaptureTeachingVenue(it))
+    // Create launcher for location permission request
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!state.requireLocation) return@rememberLauncherForActivityResult
+        if (isGranted) {
+            if (viewModel.isLocationEnabled()) {
+                viewModel.onEvent(SessionUiEvent.CaptureTeachingVenue)
+            } else {
+                activity?.let {
+                    viewModel.promptEnableGPS(it, enableGpsLauncher)
+                }
+            }
+        } else {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(
+                    activity!!,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            ) {
+                showRationaleDialog = true
+            } else {
+                showSettingsDialog = true
             }
         }
     }
@@ -193,9 +205,82 @@ fun StartSessionScreen(
 
             StartSessionEvent.RequestEnableGps -> {
                 activity?.let {
-                    viewModel.locationService.promptEnableGPS(it, enableGpsLauncher)
+                    viewModel.promptEnableGPS(it, enableGpsLauncher)
                 }
             }
+
+            is StartSessionEvent.LocationPermissionDenied -> {
+                if (event.shouldShowRationale) {
+                    showRationaleDialog = true
+                } else {
+                    showSettingsDialog = true
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(state.requireLocation) {
+        if (!state.requireLocation) return@LaunchedEffect
+        when {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                if (viewModel.isLocationEnabled()) {
+                    viewModel.onEvent(SessionUiEvent.CaptureTeachingVenue)
+                } else {
+                    activity?.let {
+                        viewModel.promptEnableGPS(it, enableGpsLauncher)
+                    }
+                }
+            }
+
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                activity!!,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) -> {
+                showRationaleDialog = true
+            }
+
+            else -> {
+                requestPermissionLauncher.launch(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            }
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (!state.requireLocation) return@LifecycleEventObserver
+
+                val permissionGranted =
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                if (permissionGranted) {
+                    // Permission is now granted → hide permission dialogs
+                    showRationaleDialog = false
+                    showSettingsDialog = false
+
+                    // Now check GPS
+                    if (!viewModel.isLocationEnabled()) {
+                        activity?.let {
+                            viewModel.promptEnableGPS(it, enableGpsLauncher)
+                        }
+                    }
+                }
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -251,7 +336,36 @@ fun StartSessionScreen(
                 SessionConfigurationCard(state, viewModel::onEvent)
 
                 // Security Settings Card
-                SecuritySettingsCard(state, viewModel::onEvent, locationPermissionState, context)
+                SecuritySettingsCard(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    onCaptureLocation = {
+                        when {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED -> {
+                                if (viewModel.isLocationEnabled()) {
+                                    viewModel.onEvent(SessionUiEvent.CaptureTeachingVenue)
+                                } else {
+                                    activity?.let {
+                                        viewModel.promptEnableGPS(it, enableGpsLauncher)
+                                    }
+                                }
+                            }
+
+                            ActivityCompat.shouldShowRequestPermissionRationale(
+                                activity!!,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) -> showRationaleDialog = true
+
+                            else -> requestPermissionLauncher.launch(
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            )
+                        }
+
+                    }
+                )
 
                 SmartAttendPrimaryButtonWithLeadingIcon(
                     onClick = { viewModel.onEvent(SessionUiEvent.StartSession) },
@@ -294,6 +408,31 @@ fun StartSessionScreen(
     if (state.isLoading) {
         LoadingDialog(
             message = "Creating Attendance Session...",
+        )
+    }
+
+    // Permission rationale dialog
+    if (showRationaleDialog) {
+        LocationPermissionRationaleDialog(
+            onDismissRequest = {
+                showRationaleDialog = false
+                viewModel.onEvent(SessionUiEvent.ToggleLocationRequirement)
+            },
+            onRequestPermission = {
+                showRationaleDialog = false
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        )
+    }
+
+    // Permission settings dialog (when permission permanently denied)
+    if (showSettingsDialog) {
+        LocationPermissionSettingsDialog(
+            context = context,
+            onDismissRequest = {
+                showSettingsDialog = false
+                viewModel.onEvent(SessionUiEvent.ToggleLocationRequirement)
+            }
         )
     }
 
@@ -820,13 +959,11 @@ private fun AcademicSelectionCard(
     }
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun SecuritySettingsCard(
     state: SessionState,
     onEvent: (SessionUiEvent) -> Unit,
-    locationPermissionState: MultiplePermissionsState,
-    context: Context
+    onCaptureLocation: () -> Unit
 ) {
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -893,40 +1030,20 @@ private fun SecuritySettingsCard(
                     teachingVenue = state.teachingVenue,
                     isCapturing = state.isCapturingLocation,
                     locationError = state.locationError,
-                    locationPermissionState = locationPermissionState,
-                    context = context,
-                    onCaptureLocation = {
-                        val activity = context as? Activity
-                        activity?.let {
-                            // Use Accompanist to handle permission flow
-                            if (locationPermissionState.allPermissionsGranted) {
-                                onEvent(SessionUiEvent.CaptureTeachingVenue(it))
-                            } else {
-                                // This will automatically show the appropriate dialogs/rationale
-                                locationPermissionState.launchMultiplePermissionRequest()
-                            }
-                        }
-                    },
-                    onPermissionDenied = {
-                        // Turn off location requirement when permission is denied
-                        onEvent(SessionUiEvent.ToggleLocationRequirement)
-                    }
+                    onCaptureLocation = onCaptureLocation
                 )
+
             }
         }
     }
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun TeachingVenueLocationSection(
     teachingVenue: LocationData?,
     isCapturing: Boolean,
     locationError: String?,
-    locationPermissionState: MultiplePermissionsState,
-    context: Context,
-    onCaptureLocation: () -> Unit,
-    onPermissionDenied: () -> Unit
+    onCaptureLocation: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -953,187 +1070,15 @@ private fun TeachingVenueLocationSection(
             )
         }
 
-        // Handle permission rationale using Accompanist
-        var showRationaleDialog by remember { mutableStateOf(false) }
-        var showSettingsDialog by remember { mutableStateOf(false) }
-
-        // Get the fine location permission status
-        val fineLocationPermission = locationPermissionState.permissions.find {
-            it.permission == Manifest.permission.ACCESS_FINE_LOCATION
-        }
-
-        // Check permission state
-        LaunchedEffect(fineLocationPermission?.status) {
-            fineLocationPermission?.let { permission ->
-                when {
-                    permission.status.isGranted -> {
-                        // Permission granted - do nothing, show location UI
-                        showRationaleDialog = false
-                        showSettingsDialog = false
-                    }
-
-                    permission.status.shouldShowRationale -> {
-                        // User denied once but can still be asked again
-                        // Show rationale to explain why we need permission
-                        showRationaleDialog = true
-                        showSettingsDialog = false
-                    }
-
-                    !permission.status.isGranted && !permission.status.shouldShowRationale -> {
-                        // User permanently denied (Don't ask again)
-                        // Need to guide them to app settings
-                        showSettingsDialog = true
-                        showRationaleDialog = false
-                    }
-                }
-            }
-        }
-
-        // Permission granted - show location state
-        if (fineLocationPermission?.status?.isGranted == true) {
-            LocationContentState(
-                teachingVenue = teachingVenue,
-                isCapturing = isCapturing,
-                locationError = locationError,
-                onCaptureLocation = onCaptureLocation
-            )
-        }
-
-        // Rationale Dialog - show when user can still be asked
-        if (showRationaleDialog) {
-            PermissionRationaleDialog(
-                onDismissRequest = {
-                    showRationaleDialog = false
-                    onPermissionDenied() // Turn off location requirement
-                },
-                onRequestPermission = {
-                    showRationaleDialog = false
-                    locationPermissionState.launchMultiplePermissionRequest()
-                }
-            )
-        }
-
-        // Settings Dialog - show when permanently denied
-        if (showSettingsDialog) {
-            PermissionSettingsDialog(
-                context = context,
-                onDismissRequest = {
-                    showSettingsDialog = false
-                    onPermissionDenied() // Turn off location requirement
-                }
-            )
-        }
+        // Location content based on state
+        LocationContentState(
+            teachingVenue = teachingVenue,
+            isCapturing = isCapturing,
+            locationError = locationError,
+            onCaptureLocation = onCaptureLocation,
+        )
     }
 }
-
-
-/*
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun TeachingVenueLocationSection(
-    teachingVenue: LocationData?,
-    isCapturing: Boolean,
-    locationError: String?,
-    locationPermissionState: MultiplePermissionsState,
-    context: Context,
-    onCaptureLocation: () -> Unit,
-    onPermissionDenied: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Section Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                Icons.Default.LocationOn,
-                "Location",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = "Teaching Venue Location",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        // Handle permission rationale using Accompanist
-        var showRationaleDialog by remember { mutableStateOf(false) }
-        var showSettingsDialog by remember { mutableStateOf(false) }
-
-        locationPermissionState.permissions.forEach { permission ->
-            when (permission.permission) {
-                Manifest.permission.ACCESS_FINE_LOCATION -> {
-                    when {
-                        permission.status.isGranted -> {
-                            // Permission granted - show location state
-                            LocationContentState(
-                                teachingVenue = teachingVenue,
-                                isCapturing = isCapturing,
-                                locationError = locationError,
-                                onCaptureLocation = onCaptureLocation
-                            )
-                        }
-
-                        permission.status.shouldShowRationale -> {
-                            // Show rationale UI
-                            LaunchedEffect(permission.status) {
-                                showRationaleDialog = true
-                            }
-                        }
-
-                        !permission.status.isGranted && !permission.status.shouldShowRationale -> {
-                            // Permission permanently denied - show settings UI
-                            LaunchedEffect(permission.status) {
-                                showSettingsDialog = true
-                            }
-                        }
-
-                        else -> {
-                            // Show rationale UI
-                            LaunchedEffect(permission.status) {
-                                showRationaleDialog = true
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Rationale Dialog
-        if (showRationaleDialog) {
-            PermissionRationaleDialog(
-                onDismissRequest = {
-                    showRationaleDialog = false
-                    onPermissionDenied() // Turn off location requirement
-                },
-                onRequestPermission = {
-                    showRationaleDialog = false
-                    locationPermissionState.launchMultiplePermissionRequest()
-                }
-            )
-        }
-
-        // Settings Dialog
-        if (showSettingsDialog) {
-            PermissionSettingsDialog(
-                context = context,
-                onDismissRequest = {
-                    showSettingsDialog = false
-                    onPermissionDenied() // Turn off location requirement
-                }
-            )
-        }
-    }
-}
-*/
 
 @Composable
 private fun LocationContentState(

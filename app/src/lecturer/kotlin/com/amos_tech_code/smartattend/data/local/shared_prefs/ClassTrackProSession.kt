@@ -104,7 +104,7 @@ class ClassTrackProSession(context: Context) : SessionProvider {
     fun getPushNotifications(): Boolean = prefs.getBoolean(KEY_PUSH_NOTIFICATIONS, true)
     fun getDeviceChangeAlerts(): Boolean = prefs.getBoolean(KEY_DEVICE_CHANGE_ALERTS, true)
     fun getRequireDeviceVerification(): Boolean = prefs.getBoolean(KEY_REQUIRE_DEVICE_VERIFICATION, true)
-    fun getRequireLocation(): Boolean = prefs.getBoolean(KEY_REQUIRE_LOCATION, true)
+    fun getRequireLocation(): Boolean = prefs.getBoolean(KEY_REQUIRE_LOCATION, false)
 
 
 }

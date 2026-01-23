@@ -23,7 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,11 +33,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NoPhotography
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendOutlinedButton

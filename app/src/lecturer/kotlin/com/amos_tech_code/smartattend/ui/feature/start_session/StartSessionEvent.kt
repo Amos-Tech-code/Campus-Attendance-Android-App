@@ -14,9 +14,8 @@ sealed class StartSessionEvent {
 
     object NavigateToLiveAttendance : StartSessionEvent()
 
-    //data class RequestPermission(val state: LocationPermissionState) : StartSessionEvent()
-
     object RequestEnableGps : StartSessionEvent()
+    data class LocationPermissionDenied(val shouldShowRationale: Boolean) : StartSessionEvent()
 }
 
 // UI Events
@@ -29,7 +28,7 @@ sealed class SessionUiEvent {
     data class TitleChanged(val title: String) : SessionUiEvent() // New
     data class SessionTypeChanged(val sessionType: AttendanceSessionType) : SessionUiEvent() // New
     object ToggleLocationRequirement : SessionUiEvent()
-    class CaptureTeachingVenue(val activity: Activity) : SessionUiEvent()
+    object CaptureTeachingVenue : SessionUiEvent()
     data class TeachingVenueCaptured(val location: LocationData) : SessionUiEvent()
     data class LocationCaptureFailed(val error: String) : SessionUiEvent()
     data class AttendanceMethodChanged(val method: AttendanceMethod) : SessionUiEvent() // New

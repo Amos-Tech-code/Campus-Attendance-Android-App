@@ -4,7 +4,6 @@ import android.app.Activity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import com.amos_tech_code.smartattend.domain.models.LocationData
-import com.amos_tech_code.smartattend.domain.models.LocationPermissionState
 
 interface LocationService {
 
