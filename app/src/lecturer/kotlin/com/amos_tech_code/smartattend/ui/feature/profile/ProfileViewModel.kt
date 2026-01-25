@@ -3,8 +3,12 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
+import com.amos_tech_code.smartattend.data.network.utils.ApiError
+import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.data.repositories.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.domain.models.University
+import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileRequest
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +19,7 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val session: ClassTrackProSession,
+    private val accountRepository: AccountRepository,
     private val academicSetUpRepository: AcademicSetUpRepository
 ) : ViewModel() {
 
@@ -65,10 +70,10 @@ class ProfileViewModel(
                 _state.update { it.copy(showEditNameSheet = false) }
             }
             is ProfileUiEvent.OnEditingNameChanged -> {
-                _state.update { it.copy(editingName = event.name) }
+                onProfileNameChanged(event.name)
             }
             ProfileUiEvent.SaveEditedName -> {
-                saveNewName()
+                updateProfile()
             }
         }
     }
@@ -159,29 +164,57 @@ class ProfileViewModel(
         }
     }
 
-    private fun saveNewName() {
-        val newName = state.value.editingName.trim()
+    private fun onProfileNameChanged(newName: String) {
+        val error = when {
+            newName.isBlank() -> "Name cannot be empty"
+            newName.length < 3 -> "Name must be at least 3 characters"
+            newName.length > 50 -> "Name must be less than 50 characters"
+            else -> null
+        }
+
+        _state.update {
+            it.copy(
+                editingName = newName.trim(),
+                editingNameError = error
+            )
+        }
+    }
+
+    private fun updateProfile() {
+        val newName = state.value.editingName
         if (newName.isBlank()) {
-            viewModelScope.launch {
-                _event.send(ProfileEvent.ShowErrorMessage("Name cannot be empty"))
-            }
+            _event.trySend(ProfileEvent.ShowErrorMessage("Name cannot be empty"))
             return
         }
 
-        viewModelScope.launch {
-            // Here you would typically call a repository method to save the name
-            // e.g., lecturerRepository.updateName(newName)
-
-            // For now, we'll just update the local state and session
-            //session.saveName(newName) // Assuming you have a method like this in SmartAttendSession
-
-            _state.update {
-                it.copy(
-                    lecturer = it.lecturer.copy(name = newName),
-                    showEditNameSheet = false // Close the sheet on success
-                )
+        try {
+            viewModelScope.launch {
+                _state.update { it.copy(isUpdatingProfile = true) }
+                val result = accountRepository.updateLecturerProfile(UpdateLecturerProfileRequest(newName))
+                when(result) {
+                    is ApiResult.Success -> {
+                        _state.update { it.copy(lecturer = it.lecturer.copy(name = newName), showEditNameSheet = false) }
+                        _event.trySend(ProfileEvent.ShowSuccessMessage(result.data.message))
+                    }
+                    is ApiResult.Failure -> {
+                        when(val error = result.error) {
+                            is ApiError.NetworkError -> {
+                                ProfileEvent.ShowErrorMessage(error.exception.message ?: "Failed to update profile")
+                            }
+                            is ApiError.HttpError -> {
+                                ProfileEvent.ShowErrorMessage(error.message)
+                            }
+                            is ApiError.UnknownError -> {
+                                ProfileEvent.ShowErrorMessage("Failed to update profile")
+                            }
+                        }
+                    }
+                }
             }
-            _event.send(ProfileEvent.ShowSuccessMessage("Name updated successfully"))
+        } catch (e: Exception) {
+            _event.trySend(ProfileEvent.ShowErrorMessage("Failed to update profile"))
+        } finally {
+            _state.update { it.copy(isUpdatingProfile = false) }
         }
     }
 

@@ -8,10 +8,13 @@ import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
+import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
@@ -40,6 +43,11 @@ interface ApiService {
      */
     @POST("auth/lecturers/google")
     suspend fun googleSignIn(@Body request: GoogleSignInRequest): Response<LecturerAuthResponse>
+
+    @PATCH("account/profile/lecturer")
+    suspend fun updateLecturerProfile(
+        @Body request: UpdateLecturerProfileRequest
+    ) : Response<GenericResponse>
 
     @GET("lecturer/academic-setup/suggestions/universities")
     suspend fun fetchMatchingUniversities(
@@ -82,25 +90,27 @@ interface ApiService {
         @Query("universityId") universityId: String?
     ): Response<LecturerAcademicSetupResponse>
 
-    @POST("attendance/session/start")
+    @POST("session/start")
     suspend fun startAttendanceSession(@Body request: StartSessionRequest) : Response<StartAttendanceSessionResponse>
 
-    @PATCH("attendance/session/{sessionId}")
+    @PATCH("session/{sessionId}")
     suspend fun updateAttendanceSession(
         @Path("sessionId") sessionId: String,
         @Body request: UpdateSessionRequest
     ) : Response<StartAttendanceSessionResponse>
 
-    @POST("attendance/session/end")
+    @POST("session/end")
     suspend fun endAttendanceSession(@Body request: EndSessionRequest) : Response<Unit>
 
-    @GET("attendance/session/active")
+    @GET("session/active")
     suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
 
     @POST("attendance/resolveFlagged")
     suspend fun resolveFlaggedStudent(
         @Path("studentId") studentId: String
     ) : Response<Unit>
+
+
 
     /**
      *
@@ -113,7 +123,12 @@ interface ApiService {
     @POST("auth/students/register")
     suspend fun studentRegister(@Body request: StudentRegisterRequest): Response<StudentAuthResponse>
 
-    @POST("attendance/verify")
+    @PATCH("account/profile/student")
+    suspend fun updateStudentProfile(
+        @Body request: UpdateStudentProfileRequest
+    ) : Response<GenericResponse>
+
+    @POST("session/verify")
     suspend fun verifyAttendanceSession(@Body request: VerifySessionRequest) : Response<VerifyAttendanceResponse>
 
     @POST("attendance/mark")

@@ -1,6 +1,5 @@
 package com.amos_tech_code.smartattend.ui.feature.start_session
 
-import android.app.Activity
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
 import com.amos_tech_code.smartattend.domain.models.LocationData

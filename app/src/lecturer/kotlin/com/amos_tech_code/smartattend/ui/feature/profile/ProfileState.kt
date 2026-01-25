@@ -9,7 +9,9 @@ data class ProfileState(
     val selectedInstitution: Institution? = null,
     val teachingStats: TeachingStatisticsUiState = TeachingStatisticsUiState(),
     val showEditNameSheet: Boolean = false,
-    val editingName: String = ""
+    val editingName: String = "",
+    val editingNameError: String? = null,
+    val isUpdatingProfile: Boolean = false
 )
 
 data class Institution(

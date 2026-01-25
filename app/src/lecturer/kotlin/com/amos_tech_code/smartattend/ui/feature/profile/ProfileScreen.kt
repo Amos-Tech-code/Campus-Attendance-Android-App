@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.profile
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.School
@@ -154,10 +155,8 @@ fun ProfileScreen(
         // Show the bottom sheet when the state flag is true
         if (state.showEditNameSheet) {
             EditNameBottomSheet(
-                name = state.editingName,
-                onNameChange = { viewModel.onEvent(ProfileUiEvent.OnEditingNameChanged(it)) },
-                onDismiss = { viewModel.onEvent(ProfileUiEvent.HideEditNameSheet) },
-                onSave = { viewModel.onEvent(ProfileUiEvent.SaveEditedName) }
+                state = state,
+                onEvent = { viewModel.onEvent(it) }
             )
         }
 
@@ -490,7 +489,7 @@ private fun TeachingStatisticsSection(
                 StatCardData(
                     "Courses",
                     stats.totalCourses.toString(),
-                    Icons.Default.MenuBook,
+                    Icons.AutoMirrored.Filled.MenuBook,
                     MaterialTheme.colorScheme.primary
                 ),
                 StatCardData(
@@ -797,13 +796,11 @@ private fun ProfileTopAppBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditNameBottomSheet(
-    name: String,
-    onNameChange: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit
+    state: ProfileState,
+    onEvent: (ProfileUiEvent) -> Unit
 ) {
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { onEvent(ProfileUiEvent.HideEditNameSheet) },
         contentWindowInsets = { WindowInsets.ime }
     ) {
         Column(
@@ -819,22 +816,42 @@ private fun EditNameBottomSheet(
             )
 
             SmartAttendTextField(
-                value = name,
-                onValueChange = onNameChange,
+                value = state.editingName,
+                onValueChange = { onEvent(ProfileUiEvent.OnEditingNameChanged(it)) },
                 label = "Full Name",
+                isError = state.editingNameError != null,
+                errorMessage = state.editingNameError
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onDismiss) {
+                TextButton(
+                    enabled = !state.isUpdatingProfile,
+                    onClick = { onEvent(ProfileUiEvent.HideEditNameSheet)}
+                ) {
                     Text("Cancel")
                 }
 
-                Button(onClick = onSave) {
-                    Text("Save")
+                Button(
+                    enabled = !state.isUpdatingProfile,
+                    onClick = { onEvent(ProfileUiEvent.SaveEditedName)}
+                ) {
+                    AnimatedVisibility(visible = state.isUpdatingProfile) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        SmartAttendWidthSpacer(8.dp)
+                        Text("Saving...")
+                    }
+                    AnimatedVisibility(visible = !state.isUpdatingProfile) {
+                        Text(text = "Save")
+                    }
                 }
             }
         }

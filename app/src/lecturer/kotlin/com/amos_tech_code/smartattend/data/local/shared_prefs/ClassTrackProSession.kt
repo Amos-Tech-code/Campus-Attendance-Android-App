@@ -44,6 +44,17 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         }
     }
 
+    override fun saveName(name: String) {
+        prefs.edit { putString(KEY_NAME, name) }
+    }
+
+    override fun saveRegistrationNumber(registrationNo: String) {
+        /**
+         * No saving registrationNumber
+         * Just overriding a method for the interface
+         */
+    }
+
     fun setSetupComplete(isSetupComplete: Boolean) {
         prefs.edit {
             putBoolean(KEY_PROFILE_COMPLETE, isSetupComplete)

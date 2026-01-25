@@ -3,7 +3,7 @@ package com.amos_tech_code.smartattend.data.network
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.ConnectivityObserver
-import com.amos_tech_code.smartattend.domain.response.GenericErrorResponse
+import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
@@ -67,7 +67,7 @@ private fun <T> parseErrorBody(response: Response<T>): String {
         val errorBody = response.errorBody()?.string()
         if (!errorBody.isNullOrBlank()) {
             val errorResponse = Json { ignoreUnknownKeys = true }
-                .decodeFromString(GenericErrorResponse.serializer(), errorBody)
+                .decodeFromString(GenericResponse.serializer(), errorBody)
             errorResponse.message
         } else {
             response.message()
