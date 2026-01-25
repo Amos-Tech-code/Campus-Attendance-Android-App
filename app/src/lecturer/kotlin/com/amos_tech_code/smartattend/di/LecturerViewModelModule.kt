@@ -22,7 +22,7 @@ val lecturerViewModelModule = module {
 
     viewModel { LiveAttendanceViewModel(get(), get()) }
 
-    viewModel { ProfileViewModel(get(), get()) }
+    viewModel { ProfileViewModel(get(), get(), get()) }
 
     viewModel { StartSessionViewModel(get(), get(), get(), get()) }
 
