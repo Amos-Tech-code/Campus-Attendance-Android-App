@@ -1,7 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.profile
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
+import com.amos_tech_code.smartattend.ui.components.ErrorBanner
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
@@ -100,7 +102,7 @@ fun ProfileScreen(
             is ProfileEvent.ShowSuccessMessage -> {
                 Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
             }
-            ProfileEvent.NavigateToEditProfile -> {
+            ProfileEvent.ShowEditProfileSheet -> {
             }
             ProfileEvent.NavigateToInstitutionSetUp -> {
                 navController.navigate(SetUpRoute)
@@ -793,22 +795,34 @@ private fun ProfileTopAppBar(
     }
 }
 
+/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditNameBottomSheet(
     state: ProfileState,
-    onEvent: (ProfileUiEvent) -> Unit
+    onEvent: (ProfileUiEvent) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ModalBottomSheet(
         onDismissRequest = { onEvent(ProfileUiEvent.HideEditNameSheet) },
-        contentWindowInsets = { WindowInsets.ime }
+        contentWindowInsets = { WindowInsets.ime },
+        sheetGesturesEnabled = !state.isUpdatingProfile,
+        properties = ModalBottomSheetProperties(
+            shouldDismissOnBackPress = !state.isUpdatingProfile,
+            shouldDismissOnClickOutside = !state.isUpdatingProfile
+        )
     ) {
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Error Banner
+            ErrorBanner(
+                message = state.bottomSheetErrorMessage,
+                onDismiss = { onEvent(ProfileUiEvent.ClearBottomSheetError) }
+            )
             Text(
                 text = "Edit Your Name",
                 style = MaterialTheme.typography.titleLarge,
@@ -827,7 +841,8 @@ private fun EditNameBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
             ) {
                 TextButton(
                     enabled = !state.isUpdatingProfile,
@@ -835,25 +850,127 @@ private fun EditNameBottomSheet(
                 ) {
                     Text("Cancel")
                 }
-
+                SmartAttendWidthSpacer(16.dp)
                 Button(
                     enabled = !state.isUpdatingProfile,
                     onClick = { onEvent(ProfileUiEvent.SaveEditedName)}
                 ) {
                     AnimatedVisibility(visible = state.isUpdatingProfile) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        SmartAttendWidthSpacer(8.dp)
-                        Text("Saving...")
+                        Row(horizontalArrangement = Arrangement.Center) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            SmartAttendWidthSpacer(8.dp)
+                            Text("Saving...")
+                        }
                     }
                     AnimatedVisibility(visible = !state.isUpdatingProfile) {
                         Text(text = "Save")
                     }
                 }
             }
+        }
+    }
+}
+
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditNameBottomSheet(
+    state: ProfileState,
+    onEvent: (ProfileUiEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ModalBottomSheet(
+        onDismissRequest = {
+            if (!state.isUpdatingProfile) {
+                onEvent(ProfileUiEvent.HideEditNameSheet)
+            }
+        },
+        contentWindowInsets = { WindowInsets.ime },
+        sheetGesturesEnabled = !state.isUpdatingProfile,
+        properties = ModalBottomSheetProperties(
+            shouldDismissOnBackPress = !state.isUpdatingProfile,
+            shouldDismissOnClickOutside = !state.isUpdatingProfile
+        )
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Error Banner
+            ErrorBanner(
+                message = state.bottomSheetErrorMessage,
+                onDismiss = { onEvent(ProfileUiEvent.ClearBottomSheetError) }
+            )
+
+            // Title
+            Text(
+                text = "Edit Your Name",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            SmartAttendHeightSpacer(8.dp)
+
+            // Input Field
+            SmartAttendTextField(
+                value = state.editingName,
+                onValueChange = { onEvent(ProfileUiEvent.OnEditingNameChanged(it)) },
+                label = "Full Name",
+                placeholder = "Enter your full name",
+                isError = state.editingNameError != null,
+                errorMessage = state.editingNameError,
+                enabled = !state.isUpdatingProfile,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            SmartAttendHeightSpacer(8.dp)
+
+            // Buttons Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { onEvent(ProfileUiEvent.HideEditNameSheet) },
+                    enabled = !state.isUpdatingProfile,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    onClick = { onEvent(ProfileUiEvent.SaveEditedName) },
+                    enabled = !state.isUpdatingProfile &&
+                            state.editingNameError == null,
+                    modifier = Modifier
+                ) {
+                    if (state.isUpdatingProfile) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text("Saving...")
+                        }
+                    } else {
+                        Text("Save Changes")
+                    }
+                }
+            }
+
+            SmartAttendHeightSpacer(WindowInsets.ime.getBottom(LocalDensity.current).dp)
         }
     }
 }

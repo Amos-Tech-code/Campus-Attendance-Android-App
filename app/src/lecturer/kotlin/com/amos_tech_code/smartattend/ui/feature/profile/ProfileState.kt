@@ -11,6 +11,7 @@ data class ProfileState(
     val showEditNameSheet: Boolean = false,
     val editingName: String = "",
     val editingNameError: String? = null,
+    val bottomSheetErrorMessage: String? = null,
     val isUpdatingProfile: Boolean = false
 )
 

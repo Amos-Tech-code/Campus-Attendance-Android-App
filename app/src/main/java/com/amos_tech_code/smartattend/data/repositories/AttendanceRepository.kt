@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.LiveAttendanceUpdate
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
+import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
@@ -59,9 +60,9 @@ class AttendanceRepository(
             .flowOn(Dispatchers.IO)
     }
 
-    suspend fun resolveFlaggedStudent(studentId: String) : ApiResult<Unit> {
+    suspend fun resolveFlaggedStudent(request: RemoveAttendanceRecordRequest) : ApiResult<Unit> {
         return safeApiCall {
-            apiService.resolveFlaggedStudent(studentId)
+            apiService.resolveFlaggedStudent(request)
         }
     }
 

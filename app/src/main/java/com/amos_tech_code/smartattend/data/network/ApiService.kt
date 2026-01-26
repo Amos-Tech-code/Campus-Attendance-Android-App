@@ -4,6 +4,7 @@ import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
+import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
@@ -13,6 +14,7 @@ import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
+import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
 import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
@@ -26,6 +28,7 @@ import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -105,12 +108,13 @@ interface ApiService {
     @GET("session/active")
     suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
 
-    @POST("attendance/resolveFlagged")
+    @GET("session/history")
+    suspend fun getSessionsHistory() : Response<AttendanceSessionHistoryResponse>
+
+    @DELETE("attendance-manage/record")
     suspend fun resolveFlaggedStudent(
-        @Path("studentId") studentId: String
+        @Body request: RemoveAttendanceRecordRequest
     ) : Response<Unit>
-
-
 
     /**
      *

@@ -1,9 +1,13 @@
 package com.amos_tech_code.smartattend.data.local.shared_prefs
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.ui.feature.settings.SettingsState
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class ClassTrackProSession(context: Context) : SessionProvider {
 
@@ -93,6 +97,23 @@ class ClassTrackProSession(context: Context) : SessionProvider {
     fun getName(): String? = prefs.getString(KEY_NAME, null)
     fun getEmail(): String? = prefs.getString(KEY_EMAIL, null)
     fun isProfileComplete(): Boolean = prefs.getBoolean(KEY_PROFILE_COMPLETE, false)
+
+    fun getNameFlow(): Flow<String> = callbackFlow {
+        // Emit current value immediately
+        trySend(prefs.getString(KEY_NAME, "") ?: "")
+
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+                if (key == KEY_NAME) {
+                    trySend(sharedPrefs.getString(KEY_NAME, "") ?: "")
+                }
+            }
+
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+
+        awaitClose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
 
     // Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null

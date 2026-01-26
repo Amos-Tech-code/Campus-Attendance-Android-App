@@ -13,6 +13,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,6 +33,7 @@ class ProfileViewModel(
 
     init {
         loadProfileData()
+        observeLecturerName()
     }
 
     fun onEvent(event: ProfileUiEvent) {
@@ -65,6 +68,9 @@ class ProfileViewModel(
                         editingName = it.lecturer.name
                     )
                 }
+            }
+            ProfileUiEvent.ClearBottomSheetError -> {
+                _state.update { it.copy(bottomSheetErrorMessage = null) }
             }
             ProfileUiEvent.HideEditNameSheet -> {
                 _state.update { it.copy(showEditNameSheet = false) }
@@ -174,47 +180,48 @@ class ProfileViewModel(
 
         _state.update {
             it.copy(
-                editingName = newName.trim(),
+                editingName = newName,
                 editingNameError = error
             )
         }
     }
 
     private fun updateProfile() {
-        val newName = state.value.editingName
-        if (newName.isBlank()) {
-            _event.trySend(ProfileEvent.ShowErrorMessage("Name cannot be empty"))
+        if (state.value.editingNameError != null) {
+            // Don't proceed if there's an error
             return
         }
-
-        try {
-            viewModelScope.launch {
-                _state.update { it.copy(isUpdatingProfile = true) }
+        viewModelScope.launch {
+            _state.update { it.copy(isUpdatingProfile = true) }
+            try {
+                val newName = state.value.editingName.trim()
                 val result = accountRepository.updateLecturerProfile(UpdateLecturerProfileRequest(newName))
-                when(result) {
+                when (result) {
                     is ApiResult.Success -> {
-                        _state.update { it.copy(lecturer = it.lecturer.copy(name = newName), showEditNameSheet = false) }
+                        _state.update {
+                            it.copy(
+                                lecturer = it.lecturer.copy(name = newName),
+                                showEditNameSheet = false
+                            )
+                        }
                         _event.trySend(ProfileEvent.ShowSuccessMessage(result.data.message))
                     }
+
                     is ApiResult.Failure -> {
-                        when(val error = result.error) {
-                            is ApiError.NetworkError -> {
-                                ProfileEvent.ShowErrorMessage(error.exception.message ?: "Failed to update profile")
-                            }
-                            is ApiError.HttpError -> {
-                                ProfileEvent.ShowErrorMessage(error.message)
-                            }
-                            is ApiError.UnknownError -> {
-                                ProfileEvent.ShowErrorMessage("Failed to update profile")
-                            }
+                        val errorMessage = when(val error = result.error) {
+                            is ApiError.NetworkError ->
+                                error.exception.message ?: "Network error occurred"
+                            is ApiError.HttpError -> error.message
+                            is ApiError.UnknownError -> "Failed to update profile"
                         }
+                        _state.update { it.copy(bottomSheetErrorMessage = errorMessage) }
                     }
                 }
+            } catch (e: Exception) {
+                _state.update { it.copy(bottomSheetErrorMessage = "Failed to update profile") }
+            } finally {
+                _state.update { it.copy(isUpdatingProfile = false) }
             }
-        } catch (e: Exception) {
-            _event.trySend(ProfileEvent.ShowErrorMessage("Failed to update profile"))
-        } finally {
-            _state.update { it.copy(isUpdatingProfile = false) }
         }
     }
 
@@ -231,14 +238,25 @@ class ProfileViewModel(
         }
     }
 
-    // Mock data loaders
     private fun loadLecturerData(): Lecturer {
-
         return Lecturer(
             name = session.getName() ?: "",
-            email =  session.getEmail() ?: "",
+            email = session.getEmail() ?: "",
         )
     }
+
+    private fun observeLecturerName() {
+        session.getNameFlow()
+            .onEach { name ->
+                _state.update { current ->
+                    current.copy(
+                        lecturer = current.lecturer.copy(name = name)
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
 
     private suspend fun loadInstitutions(): List<University> {
         return academicSetUpRepository.getUniversities()

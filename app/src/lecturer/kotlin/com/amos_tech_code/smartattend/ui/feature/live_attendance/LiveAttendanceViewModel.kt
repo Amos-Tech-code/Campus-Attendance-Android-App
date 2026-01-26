@@ -6,6 +6,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.LiveAttendanceUpdate
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
+import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.ui.feature.start_session.StartSessionViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -156,7 +157,11 @@ class LiveAttendanceViewModel(
     fun resolveFlag(studentId: String, studentName: String) {
         viewModelScope.launch {
             try {
-                when (val result = attendanceRepository.resolveFlaggedStudent(studentId)) {
+                val request = RemoveAttendanceRecordRequest(
+                    sessionId = _state.value.session?.sessionId ?: "",
+                    studentId = studentId
+                )
+                when (val result = attendanceRepository.resolveFlaggedStudent(request)) {
                     is ApiResult.Success -> {
                         _event.send(LiveAttendanceEvent.ShowSuccessMessage("Flag resolved successfully"))
                     }
