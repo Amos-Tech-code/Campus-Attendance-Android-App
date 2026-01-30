@@ -9,18 +9,18 @@ sealed class LiveAttendanceEvent {
 }
 
 // UI Actions
-sealed class LiveAttendanceAction {
-    object LoadSession : LiveAttendanceAction()
-    object Reconnect : LiveAttendanceAction()
-    object ShowQrCode : LiveAttendanceAction()
-    object HideQrCode : LiveAttendanceAction()
-    data class EndSession(val sessionId: String) : LiveAttendanceAction()
-    data class ResolveFlag(val studentId: String, val name: String) : LiveAttendanceAction()
-    object RefreshData : LiveAttendanceAction()
-    data class ApplyFilter(val programmeId: String?) : LiveAttendanceAction()
-    data class ToggleFlaggedFilter(val enabled: Boolean) : LiveAttendanceAction()
-    data class ApplySort(val sortBy: SortBy) : LiveAttendanceAction()
-    data class ToggleSortOrder(val sortOrder: SortOrder) : LiveAttendanceAction()
-    object ClearFilters : LiveAttendanceAction()
-    object ClearSort : LiveAttendanceAction()
+sealed class LiveAttendanceUIEvent {
+    //object LoadSession : LiveAttendanceUIEvent()
+    object Reconnect : LiveAttendanceUIEvent()
+    object ShowSessionDetails : LiveAttendanceUIEvent()
+    object HideSessionDetails : LiveAttendanceUIEvent()
+    data class EndSession(val sessionId: String) : LiveAttendanceUIEvent()
+    data class RemoveFlaggedStudent(val studentId: String, val name: String) : LiveAttendanceUIEvent()
+    object RefreshData : LiveAttendanceUIEvent()
+    data class ApplyFilter(val programmeId: String?) : LiveAttendanceUIEvent()
+    data class ToggleFlaggedFilter(val enabled: Boolean) : LiveAttendanceUIEvent()
+    data class ApplySort(val sortBy: SortBy) : LiveAttendanceUIEvent()
+    data class ToggleSortOrder(val sortOrder: SortOrder) : LiveAttendanceUIEvent()
+    object ClearFilters : LiveAttendanceUIEvent()
+    object ClearSort : LiveAttendanceUIEvent()
 }

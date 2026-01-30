@@ -11,6 +11,7 @@ import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordReque
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
+import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
@@ -60,9 +61,15 @@ class AttendanceRepository(
             .flowOn(Dispatchers.IO)
     }
 
-    suspend fun resolveFlaggedStudent(request: RemoveAttendanceRecordRequest) : ApiResult<Unit> {
+    suspend fun removeFlaggedStudent(request: RemoveAttendanceRecordRequest) : ApiResult<Unit> {
         return safeApiCall {
-            apiService.resolveFlaggedStudent(request)
+            apiService.removeFlaggedStudent(request)
+        }
+    }
+
+    suspend fun getSessionsHistory() : ApiResult<AttendanceSessionHistoryResponse> {
+        return safeApiCall {
+            apiService.getSessionsHistory()
         }
     }
 

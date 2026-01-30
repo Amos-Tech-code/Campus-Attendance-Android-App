@@ -45,6 +45,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -53,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +81,7 @@ import com.amos_tech_code.smartattend.ui.navigation.SettingsRoute
 import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class)
@@ -90,6 +94,8 @@ fun ProfileScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
@@ -100,7 +106,7 @@ fun ProfileScreen(
                 Toast.makeText(context, "Active institution updated", Toast.LENGTH_SHORT).show()
             }
             is ProfileEvent.ShowSuccessMessage -> {
-                Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                scope.launch { snackbarHostState.showSnackbar(event.message) }
             }
             ProfileEvent.ShowEditProfileSheet -> {
             }
@@ -121,6 +127,7 @@ fun ProfileScreen(
                 viewModel.logOut()
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             BottomNavigation(navController)
         }
@@ -678,10 +685,10 @@ private fun QuickActionsGrid(
 ) {
     // Define the list of actions
     val actions = listOf(
-        QuickActionItem("Notifications", Icons.Default.Notifications, onNavigateToNotifications),
-        QuickActionItem("Settings", Icons.Default.Settings, onNavigateToSettings),
         QuickActionItem("Edit Profile", Icons.Default.Edit, onEditProfile),
-        QuickActionItem("Export Data", Icons.Default.Download, onExportData)
+        QuickActionItem("Export Data", Icons.Default.Download, onExportData),
+        QuickActionItem("Notifications", Icons.Default.Notifications, onNavigateToNotifications),
+        QuickActionItem("Settings", Icons.Default.Settings, onNavigateToSettings)
     )
 
     Column(
@@ -795,87 +802,6 @@ private fun ProfileTopAppBar(
     }
 }
 
-/*
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditNameBottomSheet(
-    state: ProfileState,
-    onEvent: (ProfileUiEvent) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ModalBottomSheet(
-        onDismissRequest = { onEvent(ProfileUiEvent.HideEditNameSheet) },
-        contentWindowInsets = { WindowInsets.ime },
-        sheetGesturesEnabled = !state.isUpdatingProfile,
-        properties = ModalBottomSheetProperties(
-            shouldDismissOnBackPress = !state.isUpdatingProfile,
-            shouldDismissOnClickOutside = !state.isUpdatingProfile
-        )
-    ) {
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Error Banner
-            ErrorBanner(
-                message = state.bottomSheetErrorMessage,
-                onDismiss = { onEvent(ProfileUiEvent.ClearBottomSheetError) }
-            )
-            Text(
-                text = "Edit Your Name",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            SmartAttendTextField(
-                value = state.editingName,
-                onValueChange = { onEvent(ProfileUiEvent.OnEditingNameChanged(it)) },
-                label = "Full Name",
-                isError = state.editingNameError != null,
-                errorMessage = state.editingNameError
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(
-                    enabled = !state.isUpdatingProfile,
-                    onClick = { onEvent(ProfileUiEvent.HideEditNameSheet)}
-                ) {
-                    Text("Cancel")
-                }
-                SmartAttendWidthSpacer(16.dp)
-                Button(
-                    enabled = !state.isUpdatingProfile,
-                    onClick = { onEvent(ProfileUiEvent.SaveEditedName)}
-                ) {
-                    AnimatedVisibility(visible = state.isUpdatingProfile) {
-                        Row(horizontalArrangement = Arrangement.Center) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            SmartAttendWidthSpacer(8.dp)
-                            Text("Saving...")
-                        }
-                    }
-                    AnimatedVisibility(visible = !state.isUpdatingProfile) {
-                        Text(text = "Save")
-                    }
-                }
-            }
-        }
-    }
-}
-
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditNameBottomSheet(
@@ -970,7 +896,6 @@ private fun EditNameBottomSheet(
                 }
             }
 
-            SmartAttendHeightSpacer(WindowInsets.ime.getBottom(LocalDensity.current).dp)
         }
     }
 }

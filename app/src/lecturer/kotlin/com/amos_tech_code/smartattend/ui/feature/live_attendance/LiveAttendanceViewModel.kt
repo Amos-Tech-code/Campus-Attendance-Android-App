@@ -40,21 +40,20 @@ class LiveAttendanceViewModel(
         loadActiveSession()
     }
 
-    fun onAction(action: LiveAttendanceAction) {
+    fun onAction(action: LiveAttendanceUIEvent) {
         when (action) {
-            is LiveAttendanceAction.LoadSession -> loadActiveSession()
-            is LiveAttendanceAction.Reconnect -> reconnect()
-            is LiveAttendanceAction.ShowQrCode -> showQrCodeState()
-            is LiveAttendanceAction.HideQrCode -> hideQrCodeState()
-            is LiveAttendanceAction.EndSession -> endSession(action.sessionId)
-            is LiveAttendanceAction.ResolveFlag -> resolveFlag(action.studentId, action.name)
-            is LiveAttendanceAction.RefreshData -> refreshData()
-            is LiveAttendanceAction.ApplyFilter -> applyFilter(action.programmeId)
-            is LiveAttendanceAction.ToggleFlaggedFilter -> toggleFlaggedFilter(action.enabled)
-            is LiveAttendanceAction.ApplySort -> applySort(action.sortBy)
-            is LiveAttendanceAction.ToggleSortOrder -> toggleSortOrder(action.sortOrder)
-            is LiveAttendanceAction.ClearFilters -> clearFilters()
-            is LiveAttendanceAction.ClearSort -> clearSort()
+            is LiveAttendanceUIEvent.Reconnect -> reconnect()
+            is LiveAttendanceUIEvent.ShowSessionDetails -> showSessionDetails()
+            is LiveAttendanceUIEvent.HideSessionDetails -> hideSessionDetails()
+            is LiveAttendanceUIEvent.EndSession -> endSession(action.sessionId)
+            is LiveAttendanceUIEvent.RemoveFlaggedStudent -> removeFlaggedStudent(action.studentId, action.name)
+            is LiveAttendanceUIEvent.RefreshData -> refreshData()
+            is LiveAttendanceUIEvent.ApplyFilter -> applyFilter(action.programmeId)
+            is LiveAttendanceUIEvent.ToggleFlaggedFilter -> toggleFlaggedFilter(action.enabled)
+            is LiveAttendanceUIEvent.ApplySort -> applySort(action.sortBy)
+            is LiveAttendanceUIEvent.ToggleSortOrder -> toggleSortOrder(action.sortOrder)
+            is LiveAttendanceUIEvent.ClearFilters -> clearFilters()
+            is LiveAttendanceUIEvent.ClearSort -> clearSort()
         }
     }
 
@@ -123,14 +122,14 @@ class LiveAttendanceViewModel(
                                 state.updateFromAttendanceEvent(update.event)
                             }
                             // Optional: Play notification sound/vibration
-                            notifyNewAttendance()
+                            //notifyNewAttendance()
                         }
                     }
                 }
         }
     }
 
-    fun endSession(sessionId: String) {
+    private fun endSession(sessionId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
@@ -154,16 +153,16 @@ class LiveAttendanceViewModel(
         }
     }
 
-    fun resolveFlag(studentId: String, studentName: String) {
+    private fun removeFlaggedStudent(studentId: String, studentName: String) {
         viewModelScope.launch {
             try {
                 val request = RemoveAttendanceRecordRequest(
                     sessionId = _state.value.session?.sessionId ?: "",
                     studentId = studentId
                 )
-                when (val result = attendanceRepository.resolveFlaggedStudent(request)) {
+                when (val result = attendanceRepository.removeFlaggedStudent(request)) {
                     is ApiResult.Success -> {
-                        _event.send(LiveAttendanceEvent.ShowSuccessMessage("Flag resolved successfully"))
+                        _event.send(LiveAttendanceEvent.ShowSuccessMessage("Student $studentName removed successfully"))
                     }
                     is ApiResult.Failure -> {
                         handleApiError(result.error)
@@ -229,14 +228,14 @@ class LiveAttendanceViewModel(
         }
     }
 
-    fun reconnect() {
+    private fun reconnect() {
         _state.value.session?.sessionId?.let { sessionId ->
             _state.update { it.copy(connectionState = ConnectionState.CONNECTING) }
             startSSEConnection(sessionId)
         }
     }
 
-    fun refreshData() {
+    private fun refreshData() {
         loadActiveSession()
     }
 
@@ -244,37 +243,28 @@ class LiveAttendanceViewModel(
         val message = when (error) {
             is ApiError.NetworkError -> "Network error: ${error.exception.message}"
             is ApiError.HttpError -> {
-                if (error.statusCode == 404) {
-                    //_event.trySend(LiveAttendanceEvent.NoActiveSession)
-                    "No active session found"
-                } else {
-                    "HTTP error ${error.statusCode}: ${error.message}"
-                }
+                "Error ${error.statusCode}: ${error.message}"
             }
             is ApiError.UnknownError -> "Unknown error: ${error.throwable.message}"
         }
         _event.trySend(LiveAttendanceEvent.ShowErrorMessage(message))
     }
 
-    private fun notifyNewAttendance() {
-        // Optional: Implement notification sound/vibration
-    }
-
-    private fun getCurrentTime(): String {
-        return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-    }
-
     // Public methods
-    fun showQrCodeState() {
+    private fun showSessionDetails() {
         if (_state.value.session != null) {
-            _state.update { it.copy(showQrCode = true) }
+            _state.update { it.copy(showSessionDetails = true) }
         } else {
             _event.trySend(LiveAttendanceEvent.ShowErrorMessage("Session not found"))
         }
     }
 
-    fun hideQrCodeState() {
-        _state.update { it.copy(showQrCode = false) }
+    private fun hideSessionDetails() {
+        _state.update { it.copy(showSessionDetails = false) }
+    }
+
+    private fun getCurrentTime(): String {
+        return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
     }
 
     override fun onCleared() {

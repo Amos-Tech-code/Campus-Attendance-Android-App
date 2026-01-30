@@ -265,7 +265,7 @@ fun LiveAttendanceScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !state.showQrCode || scrollBehavior.state.collapsedFraction < 0.5f,
+                visible = !state.showSessionDetails || scrollBehavior.state.collapsedFraction < 0.5f,
                 enter = slideInHorizontally { it / 2 } + fadeIn(),
                 exit = slideOutHorizontally { it / 2 } + fadeOut()
             ) {
@@ -273,11 +273,11 @@ fun LiveAttendanceScreen(
                     items = speedDialItems,
                     onItemClick = { item ->
                         when (item.id) {
-                            "refresh" -> viewModel.refreshData()
+                            "refresh" -> viewModel.onAction(LiveAttendanceUIEvent.RefreshData)
                             "filter" -> showFiltersMenu = true
                             "sort" -> showSortMenu = true
                             "end_session" -> showConfirmEndSessionDialog = true
-                            "session_details" -> viewModel.showQrCodeState()
+                            "session_details" -> viewModel.onAction(LiveAttendanceUIEvent.ShowSessionDetails)
                         }
                     }
                 )
@@ -303,7 +303,7 @@ fun LiveAttendanceScreen(
                         hasActiveFilters = showFilterIndicator,
                         filterDescription = filterDescription,
                         onClearFilters = {
-                            viewModel.onAction(LiveAttendanceAction.ClearFilters)
+                            viewModel.onAction(LiveAttendanceUIEvent.ClearFilters)
                         },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
@@ -329,8 +329,8 @@ fun LiveAttendanceScreen(
                                         "No non-flagged students match your filters"
                                     else "Attendance will appear here when students start marking",
                                     showClearFilters = showFilterIndicator,
-                                    onClearFilters = { viewModel.onAction(LiveAttendanceAction.ClearFilters) },
-                                    onRefresh = { viewModel.refreshData() },
+                                    onClearFilters = { viewModel.onAction(LiveAttendanceUIEvent.ClearFilters) },
+                                    onRefresh = { viewModel.onAction(LiveAttendanceUIEvent.RefreshData) },
                                     modifier = Modifier.fillParentMaxSize()
                                 )
                             }
@@ -354,8 +354,8 @@ fun LiveAttendanceScreen(
                                         "No flagged students match your filters"
                                     else "No suspicious attendance records yet",
                                     showClearFilters = showFilterIndicator,
-                                    onClearFilters = { viewModel.onAction(LiveAttendanceAction.ClearFilters) },
-                                    onRefresh = { viewModel.refreshData() },
+                                    onClearFilters = { viewModel.onAction(LiveAttendanceUIEvent.ClearFilters) },
+                                    onRefresh = { viewModel.onAction(LiveAttendanceUIEvent.RefreshData) },
                                     modifier = Modifier.fillParentMaxSize()
                                 )
                             }
@@ -363,7 +363,7 @@ fun LiveAttendanceScreen(
                             items(state.flaggedStudents, key = { "flagged-${it.student.id}" }) { student ->
                                 FlaggedStudentCard(
                                     student = student,
-                                    onResolve = { viewModel.resolveFlag(student.student.id, student.student.name) },
+                                    onRemove = { viewModel.onAction(LiveAttendanceUIEvent.RemoveFlaggedStudent(student.student.id, student.student.name)) },
                                     modifier = Modifier
                                         .padding(horizontal = 16.dp, vertical = 4.dp)
                                 )
@@ -383,15 +383,24 @@ fun LiveAttendanceScreen(
             ) {
                 ConnectionStatusBanner(
                     connectionState = state.connectionState,
-                    onRetry = { viewModel.reconnect() }
+                    onRetry = { viewModel.onAction(LiveAttendanceUIEvent.Reconnect) }
                 )
             }
+        }
+
+        // Loading Overlay
+        AnimatedVisibility(
+            visible = state.isLoading,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            LoadingOverlay()
         }
     }
 
     // QR Code Overlay
     AnimatedVisibility(
-        visible = state.showQrCode,
+        visible = state.showSessionDetails,
         enter = fadeIn() + scaleIn(),
         exit = fadeOut() + scaleOut()
     ) {
@@ -400,21 +409,12 @@ fun LiveAttendanceScreen(
                 scope = scope,
                 sessionResponse = session,
                 shouldShowSessionSuccess = false,
-                onLiveAttendanceClick = { viewModel.hideQrCodeState() },
+                onLiveAttendanceClick = { viewModel.onAction(LiveAttendanceUIEvent.HideSessionDetails) },
                 onBackToHome = {
-                    viewModel.hideQrCodeState()
+                    viewModel.onAction(LiveAttendanceUIEvent.HideSessionDetails)
                 }
             )
         }
-    }
-
-    // Loading Overlay
-    AnimatedVisibility(
-        visible = state.isLoading,
-        enter = fadeIn(),
-        exit = fadeOut()
-    ) {
-        LoadingOverlay()
     }
 
     // End Session Confirmation Dialog
@@ -423,7 +423,7 @@ fun LiveAttendanceScreen(
             onDismiss = { showConfirmEndSessionDialog = false },
             onConfirm = {
                 showConfirmEndSessionDialog = false
-                state.session?.sessionId?.let { viewModel.endSession(it) }
+                state.session?.sessionId?.let { viewModel.onAction(LiveAttendanceUIEvent.EndSession(it)) }
             }
         )
     }
@@ -434,13 +434,13 @@ fun LiveAttendanceScreen(
             state = state,
             onDismiss = { showFiltersMenu = false },
             onApplyFilter = { programmeId ->
-                viewModel.onAction(LiveAttendanceAction.ApplyFilter(programmeId))
+                viewModel.onAction(LiveAttendanceUIEvent.ApplyFilter(programmeId))
             },
             onToggleFlaggedOnly = { enabled ->
-                viewModel.onAction(LiveAttendanceAction.ToggleFlaggedFilter(enabled))
+                viewModel.onAction(LiveAttendanceUIEvent.ToggleFlaggedFilter(enabled))
             },
             onClearFilters = {
-                viewModel.onAction(LiveAttendanceAction.ClearFilters)
+                viewModel.onAction(LiveAttendanceUIEvent.ClearFilters)
             }
         )
     }
@@ -451,13 +451,13 @@ fun LiveAttendanceScreen(
             state = state,
             onDismiss = { showSortMenu = false },
             onApplySort = { sortBy ->
-                viewModel.onAction(LiveAttendanceAction.ApplySort(sortBy))
+                viewModel.onAction(LiveAttendanceUIEvent.ApplySort(sortBy))
             },
             onToggleSortOrder = { sortOrder ->
-                viewModel.onAction(LiveAttendanceAction.ToggleSortOrder(sortOrder))
+                viewModel.onAction(LiveAttendanceUIEvent.ToggleSortOrder(sortOrder))
             },
             onClearSort = {
-                viewModel.onAction(LiveAttendanceAction.ClearSort)
+                viewModel.onAction(LiveAttendanceUIEvent.ClearSort)
             }
         )
     }
@@ -983,7 +983,7 @@ private fun StudentAttendanceCard(
 @Composable
 private fun FlaggedStudentCard(
     student: StudentAttendance,
-    onResolve: () -> Unit,
+    onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1110,13 +1110,13 @@ private fun FlaggedStudentCard(
                         )
 
                         Button(
-                            onClick = onResolve,
+                            onClick = onRemove,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.attendanceColors.flagged,
                                 contentColor = MaterialTheme.colorScheme.onError
                             )
                         ) {
-                            Text("Resolve")
+                            Text("Remove")
                         }
 
                     }

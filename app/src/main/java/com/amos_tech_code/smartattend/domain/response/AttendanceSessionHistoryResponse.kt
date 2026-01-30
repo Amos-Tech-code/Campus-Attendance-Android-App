@@ -20,7 +20,6 @@ data class AttendanceSessionHistoryDto(
     val unitName: String,
     val sessionType: String,
     val attendanceMethod: AttendanceMethod,
-
     val status: AttendanceSessionStatus,
     val startedAt: Long,
     val endedAt: Long?

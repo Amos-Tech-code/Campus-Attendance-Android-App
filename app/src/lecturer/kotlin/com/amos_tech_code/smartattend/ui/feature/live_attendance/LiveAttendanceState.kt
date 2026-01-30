@@ -21,7 +21,7 @@ data class LiveAttendanceState(
     val allStudents: List<StudentAttendance> = emptyList(), // Combined list of all attended students
 
     // UI State
-    val showQrCode: Boolean = false,
+    val showSessionDetails: Boolean = false,
     val isLoading: Boolean = false,
     val isConnected: Boolean = true,
     val connectionState: ConnectionState = ConnectionState.CONNECTED,
@@ -348,6 +348,6 @@ fun getCurrentTime(): String {
     return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
 }
 
-// A tip I got from my backend how suspiciousReason string is assigned
+// A tip from my backend how suspiciousReason string is assigned
 //flag types are in an enum {LOCATION_MISMATCH, OUTSIDE_SCHEDULE_WINDOW }
 //suspiciousReason = flags.joinToString { it.type.name }
