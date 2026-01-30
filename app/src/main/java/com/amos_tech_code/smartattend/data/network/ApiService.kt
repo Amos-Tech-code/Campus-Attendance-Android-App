@@ -28,7 +28,6 @@ import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import retrofit2.Response
 import retrofit2.http.Body
-import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PATCH
