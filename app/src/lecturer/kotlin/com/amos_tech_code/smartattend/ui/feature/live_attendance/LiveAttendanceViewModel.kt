@@ -6,6 +6,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.LiveAttendanceUpdate
 import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
+import com.amos_tech_code.smartattend.data.repositories.SessionRepository
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.ui.feature.start_session.StartSessionViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,6 +26,7 @@ import java.util.Locale
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveAttendanceViewModel(
     private val attendanceRepository: AttendanceRepository,
+    private val sessionRepository: SessionRepository,
     private val startSessionViewModel: StartSessionViewModel
 ) : ViewModel() {
 
@@ -61,7 +63,7 @@ class LiveAttendanceViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                val result = attendanceRepository.getActiveSession()
+                val result = sessionRepository.getActiveSession()
                 when (result) {
                     is ApiResult.Success -> {
                         val session = result.data
@@ -133,7 +135,7 @@ class LiveAttendanceViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                val result = attendanceRepository.endActiveSession(sessionId)
+                val result = sessionRepository.endActiveSession(sessionId)
                 when (result) {
                     is ApiResult.Success -> {
                         sseJob?.cancel()

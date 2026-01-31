@@ -109,7 +109,10 @@ interface ApiService {
     suspend fun getActiveSession() : Response<StartAttendanceSessionResponse>
 
     @GET("session/history")
-    suspend fun getSessionsHistory() : Response<AttendanceSessionHistoryResponse>
+    suspend fun getSessionsHistory(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 10,
+    ) : Response<AttendanceSessionHistoryResponse>
 
     /*@DELETE("attendance-manage/record/{sessionId}/{studentId}")
     suspend fun removeFlaggedStudent(

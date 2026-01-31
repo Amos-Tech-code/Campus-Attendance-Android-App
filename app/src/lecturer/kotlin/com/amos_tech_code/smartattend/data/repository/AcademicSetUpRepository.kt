@@ -29,13 +29,14 @@ import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 import com.amos_tech_code.smartattend.models.TeachingStatistics
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class AcademicSetUpRepository(
     private val apiService: ApiService,
     private val session: ClassTrackProSession,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val lecturerAcademicsDao: LecturerAcademicsDao
 ) {
     /**

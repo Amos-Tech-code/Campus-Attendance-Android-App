@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
-import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
+import com.amos_tech_code.smartattend.data.repositories.SessionRepository
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.domain.models.Programme
 import com.amos_tech_code.smartattend.domain.models.UnitModel
@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 class StartSessionViewModel(
     private val session: ClassTrackProSession,
     val locationService: LocationService,
-    private val attendanceRepository: AttendanceRepository,
+    private val sessionRepository: SessionRepository,
     private val academicSetUpRepository: AcademicSetUpRepository
 ) : ViewModel() {
 
@@ -188,7 +188,7 @@ class StartSessionViewModel(
                     durationMinutes = state.durationMinutes
                 )
 
-                val result = attendanceRepository.startAttendanceSession(request)
+                val result = sessionRepository.startAttendanceSession(request)
 
                 when (result) {
                     is ApiResult.Failure -> {

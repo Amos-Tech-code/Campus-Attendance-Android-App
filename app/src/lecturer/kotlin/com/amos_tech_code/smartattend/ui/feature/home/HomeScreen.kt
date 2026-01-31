@@ -66,6 +66,7 @@ import com.amos_tech_code.smartattend.ui.feature.setup.ActivityType
 import com.amos_tech_code.smartattend.ui.feature.setup.LecturerActivity
 import com.amos_tech_code.smartattend.ui.feature.setup.LecturerSession
 import com.amos_tech_code.smartattend.ui.feature.setup.SessionStatus
+import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
 import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
@@ -197,7 +198,7 @@ fun HomeScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        //navController.navigate("session_history")
+                                        navController.navigate(AttendanceHistoryRoute)
                                     }
                                 )
 

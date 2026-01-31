@@ -4,6 +4,7 @@ import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.live_attendance.LiveAttendanceViewModel
 import com.amos_tech_code.smartattend.ui.feature.notification.NotificationViewModel
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileViewModel
+import com.amos_tech_code.smartattend.ui.feature.session_history.SessionHistoryViewModel
 import com.amos_tech_code.smartattend.ui.feature.settings.SettingsViewModel
 import com.amos_tech_code.smartattend.ui.feature.setup.SetupViewModel
 import com.amos_tech_code.smartattend.ui.feature.signIn.SignInViewModel
@@ -20,17 +21,18 @@ val lecturerViewModelModule = module {
 
     viewModel { HomeViewModel(get()) }
 
-    viewModel { LiveAttendanceViewModel(get(), get()) }
+    viewModel { LiveAttendanceViewModel(get(), get(), get()) }
 
     viewModel { ProfileViewModel(get(), get(), get()) }
 
     viewModel { StartSessionViewModel(get(), get(), get(), get()) }
+
+    viewModel { SessionHistoryViewModel(get()) }
 
     viewModel { StudentLookupViewModel() }
 
     viewModel { NotificationViewModel() }
 
     viewModel { SettingsViewModel(get()) }
-
 
 }

@@ -147,10 +147,14 @@ dependencies {
     // ZXing for additional QR processing
     //implementation("com.google.zxing:core:3.5.2")
 
-    // KSP
-    ksp(libs.androidx.room.compiler)
     // Room
+    ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
+
+    // Paging 3
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
 
 }

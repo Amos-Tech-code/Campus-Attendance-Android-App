@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.local.room_db.ClassTrackProDatabase
+import com.amos_tech_code.smartattend.data.local.room_db.migrations.MIGRATION_1_2
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -17,22 +18,23 @@ val lecturerDataModule  = module {
 
     single<SessionProvider> { get<ClassTrackProSession>() }
 
-    // Provide Coroutine Dispatchers
-    single<CoroutineDispatcher> { Dispatchers.IO }
-
     // Provide Room Database
     single {
         Room.databaseBuilder(
             get<Application>(),
             ClassTrackProDatabase::class.java,
-            "lecturer_academics_db"
+            "class_track_lecturer_db"
         )
-            .fallbackToDestructiveMigration(true) // optional, use only for development
+            //.fallbackToDestructiveMigration(false) // optional, use only for development
+            .fallbackToDestructiveMigrationOnDowngrade(true)
+            //.addMigrations(MIGRATION_1_2) // Add migration
             .build()
     }
 
     // Provide DAO
     single { get<ClassTrackProDatabase>().lecturerAcademicsDao() }
+
+    single { get<ClassTrackProDatabase>().attendanceHistoryDao() }
 
     // Provide Repository
     single { AcademicSetUpRepository(get(), get(), get(), get()) }

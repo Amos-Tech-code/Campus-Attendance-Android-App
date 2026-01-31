@@ -28,33 +28,6 @@ class AttendanceRepository(
      * Lecture Attendance Implementation
      *
      */
-    suspend fun startAttendanceSession(request: StartSessionRequest) : ApiResult<StartAttendanceSessionResponse> {
-        return safeApiCall {
-            apiService.startAttendanceSession(request)
-        }
-    }
-
-    suspend fun updateAttendanceSession(sessionId: String, request: UpdateSessionRequest) : ApiResult<StartAttendanceSessionResponse> {
-        return safeApiCall {
-            apiService.updateAttendanceSession(sessionId, request)
-        }
-    }
-
-    suspend fun getActiveSession() : ApiResult<StartAttendanceSessionResponse> {
-        return safeApiCall {
-            apiService.getActiveSession()
-        }
-    }
-
-    suspend fun endActiveSession(sessionId: String) : ApiResult<Unit> {
-        return safeApiCall {
-            apiService.endAttendanceSession(
-                EndSessionRequest(sessionId)
-            )
-        }
-
-    }
-
     fun observeLiveAttendance(sessionId: String): Flow<LiveAttendanceUpdate> {
         return sseClient
             .connect(sessionId)
@@ -67,21 +40,10 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun getSessionsHistory() : ApiResult<AttendanceSessionHistoryResponse> {
-        return safeApiCall {
-            apiService.getSessionsHistory()
-        }
-    }
 
     /**
      * Student Attendance Implementation
      */
-
-    suspend fun verifyAttendanceSession(request: VerifySessionRequest) : ApiResult<VerifyAttendanceResponse> {
-        return safeApiCall {
-            apiService.verifyAttendanceSession(request)
-        }
-    }
 
     suspend fun markAttendance(request: MarkAttendanceRequest) : ApiResult<MarkAttendanceResponse> {
         return safeApiCall {
