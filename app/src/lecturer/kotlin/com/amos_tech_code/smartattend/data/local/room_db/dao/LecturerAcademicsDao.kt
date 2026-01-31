@@ -13,6 +13,8 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.models.UniversityStatistics
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 @Dao
 interface LecturerAcademicsDao {
@@ -67,6 +69,58 @@ interface LecturerAcademicsDao {
 
     @Query("SELECT * FROM academic_terms WHERE universityId = :universityId AND isActive = 1 LIMIT 1")
     suspend fun getActiveAcademicTerm(universityId: String): AcademicTermEntity?
+
+    @Query("SELECT * FROM units WHERE universityId = :universityId")
+    suspend fun getAllUnitsForUniversity(universityId: String): List<UnitEntity>
+    /*------------------------
+        READ OPERATIONS - Flow
+    ------------------------*/
+    @Query("SELECT * FROM universities")
+    fun observeAllUniversities(): Flow<List<UniversityEntity>>
+
+    @Query("SELECT * FROM universities WHERE isActive = 1 LIMIT 1")
+    fun observeActiveUniversity(): Flow<UniversityEntity?>
+
+    @Transaction
+    @Query("SELECT * FROM universities WHERE id = :universityId")
+    fun observeUniversityWithStats(universityId: String): Flow<UniversityWithProgrammesAndUnits?>
+
+    @Query("SELECT * FROM units WHERE universityId = :universityId")
+    fun observeUnitsForUniversity(universityId: String): Flow<List<UnitEntity>>
+
+    // Statistics with Flow
+    fun observeUniversityStatistics(universityId: String): Flow<UniversityStatistics> {
+        return combine(
+            observeUnitsCount(universityId),
+            observeExpectedStudents(universityId),
+            observeProgrammesCount(universityId),
+            observeDepartmentsCount(universityId),
+            observeActiveAcademicTerm(universityId)
+        ) { units, students, programmes, departments, term ->
+            UniversityStatistics(
+                totalUnits = units,
+                totalExpectedStudents = students,
+                totalProgrammes = programmes,
+                totalDepartments = departments,
+                activeTerm = term
+            )
+        }
+    }
+
+    @Query("SELECT COUNT(*) FROM units WHERE universityId = :universityId")
+    fun observeUnitsCount(universityId: String): Flow<Int>
+
+    @Query("SELECT SUM(expectedStudentCount) FROM programmes WHERE universityId = :universityId")
+    fun observeExpectedStudents(universityId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM programmes WHERE universityId = :universityId")
+    fun observeProgrammesCount(universityId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM departments WHERE universityId = :universityId")
+    fun observeDepartmentsCount(universityId: String): Flow<Int>
+
+    @Query("SELECT * FROM academic_terms WHERE universityId = :universityId AND isActive = 1 LIMIT 1")
+    fun observeActiveAcademicTerm(universityId: String): Flow<AcademicTermEntity?>
 
     /*------------------------
        INSERT OPERATIONS

@@ -628,38 +628,38 @@ class SetupViewModel(
 
 // -------------------------------------- //
 
-data class LecturerSession(
-    val id: String,
-    val courseName: String,
-    val courseCode: String,
-    val sessionCode: String,
-    val time: String,
-    val location: String,
-    val status: SessionStatus,
-    val lecturer: String
-)
+//data class LecturerSession(
+//    val id: String,
+//    val courseName: String,
+//    val courseCode: String,
+//    val sessionCode: String,
+//    val time: String,
+//    val location: String,
+//    val status: SessionStatus,
+//    val lecturer: String
+//)
 
-enum class SessionStatus {
-    ACTIVE, UPCOMING, COMPLETED, MISSED;
+//enum class SessionStatus {
+//    ACTIVE, UPCOMING, COMPLETED, MISSED;
+//
+//    val displayName: String
+//        get() = when (this) {
+//            ACTIVE -> "Active Now"
+//            UPCOMING -> "Upcoming"
+//            COMPLETED -> "Completed"
+//            MISSED -> "Missed"
+//        }
+//}
 
-    val displayName: String
-        get() = when (this) {
-            ACTIVE -> "Active Now"
-            UPCOMING -> "Upcoming"
-            COMPLETED -> "Completed"
-            MISSED -> "Missed"
-        }
-}
-
-data class LecturerActivity(
-    val id: String,
-    val type: ActivityType,
-    val title: String,
-    val description: String,
-    val timestamp: String,
-    val courseName: String? = null,
-    val status: ActivityStatus = ActivityStatus.INFO
-)
+//data class LecturerActivity(
+//    val id: String,
+//    val type: ActivityType,
+//    val title: String,
+//    val description: String,
+//    val timestamp: String,
+//    val courseName: String? = null,
+//    val status: ActivityStatus = ActivityStatus.INFO
+//)
 
 enum class ActivityType {
     ATTENDANCE_MARKED, ATTENDANCE_FAILED, NEW_SESSION, DEVICE_CHANGE, SYSTEM_ALERT

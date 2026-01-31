@@ -60,6 +60,9 @@ fun EmptyState(
 
 @Composable
 fun EmptyState(
+    title: String,
+    description: String,
+    icon: ImageVector,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,20 +74,20 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = Icons.Default.Inbox,
+            imageVector = icon,
             contentDescription = "Empty",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.secondary
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No Sessions Found",
+            text = title,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Your session history is empty. When you create sessions, they will appear here.",
+            text = description,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant

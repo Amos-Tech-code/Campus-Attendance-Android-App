@@ -8,7 +8,7 @@ enum class AttendanceMethod {
 }
 
 enum class AttendanceSessionStatus {
-    SCHEDULED, ACTIVE, ENDED, CANCELLED, EXPIRED
+    SCHEDULED, ACTIVE, ENDED, CANCELLED
 }
 
 enum class AttendanceSessionType {

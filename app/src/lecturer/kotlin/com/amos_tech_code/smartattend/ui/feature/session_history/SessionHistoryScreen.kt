@@ -25,8 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,6 +43,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -65,6 +67,7 @@ import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
 import com.amos_tech_code.smartattend.ui.components.EmptyState
 import com.amos_tech_code.smartattend.ui.components.ErrorState
 import com.amos_tech_code.smartattend.ui.components.LoadingState
+import com.amos_tech_code.smartattend.ui.components.PullToRefreshIndicator
 import com.amos_tech_code.smartattend.ui.feature.session_history.SessionHistoryEvent
 import com.amos_tech_code.smartattend.ui.feature.session_history.SessionHistoryViewModel
 import com.amos_tech_code.smartattend.ui.feature.session_history.SessionUiModel
@@ -121,24 +124,6 @@ fun SessionHistoryScreen(
                         )
                     )
                 },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.refresh() },
-                        enabled = !isRefreshing
-                    ) {
-                        if (isRefreshing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh"
-                            )
-                        }
-                    }
-                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -169,10 +154,17 @@ fun SessionHistoryScreen(
 
                 is LoadState.NotLoading -> {
                     if (pagedSessions.itemCount == 0) {
-                        EmptyState(onRefresh = { viewModel.refresh() })
+                        EmptyState(
+                            onRefresh = { viewModel.refresh() },
+                            title = "No Sessions Found",
+                            description = "Your session history is empty. When you start attendance sessions, they will appear here.",
+                            icon = Icons.Default.Inbox,
+                        )
                     } else {
                         SessionHistoryList(
                             pagedItems = pagedSessions,
+                            isRefreshing = isRefreshing,
+                            onRefresh = viewModel::refresh,
                             onSessionClick = viewModel::onSessionClick
                         )
                     }
@@ -185,72 +177,91 @@ fun SessionHistoryScreen(
 @Composable
 private fun SessionHistoryList(
     pagedItems: LazyPagingItems<SessionUiModel>,
-    onSessionClick: (String) -> Unit
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onSessionClick: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier,
+        state = pullToRefreshState,
+        indicator = {
+            PullToRefreshIndicator(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
     ) {
-        items(
-            count = pagedItems.itemCount,
-            key = pagedItems.itemKey { item ->
-                when (item) {
-                    is SessionUiModel.DateHeader -> "header_${item.dateString}"
-                    is SessionUiModel.SessionItem -> "session_${item.session.sessionId}"
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(
+                count = pagedItems.itemCount,
+                key = pagedItems.itemKey { item ->
+                    when (item) {
+                        is SessionUiModel.DateHeader -> "header_${item.dateString}"
+                        is SessionUiModel.SessionItem -> "session_${item.session.sessionId}"
+                    }
+                }
+            ) { index ->
+                val item = pagedItems[index]
+
+                if (item != null) {
+                    when (item) {
+                        is SessionUiModel.DateHeader -> {
+                            DateHeaderItem(header = item)
+                        }
+
+                        is SessionUiModel.SessionItem -> {
+                            SessionHistoryCard(
+                                session = item.session,
+                                onClick = { onSessionClick(item.session.sessionId) }
+                            )
+                        }
+                    }
+                } else {
+                    ShimmerCard()
                 }
             }
-        ) { index ->
-            val item = pagedItems[index]
 
-            if (item != null) {
-                when (item) {
-                    is SessionUiModel.DateHeader -> {
-                        DateHeaderItem(header = item)
+            // Handle append load state (loading more items)
+            when (pagedItems.loadState.append) {
+                is LoadState.Loading -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
+                }
 
-                    is SessionUiModel.SessionItem -> {
-                        SessionHistoryCard(
-                            session = item.session,
-                            onClick = { onSessionClick(item.session.sessionId) }
+                is LoadState.Error -> {
+                    item {
+                        ErrorItem(
+                            message = (pagedItems.loadState.append as LoadState.Error).error.message
+                                ?: "Error loading more",
+                            onRetry = { pagedItems.retry() }
                         )
                     }
                 }
-            } else {
-                ShimmerCard()
-            }
-        }
 
-        // Handle append load state (loading more items)
-        when (pagedItems.loadState.append) {
-            is LoadState.Loading -> {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                is LoadState.NotLoading -> {
+                    // Do nothing when not loading
                 }
-            }
-
-            is LoadState.Error -> {
-                item {
-                    ErrorItem(
-                        message = (pagedItems.loadState.append as LoadState.Error).error.message
-                            ?: "Error loading more",
-                        onRetry = { pagedItems.retry() }
-                    )
-                }
-            }
-
-            is LoadState.NotLoading -> {
-                // Do nothing when not loading
             }
         }
     }
@@ -413,7 +424,6 @@ private fun StatusBadge(status: AttendanceSessionStatus) {
         AttendanceSessionStatus.ENDED -> Pair("Completed", MaterialTheme.colorScheme.primary)
         AttendanceSessionStatus.CANCELLED -> Pair("Cancelled", MaterialTheme.colorScheme.error)
         AttendanceSessionStatus.SCHEDULED -> Pair("Scheduled", MaterialTheme.colorScheme.secondary)
-        AttendanceSessionStatus.EXPIRED -> Pair("Expired", MaterialTheme.colorScheme.error)
     }
 
     Text(

@@ -1,13 +1,19 @@
 package com.amos_tech_code.smartattend.models
 
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
+
+data class UniversityWithStats(
+    val university: UniversityEntity,
+    val statistics: UniversityStatistics
+)
 
 data class UniversityStatistics(
-    val totalUnits: Int,
-    val totalExpectedStudents: Int,
-    val totalProgrammes: Int,
-    val totalDepartments: Int,
-    val activeTerm: AcademicTermEntity?
+    val totalUnits: Int = 0,
+    val totalExpectedStudents: Int = 0,
+    val totalProgrammes: Int = 0,
+    val totalDepartments: Int = 0,
+    val activeTerm: AcademicTermEntity? = null
 )
 
 data class TeachingStatistics(

@@ -6,6 +6,7 @@ import androidx.paging.PagingData
 import androidx.paging.insertSeparators
 import androidx.paging.map
 import com.amos_tech_code.smartattend.data.local.room_db.dao.AttendanceSessionHistoryDao
+import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceSessionHistoryEntity
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
@@ -31,6 +32,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
+import java.util.Calendar
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -113,6 +115,24 @@ class SessionRepository(
                         null
                     }
             }
+    }
+
+    fun observeTodaysSessions(): Flow<List<AttendanceSessionHistoryEntity>> {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfToday = calendar.timeInMillis
+
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
+        val endOfToday = calendar.timeInMillis
+
+        return sessionHistoryDao.observeSessionsInDateRange(startOfToday, endOfToday)
+    }
+
+    fun observeRecentSessions(limit: Int = 5): Flow<List<AttendanceSessionHistoryEntity>> {
+        return sessionHistoryDao.observeRecentSessions(limit)
     }
 
     // Helper to get the LocalDate from a timestamp
