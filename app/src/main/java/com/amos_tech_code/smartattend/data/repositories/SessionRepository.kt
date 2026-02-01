@@ -12,6 +12,7 @@ import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
@@ -46,10 +47,18 @@ class SessionRepository(
      * Lecture AttendanceSession Implementation
      *
      */
+    @OptIn(ExperimentalTime::class)
     suspend fun startAttendanceSession(request: StartSessionRequest) : ApiResult<StartAttendanceSessionResponse> {
-        return safeApiCall {
-            apiService.startAttendanceSession(request)
+
+        val result = safeApiCall { apiService.startAttendanceSession(request) }
+
+        if(result is ApiResult.Success) {
+            val sessionEntity = result.data.toEntity()
+            sessionHistoryDao.insert(sessionEntity)
         }
+
+        return result
+
     }
 
     suspend fun updateAttendanceSession(sessionId: String, request: UpdateSessionRequest) : ApiResult<StartAttendanceSessionResponse> {
@@ -64,13 +73,19 @@ class SessionRepository(
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     suspend fun endActiveSession(sessionId: String) : ApiResult<Unit> {
-        return safeApiCall {
-            apiService.endAttendanceSession(
-                EndSessionRequest(sessionId)
+
+        val result = safeApiCall { apiService.endAttendanceSession(EndSessionRequest(sessionId)) }
+
+        if (result is ApiResult.Success) {
+            sessionHistoryDao.updateSessionStatus(
+                sessionId = sessionId,
+                status = AttendanceSessionStatus.ENDED,
+                endedAt = Clock.System.now().toEpochMilliseconds()
             )
         }
-
+        return result
     }
 
 

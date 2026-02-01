@@ -90,7 +90,6 @@ fun LoadingState(modifier: Modifier = Modifier) {
     }
 }
 
-
 @Composable
 fun PullToRefreshIndicator(
     state: PullToRefreshState,

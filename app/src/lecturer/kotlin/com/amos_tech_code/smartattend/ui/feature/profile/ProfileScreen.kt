@@ -41,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
@@ -101,9 +103,6 @@ fun ProfileScreen(
             is ProfileEvent.ShowErrorMessage -> {
                 Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
             }
-            is ProfileEvent.InstitutionUpdated -> {
-                Toast.makeText(context, "Active institution updated", Toast.LENGTH_SHORT).show()
-            }
             is ProfileEvent.ShowSuccessMessage -> {
                 scope.launch { snackbarHostState.showSnackbar(event.message) }
             }
@@ -131,35 +130,61 @@ fun ProfileScreen(
             BottomNavigation(navController)
         }
     ) { paddingValues ->
-        when {
-            state.isLoading -> {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)) {
+            when {
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                state.errorMessage != null -> {
+                    ErrorState(
+                        message = state.errorMessage ?: "Something went wrong",
+                        onRetry = { viewModel.onEvent(ProfileUiEvent.RefreshData) },
+                    )
+                }
+
+                else -> {
+                    ProfileContent(
+                        state = state,
+                        onEvent = viewModel::onEvent,
+                        paddingValues = PaddingValues(),
+                        navController = navController,
+                        modifier = Modifier.verticalScroll(scrollState)
+                    )
+                }
+            }
+
+            if (state.isSwitchingInstitution) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
+                        .zIndex(1f), // Ensure it's on top
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(horizontal = 48.dp)
+                    ) {
+                        Text(
+                            text = "Switching Active Institution...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
                 }
             }
-            state.errorMessage != null -> {
-                ErrorState(
-                    message = state.errorMessage ?: "Something went wrong",
-                    onRetry = { viewModel.onEvent(ProfileUiEvent.RefreshData) },
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
-            else -> {
-                ProfileContent(
-                    state = state,
-                    onEvent = viewModel::onEvent,
-                    paddingValues = paddingValues,
-                    navController = navController,
-                    modifier = Modifier.verticalScroll(scrollState)
-                )
-            }
-        }
 
+        }
         // Show the bottom sheet when the state flag is true
         if (state.showEditNameSheet) {
             EditNameBottomSheet(

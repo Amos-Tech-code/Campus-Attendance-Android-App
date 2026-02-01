@@ -4,7 +4,6 @@ sealed class ProfileEvent {
     data class ShowErrorMessage(val message: String) : ProfileEvent()
     data class ShowSuccessMessage(val message: String) : ProfileEvent()
     object NavigateToInstitutionSetUp : ProfileEvent()
-    object InstitutionUpdated : ProfileEvent()
     object ShowEditProfileSheet : ProfileEvent()
     object LogOut : ProfileEvent()
 }

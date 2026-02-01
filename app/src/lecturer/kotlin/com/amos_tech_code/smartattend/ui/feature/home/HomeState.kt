@@ -8,11 +8,11 @@ sealed class HomeUiState {
     data object NoInstitutionSetup : HomeUiState()
     data class SetupComplete(
         val lecturerName: String,
-        val activeUniversities: List<UniversityWithStats>,
+        val allUniversities: List<UniversityWithStats>,
+        val activeUniversity: UniversityWithStats?,
         val todaysSessions: List<AttendanceSessionHistoryEntity>,
         //val recentSessions: List<AttendanceSessionHistoryEntity>,
-        val totalNotifications: Int = 5,
-        val selectedUniversity: UniversityWithStats? = null
+        val totalNotifications: Int = 0,
     ) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }

@@ -137,7 +137,7 @@ class ProfileViewModel(
 
     private fun selectInstitution(institutionId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isSwitchingInstitution = true) }
 
             try {
 
@@ -156,15 +156,14 @@ class ProfileViewModel(
                     state.copy(
                         institutions = mappedInstitutions,
                         selectedInstitution = mappedInstitutions.find { it.id == institutionId },
-                        isLoading = false
+                        isSwitchingInstitution = false
                     )
                 }
 
-                _event.send(ProfileEvent.InstitutionUpdated)
-                _event.send(ProfileEvent.ShowSuccessMessage("Active institution updated"))
+                _event.send(ProfileEvent.ShowSuccessMessage("Active institution updated successfully"))
 
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false) }
+                _state.update { it.copy(isSwitchingInstitution = false) }
                 _event.send(ProfileEvent.ShowErrorMessage("Failed to update institution"))
             }
         }

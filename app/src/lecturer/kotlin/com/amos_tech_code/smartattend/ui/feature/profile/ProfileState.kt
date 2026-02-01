@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 // Profile State
 data class ProfileState(
     val isLoading: Boolean = false,
+    val isSwitchingInstitution: Boolean = false,
     val errorMessage: String? = null,
     val lecturer: Lecturer = Lecturer("", ""),
     val institutions: List<Institution> = emptyList(),

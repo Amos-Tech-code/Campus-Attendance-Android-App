@@ -4,16 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.repositories.SessionRepository
-import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel (
@@ -48,20 +45,20 @@ class HomeViewModel (
                 sessionHistoryRepository.observeTodaysSessions(),
                 //sessionHistoryRepository.observeRecentSessions(5)
             ) { universitiesWithStats, todaysSessions ->
-                val activeUniversities = universitiesWithStats.filter { it.university.isActive }
+                val activeUniversity = universitiesWithStats.filter { it.university.isActive }
                 val lecturerName = session.getName() ?: "Lecturer"
 
-                if (activeUniversities.isEmpty()) {
+                if (universitiesWithStats.isEmpty()) {
                     HomeUiState.NoInstitutionSetup
                 } else {
                     // Auto-select first active university if none selected
-                    selectedUniversityId = selectedUniversityId ?: activeUniversities.firstOrNull()?.university?.id
+                    selectedUniversityId = selectedUniversityId ?: universitiesWithStats.firstOrNull()?.university?.id
 
                     HomeUiState.SetupComplete(
                         lecturerName = lecturerName,
-                        activeUniversities = activeUniversities,
+                        allUniversities = universitiesWithStats,
+                        activeUniversity = activeUniversity.firstOrNull(),
                         todaysSessions = todaysSessions,
-                        selectedUniversity = activeUniversities.find { it.university.id == selectedUniversityId }
                     )
                 }
             }
@@ -79,45 +76,46 @@ class HomeViewModel (
     }
 
     fun selectUniversity(universityId: String) {
-        selectedUniversityId = universityId
-        loadHomeData()
+        viewModelScope.launch {
+            val result = runCatching {
+                universityRepository.setActiveUniversity(universityId)
+            }
+            when {
+                result.isFailure -> _event.send(HomeEvent.ShowErrorMessage("Failed to update active institution"))
+            }
+        }
     }
 
-    fun onStartSession() {
+    fun onStartSessionClick() {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToStartSession)
         }
     }
 
-    fun onStudentLookup() {
-        viewModelScope.launch {
-            _event.send(HomeEvent.NavigateToStudentLookup)
-        }
-    }
-    fun onViewSessionHistory() {
+    fun onViewSessionHistoryClick() {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToSessionHistory)
         }
     }
-    fun onViewSessionHistoryDetails(sessionId: String) {
+    fun onViewSessionHistoryDetailsClick(sessionId: String) {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToSessionHistoryDetails(sessionId))
         }
     }
 
-    fun onExportData() {
+    fun onExportDataClick() {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToExport)
         }
     }
 
-    fun onExportSessionAttendance(sessionId: String) {
+    fun onExportSessionAttendanceClick(sessionId: String) {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToExportSessionAttendance(sessionId))
         }
     }
 
-    fun onCompleteSetup() {
+    fun onCompleteSetupClick() {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToSetup)
         }
@@ -129,9 +127,9 @@ class HomeViewModel (
         }
     }
 
-    fun onSettingsClick() {
+    fun onAddInstitutionClick() {
         viewModelScope.launch {
-            _event.send(HomeEvent.NavigateToSettings)
+            _event.send(HomeEvent.NavigateToAddInstitution)
         }
     }
 

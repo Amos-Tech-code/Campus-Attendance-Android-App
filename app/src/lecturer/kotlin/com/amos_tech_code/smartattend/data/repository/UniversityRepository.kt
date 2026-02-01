@@ -43,4 +43,13 @@ class UniversityRepository(
     fun observeUnitsForUniversity(universityId: String): Flow<List<UnitEntity>> {
         return lecturerAcademicsDao.observeUnitsForUniversity(universityId)
     }
+
+    /**
+     * Marks a specific university as the active one in the local database.
+     * All other universities will be marked as inactive.
+     * @param universityId The ID of the university to set as active.
+     */
+    suspend fun setActiveUniversity(universityId: String) {
+        lecturerAcademicsDao.setActiveUniversity(universityId)
+    }
 }

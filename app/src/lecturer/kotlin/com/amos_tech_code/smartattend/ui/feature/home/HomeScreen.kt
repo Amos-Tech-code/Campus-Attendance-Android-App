@@ -6,14 +6,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Check
@@ -118,7 +123,7 @@ fun HomeScreen(
 
             HomeEvent.NavigateToNotifications -> navController.navigate(NotificationsRoute)
 
-            HomeEvent.NavigateToSettings -> navController.navigate(SettingsRoute)
+            HomeEvent.NavigateToAddInstitution -> navController.navigate(SetUpRoute)
 
             HomeEvent.NavigateToStudentLookup -> navController.navigate(StudentLookupRoute)
 
@@ -172,7 +177,7 @@ fun HomeScreen(
 
                 HomeUiState.NoInstitutionSetup -> {
                     NoInstitutionSetupState(
-                        onCompleteSetup = viewModel::onCompleteSetup,
+                        onCompleteSetup = viewModel::onCompleteSetupClick,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -188,14 +193,14 @@ fun HomeScreen(
                 is HomeUiState.SetupComplete -> {
                     HomeContent(
                         state = currentState,
-                        onViewSessionHistoryDetails = viewModel::onViewSessionHistoryDetails,
-                        onExportSessionAttendance = viewModel::onExportSessionAttendance,
+                        onViewSessionHistoryDetails = viewModel::onViewSessionHistoryDetailsClick,
+                        onExportSessionAttendance = viewModel::onExportSessionAttendanceClick,
                         onUniversitySelect = viewModel::selectUniversity,
-                        onViewSessionHistoryClick = viewModel::onViewSessionHistory,
-                        onStudentLookup = viewModel::onStudentLookup,
-                        onExportClick = viewModel::onExportData,
-                        onStartSession = viewModel::onStartSession,
-                        onSettingsClick = viewModel::onSettingsClick,
+                        onViewSessionHistoryClick = viewModel::onViewSessionHistoryClick,
+                        onStudentLookup = viewModel::onStudentLookupClick,
+                        onExportClick = viewModel::onExportDataClick,
+                        onStartSession = viewModel::onStartSessionClick,
+                        onAddInstitutionClick = viewModel::onAddInstitutionClick,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -289,44 +294,42 @@ private fun HomeContent(
     onViewSessionHistoryClick: () -> Unit,
     onStudentLookup: () -> Unit,
     onExportClick: () -> Unit,
-    onSettingsClick: () -> Unit,
+    onAddInstitutionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
             modifier = modifier
-                .fillMaxSize()
-                .padding(bottom = 16.dp),
+                .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
             // Welcome Section
             item {
                 WelcomeSection(
                     lecturerName = state.lecturerName,
-                    activeUniversities = state.activeUniversities,
-                    selectedUniversity = state.selectedUniversity,
+                    allUniversities = state.allUniversities,
+                    selectedUniversity = state.activeUniversity,
                     onUniversitySelect = onUniversitySelect,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
 
             // University Stats Dashboard
-            state.selectedUniversity?.let { selectedUni ->
-                item {
-                    UniversityStatsDashboard(
-                        universityWithStats = selectedUni,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
+            item {
+                state.activeUniversity?.let {
+                UniversityStatsDashboard(
+                    universityWithStats = state.activeUniversity,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )}
             }
 
             // Quick Actions
             item {
                 QuickActionsSection(
-                    onSettingsClick = { onSettingsClick() },
+                    onAddClick = { onAddInstitutionClick() },
                     onViewHistory = { onViewSessionHistoryClick() },
                     onExport = { onExportClick() },
                     onStudentLookup = { onStudentLookup() },
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
             // Today's Sessions
@@ -336,7 +339,7 @@ private fun HomeContent(
                     onSessionClick = onViewSessionHistoryDetails,
                     onExportClick = onExportSessionAttendance,
                     onStartSession = onStartSession,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
             // Add some final padding at the bottom
@@ -350,7 +353,7 @@ private fun HomeContent(
 @Composable
 private fun WelcomeSection(
     lecturerName: String,
-    activeUniversities: List<UniversityWithStats>,
+    allUniversities: List<UniversityWithStats>,
     selectedUniversity: UniversityWithStats?,
     onUniversitySelect: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -375,7 +378,7 @@ private fun WelcomeSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Welcome Row
             Row(
@@ -424,46 +427,15 @@ private fun WelcomeSection(
             }
 
             // University Selector (if multiple universities)
-            if (activeUniversities.size > 1) {
+            if (allUniversities.size > 1) {
                 UniversitySelector(
-                    universities = activeUniversities,
+                    universities = allUniversities,
                     selectedUniversityId = selectedUniversity?.university?.id,
                     onUniversitySelect = onUniversitySelect
                 )
             } else {
                 selectedUniversity?.let { uni ->
                     UniversityCard(universityWithStats = uni)
-                }
-            }
-
-            // Active Status
-            Surface(
-                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = CircleShape
-                            )
-                    )
-                    Text(
-                        text = "Profile Complete • ${activeUniversities.size} Active Institution${if (activeUniversities.size != 1) "s" else ""}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
             }
         }
@@ -479,13 +451,36 @@ private fun UniversitySelector(
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Active Institutions",
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        // Active Status
+        Surface(
+            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape
+                        )
+                )
+                Text(
+                    text = "Profile Complete • ${universities.size} Institution${if (universities.size != 1) "s" else ""}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
 
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -639,17 +634,10 @@ private fun UniversityStatsDashboard(
         }
 
         // Stats Grid
-        val gridHeight = 280.dp // (Approx 130dp per card + 12dp spacing) * 2 rows
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(gridHeight), // FIX: Set a fixed height
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            userScrollEnabled = false // FIX: Disable scrolling for this grid
         ) {
-            item {
                 StatCard(
                     title = "Units",
                     value = universityWithStats.statistics.totalUnits.toString(),
@@ -657,9 +645,7 @@ private fun UniversityStatsDashboard(
                     color = MaterialTheme.colorScheme.primary,
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
-            }
 
-            item {
                 StatCard(
                     title = "Students",
                     value = universityWithStats.statistics.totalExpectedStudents.toString(),
@@ -667,9 +653,7 @@ private fun UniversityStatsDashboard(
                     color = MaterialTheme.colorScheme.secondary,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 )
-            }
 
-            item {
                 StatCard(
                     title = "Programmes",
                     value = universityWithStats.statistics.totalProgrammes.toString(),
@@ -677,9 +661,7 @@ private fun UniversityStatsDashboard(
                     color = MaterialTheme.colorScheme.tertiary,
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 )
-            }
 
-            item {
                 StatCard(
                     title = "Departments",
                     value = universityWithStats.statistics.totalDepartments.toString(),
@@ -687,7 +669,73 @@ private fun UniversityStatsDashboard(
                     color = MaterialTheme.colorScheme.error,
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
-            }
+
+        }
+    }
+}
+
+
+@Composable
+private fun QuickActionsSection(
+    onAddClick: () -> Unit,
+    onViewHistory: () -> Unit,
+    onExport: () -> Unit,
+    onStudentLookup: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Quick Actions",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        FlowRow(
+            maxItemsInEachRow = Int.MAX_VALUE,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            QuickActionCard(
+                title = "Session History",
+                subtitle = "View past sessions",
+                icon = Icons.Default.History,
+                iconBackground = MaterialTheme.colorScheme.secondaryContainer,
+                iconTint = MaterialTheme.colorScheme.secondary,
+                onClick = onViewHistory
+            )
+
+            QuickActionCard(
+                title = "Export Data",
+                subtitle = "Export records",
+                icon = Icons.Default.Download,
+                iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
+                iconTint = MaterialTheme.colorScheme.tertiary,
+                onClick = onExport
+            )
+
+            QuickActionCard(
+                title = "Student Lookup",
+                subtitle = "Search for students",
+                icon = Icons.Default.Search,
+                iconBackground = MaterialTheme.colorScheme.surfaceVariant,
+                iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = onStudentLookup
+            )
+
+            QuickActionCard(
+                title = "Institution",
+                subtitle = "Add Institution",
+                icon = Icons.Default.AddCircle,
+                iconBackground = MaterialTheme.colorScheme.primaryContainer,
+                iconTint = MaterialTheme.colorScheme.primary,
+                onClick = onAddClick
+            )
         }
     }
 }
@@ -702,7 +750,10 @@ private fun StatCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.sizeIn(
+            minWidth = 120.dp, minHeight = 100.dp,
+            maxWidth = 140.dp, maxHeight = 120.dp
+        ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
@@ -758,84 +809,6 @@ private fun StatCard(
 }
 
 @Composable
-private fun QuickActionsSection(
-    onSettingsClick: () -> Unit,
-    onViewHistory: () -> Unit,
-    onExport: () -> Unit,
-    onStudentLookup: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Quick Actions",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold
-            ),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(start = 4.dp)
-        )
-
-        val gridHeight = 360.dp // (Approx 170dp per card + 12dp spacing) * 2 rows
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(gridHeight), // FIX: Set a fixed height
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            userScrollEnabled = false // FIX: Disable scrolling
-        ) {
-            item {
-                QuickActionCard(
-                    title = "Session History",
-                    subtitle = "View past sessions",
-                    icon = Icons.Default.History,
-                    iconBackground = MaterialTheme.colorScheme.secondaryContainer,
-                    iconTint = MaterialTheme.colorScheme.secondary,
-                    onClick = onViewHistory
-                )
-            }
-
-            item {
-                QuickActionCard(
-                    title = "Export Data",
-                    subtitle = "Export records",
-                    icon = Icons.Default.Download,
-                    iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
-                    iconTint = MaterialTheme.colorScheme.tertiary,
-                    onClick = onExport
-                )
-            }
-
-            item {
-                QuickActionCard(
-                    title = "Student Lookup",
-                    subtitle = "Search for students",
-                    icon = Icons.Default.Search,
-                    iconBackground = MaterialTheme.colorScheme.surfaceVariant,
-                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    onClick = onStudentLookup
-                )
-            }
-
-            item {
-                QuickActionCard(
-                    title = "Settings",
-                    subtitle = "Manage your account",
-                    icon = Icons.Default.Settings,
-                    iconBackground = MaterialTheme.colorScheme.primaryContainer,
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    onClick = onSettingsClick
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun QuickActionCard(
     title: String,
     subtitle: String,
@@ -846,7 +819,10 @@ private fun QuickActionCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.sizeIn(
+                minWidth = 120.dp, minHeight = 140.dp,
+                maxWidth = 140.dp, maxHeight = 140.dp
+            ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -863,7 +839,7 @@ private fun QuickActionCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(48.dp)
                     .background(iconBackground, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {

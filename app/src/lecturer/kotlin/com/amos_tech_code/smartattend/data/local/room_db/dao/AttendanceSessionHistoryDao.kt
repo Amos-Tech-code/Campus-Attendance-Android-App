@@ -5,7 +5,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceSessionHistoryEntity
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -36,6 +38,12 @@ interface AttendanceSessionHistoryDao {
     suspend fun insertAll(
         sessions: List<AttendanceSessionHistoryEntity>
     )
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(session: AttendanceSessionHistoryEntity)
+
+    @Query("UPDATE attendance_session_history SET status = :status, endedAt = :endedAt  WHERE sessionId = :sessionId")
+    suspend fun updateSessionStatus(sessionId: String, status: AttendanceSessionStatus, endedAt: Long)
 
     @Query("DELETE FROM attendance_session_history")
     suspend fun clearAll()
