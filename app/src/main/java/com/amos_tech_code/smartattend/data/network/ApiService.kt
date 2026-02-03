@@ -6,12 +6,14 @@ import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
+import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateYearRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryResponse
@@ -22,12 +24,15 @@ import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.domain.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.StudentAuthResponse
+import com.amos_tech_code.smartattend.domain.response.StudentEnrollmentResponse
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
 import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PATCH
@@ -114,14 +119,6 @@ interface ApiService {
         @Query("size") size: Int = 10,
     ) : Response<AttendanceSessionHistoryResponse>
 
-    /*@DELETE("attendance-manage/record/{sessionId}/{studentId}")
-    suspend fun removeFlaggedStudent(
-        @Path("sessionId") sessionId: String,
-        @Path("studentId") studentId: String
-    ) : Response<Unit>
-
-     */
-
     @HTTP(method = "DELETE", path = "attendance-manage/record", hasBody = true)
     suspend fun removeFlaggedStudent(
         @Body request: RemoveAttendanceRecordRequest
@@ -150,5 +147,29 @@ interface ApiService {
     @POST("attendance/mark")
     suspend fun markAttendanceSession(@Body request: MarkAttendanceRequest) : Response<MarkAttendanceResponse>
 
+    @GET("attendance-manage/record")
+    suspend fun getAttendanceRecords(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 10,
+        @Query("sort") sort: String = "desc"
+    ) : Response<StudentAttendanceHistoryResponse>
 
+    @GET("students/enrollment")
+    suspend fun getStudentEnrollment() : Response<StudentEnrollmentResponse>
+
+    @POST("students/enrollment")
+    suspend fun enrollStudent(
+        @Body request: StudentEnrollmentRequest
+    ) : Response<StudentEnrollmentResponse>
+
+    @PATCH("students/enrollment/{enrollmentId}/year")
+    suspend fun updateStudentEnrollment(
+        @Path("enrollmentId") enrollmentId: String,
+        @Body request: UpdateYearRequest
+    ) : Response<StudentEnrollmentResponse>
+
+    @DELETE("students/enrollment/{enrollmentId}")
+    suspend fun deleteStudentEnrollment(
+        @Path("enrollmentId") enrollmentId: String
+    ) : Response<Unit>
 }

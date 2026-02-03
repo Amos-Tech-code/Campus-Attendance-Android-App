@@ -31,6 +31,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class AcademicSetUpRepository(
@@ -389,6 +391,17 @@ class AcademicSetUpRepository(
                 name = universityEntity.name,
                 isActive = universityEntity.isActive
             )
+        }
+    }
+    fun observeUniversities(): Flow<List<University>> {
+        return lecturerAcademicsDao.observeAllUniversities().map {
+            it.map { entity ->
+                University(
+                    id = entity.id,
+                    name = entity.name,
+                    isActive = entity.isActive
+                )
+            }
         }
     }
 

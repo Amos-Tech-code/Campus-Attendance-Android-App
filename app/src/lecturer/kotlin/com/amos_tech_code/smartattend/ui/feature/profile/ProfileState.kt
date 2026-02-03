@@ -1,41 +1,31 @@
 package com.amos_tech_code.smartattend.ui.feature.profile
 
+import com.amos_tech_code.smartattend.domain.models.University
+
+
 // Profile State
 data class ProfileState(
-    val isLoading: Boolean = false,
-    val isSwitchingInstitution: Boolean = false,
+    val isLoading: Boolean = true,
     val errorMessage: String? = null,
-    val lecturer: Lecturer = Lecturer("", ""),
-    val institutions: List<Institution> = emptyList(),
-    val selectedInstitution: Institution? = null,
-    val teachingStats: TeachingStatisticsUiState = TeachingStatisticsUiState(),
+    val lecturer: Lecturer = Lecturer(),
+    val institutions: List<University> = emptyList(),
+    val activeInstitution: University? = null,
+    val isSwitchingInstitution: Boolean = false,
+    val isUpdatingProfile: Boolean = false,
     val showEditNameSheet: Boolean = false,
     val editingName: String = "",
     val editingNameError: String? = null,
     val bottomSheetErrorMessage: String? = null,
-    val isUpdatingProfile: Boolean = false
-)
-
-data class Institution(
-    val id: String,
-    val name: String,
-    val isActive: Boolean = false
+    val isExporting: Boolean = false,
+    val lastSyncTime: String? = null
 )
 
 data class Lecturer(
-    val name: String,
-    val email: String,
+    val name: String = "",
+    val email: String = "",
+    val phone: String? = null,
     val profileImage: String? = null,
-    val joinDate: String? = null,
-    val staffId: String? = null
-)
-
-data class TeachingStatisticsUiState(
-    val totalCourses: Int = 0,
-    val totalExpectedStudents: Int = 0,
-    val currentSemester: String = "",
-    val totalProgrammes: Int = 0,
-    val totalDepartments: Int = 0,
-    val activeInstitution: String = "",
-    val isInstitutionActive: Boolean = false
+    val staffId: String? = null,
+    val department: String? = null,
+    val joinDate: String? = null
 )

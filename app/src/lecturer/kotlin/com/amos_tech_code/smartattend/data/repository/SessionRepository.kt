@@ -1,4 +1,4 @@
-package com.amos_tech_code.smartattend.data.repositories
+package com.amos_tech_code.smartattend.data.repository
 
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -16,9 +16,7 @@ import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
-import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
-import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import com.amos_tech_code.smartattend.ui.feature.session_history.SessionUiModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +25,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
@@ -36,6 +33,7 @@ import kotlinx.datetime.todayIn
 import java.util.Calendar
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 class SessionRepository(
     private val apiService: ApiService,
@@ -53,8 +51,14 @@ class SessionRepository(
         val result = safeApiCall { apiService.startAttendanceSession(request) }
 
         if(result is ApiResult.Success) {
-            val sessionEntity = result.data.toEntity()
-            sessionHistoryDao.insert(sessionEntity)
+            try {
+                withContext(ioDispatcher) {
+                    val sessionEntity = result.data.toEntity()
+                    sessionHistoryDao.insert(sessionEntity)
+                }
+            } catch (e: Exception) {
+                //Log.e("SessionRepository", "Error inserting session into database", e)
+            }
         }
 
         return result
@@ -62,9 +66,20 @@ class SessionRepository(
     }
 
     suspend fun updateAttendanceSession(sessionId: String, request: UpdateSessionRequest) : ApiResult<StartAttendanceSessionResponse> {
-        return safeApiCall {
+        val result = safeApiCall {
             apiService.updateAttendanceSession(sessionId, request)
         }
+        if(result is ApiResult.Success) {
+            try {
+                withContext(ioDispatcher) {
+                    val sessionEntity = result.data.toEntity()
+                    sessionHistoryDao.insert(sessionEntity)
+                }
+            } catch (e: Exception) {
+                //Log.e("SessionRepository", "Error inserting session into database", e)
+            }
+        }
+        return result
     }
 
     suspend fun getActiveSession() : ApiResult<StartAttendanceSessionResponse> {
@@ -79,11 +94,17 @@ class SessionRepository(
         val result = safeApiCall { apiService.endAttendanceSession(EndSessionRequest(sessionId)) }
 
         if (result is ApiResult.Success) {
-            sessionHistoryDao.updateSessionStatus(
-                sessionId = sessionId,
-                status = AttendanceSessionStatus.ENDED,
-                endedAt = Clock.System.now().toEpochMilliseconds()
-            )
+            try {
+                withContext(ioDispatcher) {
+                    sessionHistoryDao.updateSessionStatus(
+                        sessionId = sessionId,
+                        status = AttendanceSessionStatus.ENDED,
+                        endedAt = Clock.System.now().toEpochMilliseconds()
+                    )
+                }
+            } catch (e : Exception) {
+                //Log.e("SessionRepository", "Error updating session status in database", e)
+            }
         }
         return result
     }
@@ -162,8 +183,8 @@ class SessionRepository(
     @OptIn(ExperimentalTime::class)
     private fun createDateHeader(timestamp: Long): SessionUiModel.DateHeader {
         val sessionDate = getLocalDate(timestamp)
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        val today = Clock.System.todayIn(TimeZone.Companion.currentSystemDefault())
+        val yesterday = today.minus(1, DateTimeUnit.Companion.DAY)
         val currentYear = today.year
 
         val displayDate = when (sessionDate) {
@@ -216,6 +237,7 @@ class SessionRepository(
                             page++
 
                         }
+
                         is ApiResult.Failure -> {
                             return@withContext ApiResult.Failure(result.error)
                         }
@@ -230,13 +252,4 @@ class SessionRepository(
         }
     }
 
-    /**
-     * Student AttendanceSession Implementation
-     */
-
-    suspend fun verifyAttendanceSession(request: VerifySessionRequest) : ApiResult<VerifyAttendanceResponse> {
-        return safeApiCall {
-            apiService.verifyAttendanceSession(request)
-        }
-    }
 }

@@ -18,6 +18,7 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         private const val KEY_NAME = "name"
         private const val KEY_EMAIL = "email"
         private const val KEY_PROFILE_COMPLETE = "profile_complete"
+        private const val KEY_PROFILE_CREATED_AT = "profile_created_at"
         private const val KEY_ACADEMIC_SYNC_STATUS = "academic_sync_status"
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
         private const val TOKEN_VALIDITY_DAYS = 10
@@ -37,13 +38,15 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         token: String,
         name: String,
         email: String,
-        isProfileComplete: Boolean
+        isProfileComplete: Boolean,
+        createdAt: String? = null
     ) {
         prefs.edit {
             putString(KEY_TOKEN, token)
                 .putString(KEY_NAME, name)
                 .putString(KEY_EMAIL, email)
                 .putBoolean(KEY_PROFILE_COMPLETE, isProfileComplete)
+                .putString(KEY_PROFILE_CREATED_AT, createdAt)
                 .putLong(KEY_TOKEN_CREATED_AT, System.currentTimeMillis())
         }
     }
@@ -97,7 +100,7 @@ class ClassTrackProSession(context: Context) : SessionProvider {
     fun getName(): String? = prefs.getString(KEY_NAME, null)
     fun getEmail(): String? = prefs.getString(KEY_EMAIL, null)
     fun isProfileComplete(): Boolean = prefs.getBoolean(KEY_PROFILE_COMPLETE, false)
-
+    fun getProfileCreatedAt(): String? = prefs.getString(KEY_PROFILE_CREATED_AT, null)
     fun getNameFlow(): Flow<String> = callbackFlow {
         // Emit current value immediately
         trySend(prefs.getString(KEY_NAME, "") ?: "")
@@ -118,6 +121,10 @@ class ClassTrackProSession(context: Context) : SessionProvider {
     // Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null
 
+
+    /**
+     * Settings related methods
+     */
     fun saveSettings(settings: SettingsState) {
         prefs.edit {
             putInt(KEY_LOCATION_ACCURACY, settings.locationAccuracy)

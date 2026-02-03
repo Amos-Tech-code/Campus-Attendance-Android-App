@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.LiveAttendanceUpdate
-import com.amos_tech_code.smartattend.data.repositories.AttendanceRepository
-import com.amos_tech_code.smartattend.data.repositories.SessionRepository
+import com.amos_tech_code.smartattend.data.repository.AttendanceRepository
+import com.amos_tech_code.smartattend.data.repository.SessionRepository
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.ui.feature.start_session.StartSessionViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -141,7 +141,6 @@ class LiveAttendanceViewModel(
                         sseJob?.cancel()
                         startSessionViewModel.clearSuccessState()
                         _event.send(LiveAttendanceEvent.SessionEndedSuccessfully)
-                        // SessionEnded will be handled by UI navigation
                     }
                     is ApiResult.Failure -> {
                         handleApiError(result.error)

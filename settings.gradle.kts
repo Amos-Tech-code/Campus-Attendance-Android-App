@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Smart Attend"
+rootProject.name = "Class Track"
 include(":app")
