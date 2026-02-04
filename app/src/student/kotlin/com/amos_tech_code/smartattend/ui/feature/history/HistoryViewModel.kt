@@ -8,13 +8,9 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.filter
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
-import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
-import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
-import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
-import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

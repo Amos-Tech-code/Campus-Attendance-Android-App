@@ -1,9 +1,8 @@
 package com.amos_tech_code.smartattend.utils
 
 import java.text.SimpleDateFormat
-import java.util.Locale
-
 import java.util.Date
+import java.util.Locale
 
 /**
  * Formats a given timestamp (in milliseconds) into a user-friendly date and time string.
