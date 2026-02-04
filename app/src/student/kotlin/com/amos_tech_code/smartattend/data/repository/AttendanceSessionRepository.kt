@@ -4,14 +4,15 @@ import com.amos_tech_code.smartattend.data.local.room.dao.AttendanceDao
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
+import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
-import com.amos_tech_code.smartattend.domain.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 class AttendanceSessionRepository (
@@ -44,34 +45,43 @@ class AttendanceSessionRepository (
     /**
      * Local Datasource Operations + Network Sync Operations
      */
-    suspend fun syncStudentAttendanceRecords() : ApiResult<StudentAttendanceHistoryResponse> {
 
-        var page = 0
-        var hasNext = true
-        lateinit var result: ApiResult<StudentAttendanceHistoryResponse>
+    fun getAttendancePagingSource() = attendanceDao.pagingSource()
 
-        while (hasNext) {
-            result = safeApiCall { apiService.getAttendanceRecords(page) }
+    suspend fun syncStudentAttendanceRecords() : ApiResult<Unit> {
 
-            if (result is ApiResult.Success) {
-                try {
-                    withContext(ioDispatcher) {
-                        // Save to local database
-                        val response = result.data
+        return withContext(ioDispatcher) {
+            try {
+                var page = 0
+                var hasNext = true
 
-                        attendanceDao.insertAll(response.records.map { it.toEntity() })
+                while (hasNext && isActive) {
+                    val result = safeApiCall { apiService.getAttendanceRecords(page) }
 
-                        hasNext = response.hasNext
-                        page++
+                    when (result) {
+                        is ApiResult.Success -> {
+                            // Save to local database
+                            val response = result.data
+
+                            attendanceDao.insertAll(response.records.map { it.toEntity() })
+
+                            hasNext = response.hasNext
+                            page++
+                        }
+
+                        is ApiResult.Failure -> {
+                            return@withContext ApiResult.Failure(result.error)
+                        }
                     }
-                } catch (e: Exception) {
-                    //Log.e("AttendanceSessionRepository", "Error inserting attendance records into database", e)
                 }
-            } else {
-                return result
+
+                ApiResult.Success(Unit)
+
+            } catch (e: Exception) {
+                return@withContext ApiResult.Failure(ApiError.UnknownError(e))
             }
         }
-
-        return result
     }
+
+
 }

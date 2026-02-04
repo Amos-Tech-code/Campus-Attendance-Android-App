@@ -11,29 +11,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pin
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,17 +50,10 @@ import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.domain.response.SessionInfo
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
-import com.amos_tech_code.smartattend.ui.components.EmptyState
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
-import com.amos_tech_code.smartattend.ui.feature.home.AttendanceStatus
-import com.amos_tech_code.smartattend.ui.feature.home.RecentAttendance
-import com.amos_tech_code.smartattend.ui.feature.home.Session
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
-import com.amos_tech_code.smartattend.ui.theme.AbsentColor
-import com.amos_tech_code.smartattend.ui.theme.PendingColor
-import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -171,27 +155,28 @@ private fun MainAttendanceScaffold(
                     Text(
                         text = "Mark Attendance",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             )
         },
-        floatingActionButton = {
-            if (state.activeSessions.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        viewModel.showQrScanner()
-                    },
-                    icon = {
-                        Icon(Icons.Default.QrCode, "Scan QR")
-                    },
-                    text = {
-                        Text("Quick Scan")
-                    },
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            }
-        },
+//        floatingActionButton = {
+//            if (state.activeSessions.isNotEmpty()) {
+//                ExtendedFloatingActionButton(
+//                    onClick = {
+//                        viewModel.showQrScanner()
+//                    },
+//                    icon = {
+//                        Icon(Icons.Default.QrCode, "Scan QR")
+//                    },
+//                    text = {
+//                        Text("Quick Scan")
+//                    },
+//                    containerColor = MaterialTheme.colorScheme.primary
+//                )
+//            }
+//        },
         bottomBar = {
             BottomNavigation(navController)
         }
@@ -202,18 +187,18 @@ private fun MainAttendanceScaffold(
                 .padding(paddingValues)
         ) {
             // Loading State
-            if (state.isLoading && state.activeSessions.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
+//            if (state.isLoading && state.activeSessions.isEmpty()) {
+//                item {
+//                    Box(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .height(200.dp),
+//                        contentAlignment = Alignment.Center
+//                    ) {
+//                        CircularProgressIndicator()
+//                    }
+//                }
+//            }
 
             // Error Message
             state.errorMessage?.let {
@@ -226,14 +211,14 @@ private fun MainAttendanceScaffold(
             }
 
             // Active Sessions or Empty State
-            if (state.activeSessions.isNotEmpty()) {
-                item {
-                    ActiveSessionsSection(
-                        sessions = state.activeSessions,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
+//            if (state.activeSessions.isNotEmpty()) {
+//                item {
+//                    ActiveSessionsSection(
+//                        sessions = state.activeSessions,
+//                        modifier = Modifier.padding(16.dp)
+//                    )
+//                }
+//            }
 
 
             // Attendance Methods
@@ -246,12 +231,12 @@ private fun MainAttendanceScaffold(
             }
 
             // Recent Attendance
-            item {
-                RecentAttendanceSection(
-                    recentAttendance = state.recentAttendance,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+//            item {
+//                RecentAttendanceSection(
+//                    recentAttendance = state.recentAttendance,
+//                    modifier = Modifier.padding(16.dp)
+//                )
+//            }
         }
     }
 }
@@ -322,6 +307,7 @@ private fun AttendanceMethodCard(
     }
 }
 
+/*
 @Composable
 fun ActiveSessionsSection(
     sessions: List<Session>,
@@ -434,47 +420,7 @@ private fun RecentAttendanceItem(attendance: RecentAttendance) {
         }
     }
 }
-
-@Composable
-fun ErrorMessageCard(message: String, onRetry: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Default.Warning,
-                "Error",
-                tint = MaterialTheme.colorScheme.onErrorContainer
-            )
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "Error",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-            TextButton(onClick = onRetry) {
-                Text("Retry")
-            }
-        }
-    }
-}
-
+*/
 
 @Composable
 fun VerifiedSessionState(
@@ -657,6 +603,47 @@ private fun InfoRow(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        }
+    }
+}
+
+
+@Composable
+fun ErrorMessageCard(message: String, onRetry: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                "Error",
+                tint = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Error",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            TextButton(onClick = onRetry) {
+                Text("Retry")
+            }
         }
     }
 }

@@ -2,7 +2,6 @@ package com.amos_tech_code.smartattend.ui.feature.profile
 
 import androidx.lifecycle.ViewModel
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
-import com.amos_tech_code.smartattend.ui.feature.home.Student
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,4 +82,13 @@ data class DeviceInfoUiState(
     val lastLogin: String = "",
     val isCurrentDevice: Boolean = true,
     val registrationDate: String = ""
+)
+
+data class Student(
+    val name: String = "",
+    val registrationNo: String = "",
+    val email: String = "",
+    val department: String = "",
+    val semester: String = "",
+    val profileImage: String? = null
 )

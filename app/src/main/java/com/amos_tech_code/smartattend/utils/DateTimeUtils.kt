@@ -3,6 +3,25 @@ package com.amos_tech_code.smartattend.utils
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+import java.util.Date
+
+/**
+ * Formats a given timestamp (in milliseconds) into a user-friendly date and time string.
+ * Example: "MMM dd, yyyy 'at' hh:mm a" -> "Feb 28, 2026 at 10:30 AM"
+ *
+ * @return A formatted date and time string.
+ */
+fun Long.formatDate(): String {
+    val date = Date(this)
+    val format = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
+    return format.format(date)
+}
+
+
+/**
+ *
+ * @return A formatted AM/PM time string.
+ */
 fun String.toAmPmTime(): String {
     val inputFormat = SimpleDateFormat(
         "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",

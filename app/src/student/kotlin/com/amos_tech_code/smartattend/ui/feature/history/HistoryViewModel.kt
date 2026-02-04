@@ -1,145 +1,106 @@
 package com.amos_tech_code.smartattend.ui.feature.history
 
 import androidx.lifecycle.ViewModel
-import com.amos_tech_code.smartattend.ui.feature.home.AttendanceMethod
-import com.amos_tech_code.smartattend.ui.feature.home.AttendanceRecord
-import com.amos_tech_code.smartattend.ui.feature.home.AttendanceStatus
-import com.amos_tech_code.smartattend.ui.feature.home.CourseAttendance
-import com.amos_tech_code.smartattend.ui.feature.home.OverallStats
+import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.filter
+import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
+import com.amos_tech_code.smartattend.data.network.utils.ApiError
+import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
+import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 
-class HistoryViewModel : ViewModel() {
+// First, update the ViewModel to handle session status filtering correctly
+class HistoryViewModel(
+    private val attendanceSessionRepository: AttendanceSessionRepository
+) : ViewModel() {
 
-    private val _historyState = MutableStateFlow(AttendanceHistoryState())
-    val historyState = _historyState.asStateFlow()
+    private val _filterState = MutableStateFlow(HistoryFilterState())
+    val filterState = _filterState.asStateFlow()
 
-}
+    private val _statsState = MutableStateFlow(AttendanceStats())
+    val statsState = _statsState.asStateFlow()
 
-// History Screen State
-data class AttendanceHistoryState(
-    val overallStats: OverallStats = OverallStats(
-        overallPercentage = 85.5f,
-        presentDays = 17,
-        absentDays = 2,
-        lateDays = 1,
-        totalDays = 20,
-        streak = 5
-    ),
-    val courseAttendance: List<CourseAttendance> = listOf(
-        CourseAttendance(
-            courseId = "1",
-            courseName = "Mobile Application Development",
-            courseCode = "CS401",
-            present = 8,
-            absent = 1,
-            total = 9,
-            percentage = 88.9f
-        ),
-        CourseAttendance(
-            courseId = "2",
-            courseName = "Software Engineering",
-            courseCode = "CS402",
-            present = 7,
-            absent = 1,
-            total = 8,
-            percentage = 87.5f
-        ),
-        CourseAttendance(
-            courseId = "3",
-            courseName = "Database Systems",
-            courseCode = "CS301",
-            present = 9,
-            absent = 0,
-            total = 9,
-            percentage = 100f
-        ),
-        CourseAttendance(
-            courseId = "4",
-            courseName = "Computer Networks",
-            courseCode = "CS302",
-            present = 6,
-            absent = 1,
-            total = 7,
-            percentage = 85.7f
-        ),
-        CourseAttendance(
-            courseId = "5",
-            courseName = "Algorithms",
-            courseCode = "CS201",
-            present = 5,
-            absent = 0,
-            total = 5,
-            percentage = 100f
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing = _isRefreshing.asStateFlow()
+
+    private val _event = Channel<AttendanceHistoryEvent>()
+    val event = _event.receiveAsFlow()
+
+    fun getAttendancePagingData(filterState: HistoryFilterState): Flow<PagingData<StudentAttendanceRecordEntity>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            )
+        ) {
+            attendanceSessionRepository.getAttendancePagingSource()
+        }.flow
+            .map { pagingData ->
+                pagingData.filter { record ->
+                    filterState.predicate(record)
+                }
+            }
+            .map { pagingData ->
+                // Update stats based on visible data
+                updateStatsFromData(pagingData)
+                pagingData
+            }
+            .cachedIn(viewModelScope)
+    }
+
+    private fun updateStatsFromData(pagingData: PagingData<StudentAttendanceRecordEntity>) {
+        // This is a simplified implementation - in real app, you'd want to query stats separately
+        val data = pagingData
+        // Calculate stats from the data (this is just a placeholder)
+        _statsState.value = AttendanceStats(
+            totalSessions = 0,
+            attendedSessions = 0,
+            scheduledSessions = 0
         )
-    ),
-    val recentRecords: List<AttendanceRecord> = listOf(
-        AttendanceRecord(
-            id = "1",
-            courseName = "Mobile Application Development",
-            date = "2024-01-15",
-            time = "10:05 AM",
-            status = AttendanceStatus.PRESENT,
-            method = AttendanceMethod.QR_CODE,
-            location = "Room 301, CS Building",
-            verified = true
-        ),
-        AttendanceRecord(
-            id = "2",
-            courseName = "Software Engineering",
-            date = "2024-01-15",
-            time = "02:10 PM",
-            status = AttendanceStatus.LATE,
-            method = AttendanceMethod.MANUAL_CODE,
-            location = "Room 205, Main Building",
-            verified = true
-        ),
-        AttendanceRecord(
-            id = "3",
-            courseName = "Database Systems",
-            date = "2024-01-14",
-            time = "08:15 AM",
-            status = AttendanceStatus.PRESENT,
-            method = AttendanceMethod.QR_CODE,
-            location = "Room 101, CS Building",
-            verified = true
-        ),
-        AttendanceRecord(
-            id = "4",
-            courseName = "Computer Networks",
-            date = "2024-01-13",
-            time = "11:00 AM",
-            status = AttendanceStatus.ABSENT,
-            method = AttendanceMethod.GPS,
-            location = null,
-            verified = false
-        ),
-        AttendanceRecord(
-            id = "5",
-            courseName = "Algorithms",
-            date = "2024-01-12",
-            time = "09:50 AM",
-            status = AttendanceStatus.PRESENT,
-            method = AttendanceMethod.QR_CODE,
-            location = "Room 402, CS Building",
-            verified = true
-        ),
-        AttendanceRecord(
-            id = "6",
-            courseName = "Mobile Application Development",
-            date = "2024-01-12",
-            time = "10:00 AM",
-            status = AttendanceStatus.PRESENT,
-            method = AttendanceMethod.QR_CODE,
-            location = "Room 301, CS Building",
-            verified = true
-        )
-    ),
-    val selectedFilter: HistoryFilter = HistoryFilter.ALL,
-    val isLoading: Boolean = false
-)
+    }
 
-// Filter for History Screen
-enum class HistoryFilter {
-    ALL, PRESENT, ABSENT, LATE, THIS_WEEK, THIS_MONTH
+    fun updateFilter(newState: HistoryFilterState) {
+        _filterState.value = newState
+    }
+
+    fun refresh() {
+        _isRefreshing.value = true
+        viewModelScope.launch {
+            try {
+                val result = attendanceSessionRepository.syncStudentAttendanceRecords()
+
+                when(result) {
+                    is ApiResult.Success -> {
+                        _event.send(AttendanceHistoryEvent.RefreshComplete)
+                    }
+                    is ApiResult.Failure -> {
+                        val message = result.error.extractApiErrorMessage()
+                        _event.send(AttendanceHistoryEvent.ShowError(message))
+                    }
+                }
+
+            } catch (_: Exception) {
+                _event.send(AttendanceHistoryEvent.ShowError("Failed to refresh"))
+            } finally {
+                // Ensure the refreshing state is reset even if an error occurs
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+
 }

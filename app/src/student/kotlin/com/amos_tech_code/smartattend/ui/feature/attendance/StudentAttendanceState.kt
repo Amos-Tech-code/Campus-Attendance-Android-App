@@ -3,13 +3,11 @@ package com.amos_tech_code.smartattend.ui.feature.attendance
 import com.amos_tech_code.smartattend.domain.models.LocationData
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
-import com.amos_tech_code.smartattend.ui.feature.home.RecentAttendance
-import com.amos_tech_code.smartattend.ui.feature.home.Session
 
 // Attendance Screen State
 data class StudentAttendanceState(
-    val activeSessions: List<Session> = emptyList(),
-    val recentAttendance: List<RecentAttendance> = emptyList(),
+//    val activeSessions: List<Session> = emptyList(),
+//    val recentAttendance: List<RecentAttendance> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val errorType: AttendanceErrorType? = null,

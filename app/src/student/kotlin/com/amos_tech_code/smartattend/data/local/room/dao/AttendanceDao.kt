@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.data.local.room.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -8,6 +9,9 @@ import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendance
 
 @Dao
 interface AttendanceDao {
+
+    @Query("SELECT * FROM student_attendance_records ORDER BY attendedAt DESC")
+    fun pagingSource(): PagingSource<Int, StudentAttendanceRecordEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(record: StudentAttendanceRecordEntity)

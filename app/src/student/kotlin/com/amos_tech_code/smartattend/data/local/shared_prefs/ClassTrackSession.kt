@@ -3,7 +3,11 @@ package com.amos_tech_code.smartattend.data.local.shared_prefs
 import android.content.Context
 import androidx.core.content.edit
 import com.amos_tech_code.smartattend.data.local.SessionProvider
+import com.amos_tech_code.smartattend.domain.models.StudentFlow
 import com.amos_tech_code.smartattend.domain.request.DeviceInfo
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class ClassTrackSession(context: Context) : SessionProvider {
 
@@ -12,9 +16,6 @@ class ClassTrackSession(context: Context) : SessionProvider {
     companion object {
         private const val KEY_TOKEN = "token"
         private const val KEY_NAME = "name"
-        private const val KEY_PROFILE_COMPLETE = "profile_complete"
-
-        // Added key for student session
         private const val KEY_REG_NO = "reg_no"
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
         private const val TOKEN_VALIDITY_DAYS = 10
@@ -22,13 +23,6 @@ class ClassTrackSession(context: Context) : SessionProvider {
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_DEVICE_MODEL = "device_model"
         private const val KEY_DEVICE_OS = "device_os"
-    }
-
-    fun setSetupComplete(isSetupComplete: Boolean) {
-        prefs.edit {
-            putBoolean(KEY_PROFILE_COMPLETE, isSetupComplete)
-            apply()
-        }
     }
 
     fun saveStudentSession(
@@ -61,17 +55,57 @@ class ClassTrackSession(context: Context) : SessionProvider {
         }
     }
 
+    override fun saveName(name: String) {
+        prefs.edit {
+            putString(KEY_NAME, name)
+        }
+    }
+
+    override fun saveRegistrationNumber(registrationNo: String) {
+        prefs.edit {
+            putString(KEY_REG_NO, registrationNo)
+        }
+    }
+
     fun clearSession() {
         prefs.edit { clear() }
     }
 
     fun getName(): String? = prefs.getString(KEY_NAME, null)
-    fun isProfileComplete(): Boolean = prefs.getBoolean(KEY_PROFILE_COMPLETE, false)
     fun getRegNo() : String? = prefs.getString(KEY_REG_NO, null)
+
+    fun getStudentFlow() : Flow<StudentFlow> = callbackFlow {
+        trySend(StudentFlow(
+            name = getName() ?: "",
+            regNo = getRegNo() ?: ""
+        ))
+
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+            if (key == KEY_NAME || key == KEY_REG_NO) {
+                trySend(StudentFlow(
+                    name = sharedPrefs.getString(KEY_NAME, "") ?: "",
+                    regNo = sharedPrefs.getString(KEY_REG_NO, "") ?: ""
+                ))
+            }
+        }
+
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+
+        awaitClose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+
+    }
+
     fun getDeviceId() : String? = prefs.getString(KEY_DEVICE_ID, null)
     fun getDeviceModel() : String? = prefs.getString(KEY_DEVICE_MODEL, null)
-    fun getDeviceOs() : String? = prefs.getString(KEY_DEVICE_OS, null)
+    private fun getDeviceOs() : String? = prefs.getString(KEY_DEVICE_OS, null)
 
+    fun getStudentDeviceInfo() : DeviceInfo? = DeviceInfo(
+        deviceId = getDeviceId() ?: "",
+        model = getDeviceModel() ?: "",
+        os = getDeviceOs() ?: ""
+    )
 
     // Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null

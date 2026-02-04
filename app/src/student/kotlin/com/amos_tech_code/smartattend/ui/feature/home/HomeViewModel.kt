@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.ui.feature.home
 
 import androidx.lifecycle.ViewModel
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -175,45 +176,3 @@ enum class AttendanceStatus {
     PRESENT, ABSENT, LATE, PENDING
 }
 
-enum class AttendanceMethod {
-    QR_CODE, MANUAL_CODE, GPS, LECTURER_MANUAL
-}
-
-data class CourseAttendance(
-    val courseId: String,
-    val courseName: String,
-    val courseCode: String,
-    val present: Int,
-    val absent: Int,
-    val total: Int,
-    val percentage: Float
-)
-
-data class AttendanceRecord(
-    val id: String,
-    val courseName: String,
-    val date: String,
-    val time: String,
-    val status: AttendanceStatus,
-    val method: AttendanceMethod,
-    val location: String?,
-    val verified: Boolean
-)
-
-data class OverallStats(
-    val overallPercentage: Float,
-    val presentDays: Int,
-    val absentDays: Int,
-    val lateDays: Int,
-    val totalDays: Int,
-    val streak: Int
-)
-
-data class Student(
-    val name: String = "",
-    val registrationNo: String = "",
-    val email: String = "",
-    val department: String = "",
-    val semester: String = "",
-    val profileImage: String? = null
-)

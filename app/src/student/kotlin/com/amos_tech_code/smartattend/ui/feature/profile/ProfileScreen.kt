@@ -54,7 +54,6 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonSize
 import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonStyle
 import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendWidthSpacer
-import com.amos_tech_code.smartattend.ui.feature.home.Student
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
@@ -88,7 +87,8 @@ fun ProfileScreen(
                     Text(
                         text = "Profile",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             )
