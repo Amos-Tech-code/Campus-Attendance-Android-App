@@ -23,14 +23,17 @@ data class HistoryFilterState(
             else -> true
         }
     }
+
+    fun isDefault(): Boolean {
+        return selectedUnit == null &&
+                selectedStatus == null &&
+                selectedType == null &&
+                selectedMethod == null &&
+                !showSuspiciousOnly &&
+                sortOrder == SortOrder.NEWEST_FIRST
+    }
 }
 
 enum class SortOrder {
     NEWEST_FIRST, OLDEST_FIRST
 }
-
-data class AttendanceStats(
-    val totalSessions: Int = 0,
-    val attendedSessions: Int = 0,
-    val scheduledSessions: Int = 0
-)

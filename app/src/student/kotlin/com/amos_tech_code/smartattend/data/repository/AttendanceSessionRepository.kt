@@ -1,6 +1,10 @@
 package com.amos_tech_code.smartattend.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.amos_tech_code.smartattend.data.local.room.dao.AttendanceDao
+import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
@@ -12,6 +16,7 @@ import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
@@ -46,7 +51,17 @@ class AttendanceSessionRepository (
      * Local Datasource Operations + Network Sync Operations
      */
 
-    fun getAttendancePagingSource() = attendanceDao.pagingSource()
+    fun getAttendancePagingSource() :  Flow<PagingData<StudentAttendanceRecordEntity>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = {
+                attendanceDao.pagingSource()
+            }
+        ).flow
+    }
 
     suspend fun syncStudentAttendanceRecords() : ApiResult<Unit> {
 

@@ -52,6 +52,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -127,20 +128,9 @@ fun HistoryScreen(
             )
         },
         floatingActionButton = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(
-                    onClick = {
-                        viewModel.updateFilter(HistoryFilterState())
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
-                    ),
-                ) {
-                    Text("Clear All Filters")
-                }
-                FilterFAB(filterState, viewModel)
-            }
+            FilterFAB(filterState, viewModel)
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             BottomNavigation(
                 navController = navController,
@@ -149,8 +139,7 @@ fun HistoryScreen(
         }
     ) { paddingValues ->
 
-        val pagingItems = viewModel.getAttendancePagingData(filterState)
-            .collectAsLazyPagingItems()
+        val pagingItems = viewModel.attendancePagingData.collectAsLazyPagingItems()
 
         LazyColumn(
             modifier = Modifier
@@ -160,54 +149,55 @@ fun HistoryScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Session Stats Summary (updated for session status)
-            item {
-                SessionStatsSummary(viewModel)
-            }
-
             // Filter Chips (when filters are active)
             stickyHeader {
-                ActiveFiltersChipRow(filterState)
-            }
-
-            // Attendance List
-            items(
-                count = pagingItems.itemCount,
-                key = { index ->
-                    pagingItems[index]?.sessionId ?: index
-                }
-            ) { index ->
-                val item = pagingItems[index]
-                if (item != null) {
-                    AttendanceCard(record = item)
+                if (!filterState.isDefault()) {
+                    ActiveFiltersChipRow(filterState, viewModel)
                 }
             }
 
-            if (pagingItems.loadState.append is LoadState.Loading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+            when(pagingItems.loadState.append) {
+                is LoadState.Loading -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
-            }
 
-            if (pagingItems.loadState.refresh is LoadState.Error) {
-                item {
-                    ErrorState(
-                        message = "Failed to load attendance records",
-                        onRetry = { pagingItems.retry() }
-                    )
+                is LoadState.Error -> {
+                    item {
+                        ErrorState(
+                            message = "Failed to load attendance records",
+                            onRetry = { pagingItems.retry() }
+                        )
+                    }
                 }
-            }
 
-            if (pagingItems.itemCount == 0) {
-                item {
-                    EmptyState()
+                is LoadState.NotLoading -> {
+                    if (pagingItems.itemCount == 0) {
+                        item {
+                            EmptyState()
+                        }
+                    } else {
+                        // Attendance List
+                        items(
+                            count = pagingItems.itemCount,
+                            key = { index ->
+                                pagingItems[index]?.sessionId ?: index
+                            }
+                        ) { index ->
+                            val item = pagingItems[index]
+                            if (item != null) {
+                                AttendanceCard(record = item)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -259,140 +249,75 @@ fun HistoryTopAppBar(
 }
 
 @Composable
-fun SessionStatsSummary(viewModel: HistoryViewModel) {
-    val stats by viewModel.statsState.collectAsStateWithLifecycle()
+fun ActiveFiltersChipRow(
+    filterState: HistoryFilterState,
+    viewModel: HistoryViewModel // 1. Add viewModel as a parameter
+) {
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
+    // Helper function to create a unique key for each filter type
+    fun getFilterKey(filter: Any?): Any = filter ?: "null"
+
+    val activeFilters = remember(filterState) {
+        // We'll build a list of Pairs: the display text and a lambda to remove it.
+        buildList {
+            filterState.selectedType?.let {
+                add("Type: ${formatSessionType(it)}" to {
+                    viewModel.updateFilter(filterState.copy(selectedType = null))
+                })
+            }
+            filterState.selectedStatus?.let {
+                add("Status: ${formatSessionStatus(it)}" to {
+                    viewModel.updateFilter(filterState.copy(selectedStatus = null))
+                })
+            }
+            filterState.selectedMethod?.let {
+                add("Method: ${formatAttendanceMethod(it)}" to {
+                    viewModel.updateFilter(filterState.copy(selectedMethod = null))
+                })
+            }
+            if (filterState.showSuspiciousOnly) {
+                add("Suspicious Only" to {
+                    viewModel.updateFilter(filterState.copy(showSuspiciousOnly = false))
+                })
+            }
+            // Make the Sort filter non-removable, as it always has a value.
+            // Or, if you want it to reset to default, you could implement that too.
+            if (filterState.sortOrder != SortOrder.NEWEST_FIRST) {
+                add("Sort: Oldest" to {
+                    viewModel.updateFilter(filterState.copy(sortOrder = SortOrder.NEWEST_FIRST))
+                })
+            }
+        }
+    }
+
+    // Only show the row if there are removable filters active.
+    if (activeFilters.isNotEmpty()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .horizontalScroll(rememberScrollState())
+                .padding(bottom = 8.dp), // Add some padding below the chips
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            StatItem(
-                count = stats.totalSessions.toString(),
-                label = "Total Sessions",
-                icon = Icons.Default.History,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            StatItem(
-                count = stats.attendedSessions.toString(),
-                label = "Attended",
-                icon = Icons.Default.CheckCircle,
-                color = MaterialTheme.colorScheme.tertiary
-            )
-
-            StatItem(
-                count = stats.scheduledSessions.toString(),
-                label = "Scheduled",
-                icon = Icons.Default.Schedule,
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-    }
-}
-
-@Composable
-fun ActiveFiltersChipRow(
-    filterState: HistoryFilterState,
-) {
-    val activeFilters = remember(filterState) {
-        buildList {
-            filterState.selectedType?.let {
-                add("Type: ${formatSessionType(it)}")
-            }
-            filterState.selectedStatus?.let {
-                add("Status: ${formatSessionStatus(it)}")
-            }
-            filterState.selectedMethod?.let {
-                add("Method: ${formatAttendanceMethod(it)}")
-            }
-            if (filterState.showSuspiciousOnly) {
-                add("Suspicious Only")
-            }
-            add("Sort: ${if (filterState.sortOrder == SortOrder.NEWEST_FIRST) "Newest" else "Oldest"}")
-        }
-    }
-
-    if (activeFilters.isNotEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                activeFilters.forEach { filter ->
-                    ElevatedAssistChip(
-                        onClick = { /* Show filter dialog */ },
-                        label = {
-                            Text(filter)
-                        },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Remove",
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        colors = AssistChipDefaults.elevatedAssistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+            activeFilters.forEach { (label, onRemove) ->
+                ElevatedAssistChip(
+                    // 2. Use the onRemove lambda for the onClick action
+                    onClick = onRemove,
+                    label = { Text(label) },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove Filter",
+                            modifier = Modifier.size(AssistChipDefaults.IconSize)
                         )
+                    },
+                    shape = CircleShape,
+                    colors = AssistChipDefaults.elevatedAssistChipColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
                     )
-                }
+                )
             }
         }
-    }
-}
-
-@Composable
-fun StatItem(count: String, label: String, icon: ImageVector, color: Color) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.2f))
-                .border(1.dp, color.copy(alpha = 0.3f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = count,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold
-            ),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -531,48 +456,6 @@ fun FilterDialog(
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
-                    }
-                }
-
-                // Attendance Method Filter
-                Text(
-                    text = "Attendance Method",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                ) {
-                    AttendanceMethod.entries.forEach { method ->
-                        val isSelected = localState.selectedMethod == method
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    localState = localState.copy(
-                                        selectedMethod = if (isSelected) null else method
-                                    )
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = isSelected,
-                                onClick = {
-                                    localState = localState.copy(
-                                        selectedMethod = if (isSelected) null else method
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = formatAttendanceMethod(method),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
                     }
                 }
 
