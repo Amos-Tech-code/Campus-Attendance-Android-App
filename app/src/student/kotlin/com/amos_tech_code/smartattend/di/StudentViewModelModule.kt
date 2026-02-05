@@ -19,6 +19,6 @@ val studentViewModelModule = module {
         get(), get(), get(), get(), get()
     )}
     viewModel { HistoryViewModel(get()) }
-    viewModel { ProfileViewModel(get()) }
+    viewModel { ProfileViewModel(get(), get(), get()) }
 
 }

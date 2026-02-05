@@ -85,7 +85,7 @@ import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
 import com.amos_tech_code.smartattend.ui.components.ErrorState
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
-import com.amos_tech_code.smartattend.utils.formatDate
+import com.amos_tech_code.smartattend.utils.formatDateTime
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -95,6 +95,7 @@ fun HistoryScreen(
     navController: NavController,
     viewModel: HistoryViewModel = koinViewModel()
 ) {
+    val pagingItems = viewModel.attendancePagingData.collectAsLazyPagingItems()
     val filterState by viewModel.filterState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -137,9 +138,6 @@ fun HistoryScreen(
             )
         }
     ) { paddingValues ->
-
-        val pagingItems = viewModel.attendancePagingData.collectAsLazyPagingItems()
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -601,7 +599,7 @@ fun AttendanceCard(record: StudentAttendanceRecordEntity) {
                 ) {
                     SessionDetailRow(
                         icon = Icons.Default.Schedule,
-                        text = record.attendedAt.formatDate()
+                        text = record.attendedAt.formatDateTime()
                     )
 
                     SessionDetailRow(

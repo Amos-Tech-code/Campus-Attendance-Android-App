@@ -60,14 +60,14 @@ interface ApiService {
     @GET("lecturer/academic-setup/suggestions/universities")
     suspend fun fetchMatchingUniversities(
         @Query("query") query: String,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int = 10
     ) : Response<List<UniversitySuggestion>>
 
     @GET("lecturer/academic-setup/suggestions/departments")
     suspend fun fetchMatchingDepartments(
         @Query("universityId") universityId: String,
         @Query("query") query: String,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int = 10
     ) : Response<List<DepartmentSuggestion>>
 
     @GET("lecturer/academic-setup/suggestions/programmes")
@@ -75,7 +75,7 @@ interface ApiService {
         @Query("universityId") universityId: String,
         @Query("departmentId") departmentId: String?,
         @Query("query") query: String,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int = 10
     ) : Response<List<ProgrammeSuggestion>>
 
     @GET("lecturer/academic-setup/suggestions/units")
@@ -84,7 +84,7 @@ interface ApiService {
         @Query("departmentId") departmentId: String?,
         @Query("programmeId") programmeId: String?,
         @Query("query") query: String,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int = 10
     ) : Response<List<UnitSuggestion>>
 
     @POST("lecturer/academic-setup")

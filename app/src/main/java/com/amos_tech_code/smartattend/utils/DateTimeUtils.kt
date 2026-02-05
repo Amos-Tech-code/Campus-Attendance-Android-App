@@ -10,12 +10,20 @@ import java.util.Locale
  *
  * @return A formatted date and time string.
  */
-fun Long.formatDate(): String {
+fun Long.formatDateTime(): String {
     val date = Date(this)
     val format = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
     return format.format(date)
 }
 
+/**
+ * Formats a given timestamp (in milliseconds) into a user-friendly date string.
+ * Example: "MMM dd, yyyy" -> "Feb 28, 2026"
+ */
+fun Long.formatDate(): String {
+    val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    return formatter.format(Date(this))
+}
 
 /**
  *
@@ -31,7 +39,7 @@ fun String.toAmPmTime(): String {
     return try {
         val date = inputFormat.parse(this)
         date?.let { outputFormat.format(it) } ?: this
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         this
     }
 }

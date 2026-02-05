@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.local.room.ClassTrackDatabase
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
+import com.amos_tech_code.smartattend.data.repositories.UniversitySuggestionsRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
 import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
 import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
@@ -41,6 +42,8 @@ val studentDataModule = module {
 
     // Repository
     single { EnrollmentRepository(get(), get()) }
+
+    single<UniversitySuggestionsRepository> { get<EnrollmentRepository>() }
 
     single { AttendanceSessionRepository(get(), get()) }
 

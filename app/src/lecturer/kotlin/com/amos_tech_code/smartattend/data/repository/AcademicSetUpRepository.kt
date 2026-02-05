@@ -40,7 +40,7 @@ class AcademicSetUpRepository(
     private val session: ClassTrackProSession,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val lecturerAcademicsDao: LecturerAcademicsDao
-) {
+) : UniversitySuggestionsRepository {
     /**
      * Fetches a list of university suggestions from the network based on a search query.
      * @param request The request containing the search query and limit.
