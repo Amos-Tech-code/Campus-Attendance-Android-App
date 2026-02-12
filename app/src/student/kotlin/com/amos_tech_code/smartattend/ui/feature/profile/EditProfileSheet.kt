@@ -18,7 +18,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -31,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
+import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,9 +43,13 @@ fun EditProfileBottomSheet(
     var registrationNo by remember { mutableStateOf(student.registrationNo) }
     var isLoading by remember { mutableStateOf(false) }
 
+    // Track if fields have been touched/interacted with
+    var isNameTouched by remember { mutableStateOf(false) }
+    var isRegistrationNoTouched by remember { mutableStateOf(false) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
@@ -75,26 +79,34 @@ fun EditProfileBottomSheet(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(
+                SmartAttendTextField(
                     value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Full Name") },
+                    onValueChange = {
+                        name = it
+                        isNameTouched = true
+                    },
+                    label = "Full Name",
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
                     leadingIcon = {
                         Icon(Icons.Default.Person, contentDescription = null)
-                    }
+                    },
+                    isError = isNameTouched && name.isBlank(),
+                    errorMessage = if (isNameTouched && name.isBlank()) "Name is required" else ""
                 )
 
-                OutlinedTextField(
+                SmartAttendTextField(
                     value = registrationNo,
-                    onValueChange = { registrationNo = it },
-                    label = { Text("Registration Number") },
+                    onValueChange = {
+                        registrationNo = it
+                        isRegistrationNoTouched = true
+                    },
+                    label = "Registration Number",
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
                     leadingIcon = {
                         Icon(Icons.Default.Numbers, contentDescription = null)
-                    }
+                    },
+                    isError = isRegistrationNoTouched && registrationNo.isBlank(),
+                    errorMessage = if (isRegistrationNoTouched && registrationNo.isBlank()) "Registration number is required" else ""
                 )
             }
 
@@ -121,7 +133,7 @@ fun EditProfileBottomSheet(
                         )
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = name.isNotEmpty() && registrationNo.isNotEmpty() && !isLoading
+                    enabled = name.isNotBlank() && registrationNo.isNotBlank() && !isLoading
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(

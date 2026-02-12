@@ -14,8 +14,11 @@ import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
 import com.amos_tech_code.smartattend.domain.request.UniversitySuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -24,7 +27,8 @@ class ProfileViewModel(
     private val session: ClassTrackSession,
     private val enrollmentRepository: EnrollmentRepository,
     private val accountRepository: AccountRepository
-) : ViewModel() {
+) : ViewModel()
+{
 
     private val _profileState = MutableStateFlow(ProfileScreenState())
     val profileState = _profileState.asStateFlow()
@@ -34,9 +38,145 @@ class ProfileViewModel(
 
     private val enrollmentFlow = enrollmentRepository.getActiveEnrollmentFlow()
 
+    // Search debouncers
+    private val universitySearchDebounce = MutableSharedFlow<String>()
+    private val programmeSearchDebounce = MutableSharedFlow<Pair<String, String>>()
+
     init {
         loadInitialData()
         observeEnrollment()
+        setupUniversitySearchDebounce()
+        setupProgrammeSearchDebounce()
+    }
+
+    private fun setupUniversitySearchDebounce() {
+        viewModelScope.launch {
+            universitySearchDebounce
+                .debounce(500) // 500ms debounce
+                .distinctUntilChanged()
+                .collect { query ->
+                    performUniversitySearch(query)
+                }
+        }
+    }
+
+    private fun setupProgrammeSearchDebounce() {
+        viewModelScope.launch {
+            programmeSearchDebounce
+                .debounce(500) // 500ms debounce
+                .distinctUntilChanged()
+                .collect { (universityId, query) ->
+                    performProgrammeSearch(universityId, query)
+                }
+        }
+    }
+
+    fun searchUniversities(query: String) {
+        // Clear suggestions if query is too short
+        if (query.length < 2) {
+            _profileState.update {
+                it.copy(
+                    universitySuggestions = emptyList(),
+                    isSearching = false
+                )
+            }
+            return
+        }
+
+        // Update searching state
+        _profileState.update { it.copy(isSearching = true) }
+
+        // Emit to debounced flow
+        viewModelScope.launch {
+            universitySearchDebounce.emit(query)
+        }
+    }
+
+    private fun performUniversitySearch(query: String) {
+        viewModelScope.launch {
+            val result = enrollmentRepository.fetchMatchingUniversities(
+                UniversitySuggestionRequest(query = query)
+            )
+
+            when (result) {
+                is ApiResult.Success -> {
+                    _profileState.update { state ->
+                        state.copy(
+                            universitySuggestions = result.data,
+                            isSearching = false
+                        )
+                    }
+                }
+                is ApiResult.Failure -> {
+                    _event.trySend(ProfileEvent.ShowError("Failed to search universities"))
+                    _profileState.update { it.copy(isSearching = false) }
+                }
+            }
+        }
+    }
+
+    fun searchProgrammes(
+        universityId: String,
+        query: String
+    ) {
+        // Clear suggestions if query is too short
+        if (query.length < 2) {
+            _profileState.update {
+                it.copy(
+                    programmeSuggestions = emptyList(),
+                    isSearching = false
+                )
+            }
+            return
+        }
+
+        // Update searching state
+        _profileState.update { it.copy(isSearching = true) }
+
+        // Emit to debounced flow
+        viewModelScope.launch {
+            programmeSearchDebounce.emit(universityId to query)
+        }
+    }
+
+    private fun performProgrammeSearch(
+        universityId: String,
+        query: String
+    ) {
+        viewModelScope.launch {
+            val result = enrollmentRepository.fetchMatchingProgrammes(
+                ProgrammeSuggestionRequest(
+                    universityId = universityId,
+                    query = query
+                )
+            )
+
+            when (result) {
+                is ApiResult.Success -> {
+                    _profileState.update { state ->
+                        state.copy(
+                            programmeSuggestions = result.data,
+                            isSearching = false
+                        )
+                    }
+                }
+                is ApiResult.Failure -> {
+                    _event.trySend(ProfileEvent.ShowError("Failed to search programmes"))
+                    _profileState.update { it.copy(isSearching = false) }
+                }
+            }
+        }
+    }
+
+    // Clear search state when sheet is dismissed
+    fun clearSearchState() {
+        _profileState.update {
+            it.copy(
+                universitySuggestions = emptyList(),
+                programmeSuggestions = emptyList(),
+                isSearching = false
+            )
+        }
     }
 
     private fun loadInitialData() {
@@ -111,7 +251,7 @@ class ProfileViewModel(
         }
     }
 
-    fun searchUniversities(query: String) {
+    /*fun searchUniversities(query: String) {
         viewModelScope.launch {
             if (query.length >= 2) {
                 _profileState.update { it.copy(isLoading = true) }
@@ -176,6 +316,8 @@ class ProfileViewModel(
         }
     }
 
+     */
+
     fun enrollStudent(
         universityId: String,
         universityName: String,
@@ -213,15 +355,18 @@ class ProfileViewModel(
         }
     }
 
-    fun updateYearOfStudy(enrollmentId: String, newYear: Int) {
+    fun updateYearOfStudy(newYear: Int) {
         viewModelScope.launch {
             _profileState.update { it.copy(isLoading = true) }
+
+            val enrollmentId = _profileState.value.enrollment?.enrollmentId
+                ?: return@launch _event.send(ProfileEvent.ShowError("Enrollment not found"))
 
             val result = enrollmentRepository.updateYear(enrollmentId, newYear)
 
             when (result) {
                 is ApiResult.Success -> {
-                    _event.trySend(ProfileEvent.ShowMessage("Year updated to Year $newYear"))
+                    _event.send(ProfileEvent.ShowMessage("Year updated to Year $newYear"))
                     _profileState.update { state ->
                         state.copy(
                             enrollment = result.data.toEntity().toUiState(),
@@ -231,7 +376,7 @@ class ProfileViewModel(
                 }
                 is ApiResult.Failure -> {
                     val message = result.error.extractApiErrorMessage()
-                    _event.trySend(ProfileEvent.ShowError(message))
+                    _event.send(ProfileEvent.ShowError(message))
                     _profileState.update { it.copy(isLoading = false) }
                 }
             }
@@ -246,7 +391,7 @@ class ProfileViewModel(
 
             when (result) {
                 is ApiResult.Success -> {
-                    _event.trySend(ProfileEvent.ShowMessage("Enrollment deactivated"))
+                    _event.send(ProfileEvent.ShowMessage("Enrollment deactivated"))
                     _profileState.update { state ->
                         state.copy(
                             enrollment = null,
@@ -257,7 +402,7 @@ class ProfileViewModel(
                 }
                 is ApiResult.Failure -> {
                     val message = result.error.extractApiErrorMessage()
-                    _event.trySend(ProfileEvent.ShowError(message))
+                    _event.send(ProfileEvent.ShowError(message))
                     _profileState.update { it.copy(isLoading = false) }
                 }
             }

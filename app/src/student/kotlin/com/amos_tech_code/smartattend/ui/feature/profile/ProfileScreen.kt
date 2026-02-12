@@ -581,7 +581,6 @@ fun ProfileScreen(
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.padding(bottom = 72.dp)
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -626,7 +625,7 @@ fun ProfileScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
@@ -656,7 +655,7 @@ fun ProfileScreen(
             state = state,
             onDismiss = {
                 showEnrollmentSheet = false
-                viewModel.clearSuggestions()
+                viewModel.clearSearchState()
             },
             onUniversitySearch = { query ->
                 viewModel.searchUniversities(query)
@@ -667,7 +666,7 @@ fun ProfileScreen(
             onEnroll = { universityId, universityName, programmeId, programmeName ->
                 viewModel.enrollStudent(universityId, universityName, programmeId, programmeName)
                 showEnrollmentSheet = false
-                viewModel.clearSuggestions()
+                viewModel.clearSearchState()
             }
         )
     }
@@ -678,7 +677,7 @@ fun ProfileScreen(
             currentYear = state.enrollment!!.yearOfStudy,
             onDismiss = { showYearUpdateSheet = false },
             onUpdate = { newYear ->
-                viewModel.updateYearOfStudy(state.enrollment!!.enrollmentId, newYear)
+                viewModel.updateYearOfStudy(newYear)
                 showYearUpdateSheet = false
             }
         )
@@ -1252,7 +1251,7 @@ private fun DeviceInfoCard(
             ) {
                 InfoRow(
                     label = "Device ID",
-                    value = deviceInfo.deviceId,
+                    value = deviceInfo.deviceId.take(5) + "...",
                     icon = Icons.Default.Fingerprint
                 )
 

@@ -14,6 +14,7 @@ data class ProfileScreenState(
     val programmeSuggestions: List<ProgrammeSuggestion> = emptyList(),
     val showEnrollmentPrompt: Boolean = false,
     val isLoading: Boolean = false,
+    val isSearching: Boolean = false,
     val isLoggingOut: Boolean = false
 )
 
