@@ -27,8 +27,7 @@ class ProfileViewModel(
     private val session: ClassTrackSession,
     private val enrollmentRepository: EnrollmentRepository,
     private val accountRepository: AccountRepository
-) : ViewModel()
-{
+) : ViewModel() {
 
     private val _profileState = MutableStateFlow(ProfileScreenState())
     val profileState = _profileState.asStateFlow()
@@ -250,73 +249,6 @@ class ProfileViewModel(
             _profileState.update { it.copy(isLoading = false) }
         }
     }
-
-    /*fun searchUniversities(query: String) {
-        viewModelScope.launch {
-            if (query.length >= 2) {
-                _profileState.update { it.copy(isLoading = true) }
-
-                val result = enrollmentRepository.fetchMatchingUniversities(
-                    UniversitySuggestionRequest(query = query)
-                )
-
-                when (result) {
-                    is ApiResult.Success -> {
-                        _profileState.update { state ->
-                            state.copy(
-                                universitySuggestions = result.data,
-                                isLoading = false
-                            )
-                        }
-                    }
-                    is ApiResult.Failure -> {
-                        _event.trySend(ProfileEvent.ShowError("Failed to search universities"))
-                        _profileState.update { it.copy(isLoading = false) }
-                    }
-                }
-            } else {
-                _profileState.update { it.copy(universitySuggestions = emptyList()) }
-            }
-        }
-    }
-
-    fun searchProgrammes(
-        universityId: String,
-        query: String,
-        departmentId: String? = null
-    ) {
-        viewModelScope.launch {
-            if (query.length >= 2) {
-                _profileState.update { it.copy(isLoading = true) }
-
-                val result = enrollmentRepository.fetchMatchingProgrammes(
-                    ProgrammeSuggestionRequest(
-                        universityId = universityId,
-                        query = query,
-                    )
-                )
-
-                when (result) {
-                    is ApiResult.Success -> {
-                        _profileState.update { state ->
-                            state.copy(
-                                programmeSuggestions = result.data,
-                                isLoading = false
-                            )
-                        }
-                    }
-                    is ApiResult.Failure -> {
-                        _event.trySend(ProfileEvent.ShowError("Failed to search programmes"))
-                        _profileState.update { it.copy(isLoading = false) }
-                    }
-                }
-            } else {
-                _profileState.update { it.copy(programmeSuggestions = emptyList()) }
-            }
-        }
-    }
-
-     */
 
     fun enrollStudent(
         universityId: String,

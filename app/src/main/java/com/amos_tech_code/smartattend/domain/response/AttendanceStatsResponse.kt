@@ -1,0 +1,10 @@
+package com.amos_tech_code.smartattend.domain.response
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class AttendanceStatsResponse(
+    val totalSessions: Int,
+    val attendedSessions: Int,
+    val currentStreak: Int,
+)

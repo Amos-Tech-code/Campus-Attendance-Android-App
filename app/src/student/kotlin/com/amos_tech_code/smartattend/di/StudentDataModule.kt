@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.local.room.ClassTrackDatabase
+import com.amos_tech_code.smartattend.data.local.room.MIGRATION_1_2
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.repositories.UniversitySuggestionsRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
@@ -29,9 +30,9 @@ val studentDataModule = module {
             ClassTrackDatabase::class.java,
             "class_track_student_db"
         )
-            //.fallbackToDestructiveMigration(false) // optional, use only for development
+            //.fallbackToDestructiveMigration(false) // For development
             .fallbackToDestructiveMigrationOnDowngrade(true)
-            //.addMigrations(MIGRATION_1_2) // Add migration
+            .addMigrations(MIGRATION_1_2) // Add migration
             .build()
     }
 
@@ -40,11 +41,13 @@ val studentDataModule = module {
 
     single { get<ClassTrackDatabase>().attendanceDao() }
 
+    single { get<ClassTrackDatabase>().studentAttendanceStatsDao() }
+
     // Repository
     single { EnrollmentRepository(get(), get()) }
 
     single<UniversitySuggestionsRepository> { get<EnrollmentRepository>() }
 
-    single { AttendanceSessionRepository(get(), get()) }
+    single { AttendanceSessionRepository(get(), get(), get()) }
 
 }

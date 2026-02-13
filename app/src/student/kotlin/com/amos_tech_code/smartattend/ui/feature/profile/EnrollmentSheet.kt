@@ -408,9 +408,6 @@ fun EnrollmentBottomSheet(
     val universityExpanded = remember { mutableStateOf(false) }
     val programmeExpanded = remember { mutableStateOf(false) }
 
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-
     var universitySelectedFromSuggestion by remember { mutableStateOf(false) }
     var programmeSelectedFromSuggestion by remember { mutableStateOf(false) }
 
@@ -550,7 +547,6 @@ fun EnrollmentBottomSheet(
                                     universityExpanded.value = false
                                     selectedProgramme = null
                                     programmeQuery = ""
-                                    focusManager.moveFocus(FocusDirection.Next)
                                 }
                             )
                         }
@@ -622,7 +618,6 @@ fun EnrollmentBottomSheet(
                                         selectedProgramme = programme
                                         programmeQuery = programme.name
                                         programmeExpanded.value = false
-                                        keyboardController?.hide()
                                     }
                                 )
                             }

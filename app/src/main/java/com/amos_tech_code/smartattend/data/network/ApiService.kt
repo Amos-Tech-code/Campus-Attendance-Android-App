@@ -17,6 +17,7 @@ import com.amos_tech_code.smartattend.domain.request.UpdateYearRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryResponse
+import com.amos_tech_code.smartattend.domain.response.AttendanceStatsResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
 import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
@@ -172,4 +173,8 @@ interface ApiService {
     suspend fun deleteStudentEnrollment(
         @Path("enrollmentId") enrollmentId: String
     ) : Response<Unit>
+
+    @GET("students/attendance/stats")
+    suspend fun getStudentAttendanceStats(
+    ): Response<AttendanceStatsResponse>
 }

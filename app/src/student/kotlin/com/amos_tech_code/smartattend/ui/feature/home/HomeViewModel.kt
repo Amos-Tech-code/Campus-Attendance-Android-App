@@ -1,29 +1,40 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
-import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
+import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
+import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
+// Update ViewModel to support home screen data
 class HomeViewModel(
     private val session: ClassTrackSession,
+    private val attendanceRepository: AttendanceSessionRepository,
+    private val enrollmentRepository: EnrollmentRepository
 ) : ViewModel() {
 
     private val _homeState = MutableStateFlow(StudentHomeState())
-    val homeState: StateFlow<StudentHomeState> = _homeState
+    val homeState: StateFlow<StudentHomeState> = _homeState.asStateFlow()
 
     private val _event = Channel<HomeEvent>()
     val event = _event.receiveAsFlow()
 
     init {
-        fetchData()
+        fetchUserData()
+        observeEnrollment()
+        observeStats()
+        refreshStatsIfNeeded()
     }
 
-    fun fetchData() {
+    private fun fetchUserData() {
         val studentName = session.getName()
         val registrationNo = session.getRegNo()
 
@@ -34,145 +45,107 @@ class HomeViewModel(
             )
         }
 
+        // Load dashboard data
+        viewModelScope.launch {
+            loadDashboardData()
+        }
     }
 
-}
+    private fun observeStats() {
+        viewModelScope.launch {
+            attendanceRepository.observeStats().collect { stats ->
+                stats?.let {
+                    _homeState.update { state ->
+                        state.copy(
+                            totalSessions = it.totalSessions,
+                            attendedSessions = it.attendedSessions,
+                            attendanceRate = if (it.totalSessions > 0)
+                                (it.attendedSessions * 100) / it.totalSessions
+                            else 0,
+                            currentStreak = it.currentStreak
+                        )
+                    }
+                }
+            }
+        }
+    }
 
+    private fun refreshStatsIfNeeded() {
+        viewModelScope.launch {
+            attendanceRepository.refreshStats()
+        }
+    }
 
-// Home Screen State
-data class StudentHomeState(
-    val studentName: String = "",
-    val registrationNo: String = "",
-    val todaySessions: List<Session> = listOf(
-        Session(
-            id = "1",
-            courseName = "Mobile Application Development",
-            courseCode = "CS401",
-            time = "10:00 AM - 11:30 AM",
-            location = "Room 301, CS Building",
-            status = SessionStatus.ACTIVE,
-            lecturer = "Dr. Smith"
-        ),
-        Session(
-            id = "2",
-            courseName = "Software Engineering",
-            courseCode = "CS402",
-            time = "02:00 PM - 03:30 PM",
-            location = "Room 205, Main Building",
-            status = SessionStatus.UPCOMING,
-            lecturer = "Prof. Johnson"
-        ),
-        Session(
-            id = "3",
-            courseName = "Database Systems",
-            courseCode = "CS301",
-            time = "08:00 AM - 09:30 AM",
-            location = "Room 101, CS Building",
-            status = SessionStatus.COMPLETED,
-            lecturer = "Dr. Williams"
-        )
-    ),
-    val attendanceStats: AttendanceStats = AttendanceStats(
-        overallPercentage = 85.0f,
-        presentCount = 17,
-        absentCount = 2,
-        lateCount = 1,
-        totalSessions = 20
-    ),
-    val recentActivities: List<Activity> = listOf(
-        Activity(
-            id = "1",
-            type = ActivityType.ATTENDANCE_MARKED,
-            title = "Attendance Marked",
-            description = "Successfully marked attendance for Mobile App Development",
-            timestamp = "2 hours ago",
-            courseName = "CS401",
-            status = ActivityStatus.SUCCESS
-        ),
-        Activity(
-            id = "2",
-            type = ActivityType.NEW_SESSION,
-            title = "New Session Available",
-            description = "Software Engineering session starts at 2:00 PM",
-            timestamp = "4 hours ago",
-            courseName = "CS402",
-            status = ActivityStatus.INFO
-        ),
-        Activity(
-            id = "3",
-            type = ActivityType.ATTENDANCE_FAILED,
-            title = "Attendance Failed",
-            description = "GPS location mismatch for Database Systems",
-            timestamp = "1 day ago",
-            courseName = "CS301",
-            status = ActivityStatus.ERROR
-        ),
-        Activity(
-            id = "4",
-            type = ActivityType.DEVICE_CHANGE,
-            title = "New Device Login",
-            description = "Logged in from new device - flagged for review",
-            timestamp = "2 days ago",
-            status = ActivityStatus.WARNING
-        )
-    ),
-    val unreadNotifications: Int = 2
-)
+    private suspend fun loadDashboardData() {
+        // Get today's sessions from local database
+        val todaySessions = attendanceRepository.getTodaySessions()
 
+        // Calculate attendance stats from local records as fallback
+        val totalSessions = attendanceRepository.getTotalSessionsCount()
+        val attendedSessions = attendanceRepository.getAttendedSessionsCount()
+        val attendanceRate = if (totalSessions > 0) {
+            (attendedSessions * 100) / totalSessions
+        } else 0
+        val currentStreak = attendanceRepository.getCurrentStreak()
 
-// Data Classes to represent the data
-data class Session(
-    val id: String,
-    val courseName: String,
-    val courseCode: String,
-    val time: String,
-    val location: String,
-    val status: SessionStatus,
-    val lecturer: String
-)
+        // Get recent attendance
+        val recentAttendance = attendanceRepository.getRecentAttendance(5)
 
-enum class SessionStatus {
-    ACTIVE, UPCOMING, COMPLETED, MISSED;
+        _homeState.update {
+            it.copy(
+                todaySessions = todaySessions.map { session -> session.toTodaySession() },
+                totalSessions = totalSessions,
+                attendedSessions = attendedSessions,
+                attendanceRate = attendanceRate,
+                currentStreak = currentStreak, // Fixed: Added the value
+                recentAttendance = recentAttendance.map { it.toRecentAttendance() },
+                isLoading = false
+            )
+        }
+    }
 
+    private fun observeEnrollment() {
+        viewModelScope.launch {
+            enrollmentRepository.getActiveEnrollmentFlow().collect { enrollment ->
+                _homeState.update {
+                    it.copy(
+                        currentYear = enrollment?.yearOfStudy ?: 0,
+                        currentSemester = enrollment?.academicTerm?.semester ?: 0,
+                        programme = enrollment?.programme?.name ?: ""
+                    )
+                }
+            }
+        }
+    }
 
-}
+    fun refreshDashboard() {
+        viewModelScope.launch {
+            _homeState.update { it.copy(isRefreshing = true) }
+            try {
+                // Sync with server
+                val syncResult = attendanceRepository.syncStudentAttendanceRecords()
+                // Refresh stats from API
+                val statsResult = attendanceRepository.refreshStats()
 
-data class Activity(
-    val id: String,
-    val type: ActivityType,
-    val title: String,
-    val description: String,
-    val timestamp: String,
-    val courseName: String? = null,
-    val status: ActivityStatus = ActivityStatus.INFO
-)
-
-enum class ActivityType {
-    ATTENDANCE_MARKED, ATTENDANCE_FAILED, NEW_SESSION, DEVICE_CHANGE, SYSTEM_ALERT
-}
-
-enum class ActivityStatus {
-    SUCCESS, WARNING, ERROR, INFO
-}
-
-data class AttendanceStats(
-    val overallPercentage: Float = 0f,
-    val presentCount: Int = 0,
-    val absentCount: Int = 0,
-    val lateCount: Int = 0,
-    val totalSessions: Int = 0
-)
-
-data class RecentAttendance(
-    val id: String,
-    val courseName: String,
-    val timestamp: String,
-    val status: AttendanceStatus,
-    val method: AttendanceMethod,
-    val location: String? = null
-)
-
-enum class AttendanceStatus {
-    PRESENT, ABSENT, LATE, PENDING
+                when {
+                    syncResult is ApiResult.Success && statsResult is ApiResult.Success -> {
+                        loadDashboardData()
+                        _event.send(HomeEvent.ShowSuccessMessage("Dashboard updated"))
+                    }
+                    syncResult is ApiResult.Success -> {
+                        loadDashboardData()
+                        _event.send(HomeEvent.ShowSuccessMessage("Dashboard updated (offline mode)"))
+                    }
+                    else -> {
+                        _event.send(HomeEvent.ShowErrorMessage("Failed to sync"))
+                    }
+                }
+            } catch (e: Exception) {
+                _event.send(HomeEvent.ShowErrorMessage("Refresh failed: ${e.message}"))
+            } finally {
+                _homeState.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
 }
 
