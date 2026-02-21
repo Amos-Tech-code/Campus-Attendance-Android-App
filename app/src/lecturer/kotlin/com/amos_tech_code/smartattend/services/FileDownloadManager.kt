@@ -35,7 +35,7 @@ object FileDownloadManager {
         context: Context,
         url: String,
         fileName: String,
-        onProgress: (Float) -> Unit = {}
+        onProgress: suspend (Float) -> Unit = {}
     ): Result<Uri> = withContext(Dispatchers.IO) {
         try {
             // Validate URL
@@ -85,9 +85,23 @@ object FileDownloadManager {
                 // Save file based on Android version
                 val uri = try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        saveToMediaStore(context, inputStream, fileName, mimeType, contentLength, onProgress)
+                        saveToMediaStore(
+                            context = context,
+                            inputStream = inputStream,
+                            fileName = fileName,
+                            mimeType = mimeType,
+                            contentLength = contentLength,
+                            onProgress = onProgress  // Directly pass the suspend function
+                        )
                     } else {
-                        saveToExternalStorage(context, inputStream, fileName, mimeType, contentLength, onProgress)
+                        saveToExternalStorage(
+                            context = context,
+                            inputStream = inputStream,
+                            fileName = fileName,
+                            mimeType = mimeType,
+                            contentLength = contentLength,
+                            onProgress = onProgress  // Directly pass the suspend function
+                        )
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error saving file", e)
@@ -103,27 +117,14 @@ object FileDownloadManager {
         }
     }
 
-    private fun getMimeType(fileName: String): String {
-        return when {
-            fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
-            fileName.endsWith(".csv", ignoreCase = true) -> "text/csv"
-            fileName.endsWith(".txt", ignoreCase = true) -> "text/plain"
-            fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
-            fileName.endsWith(".png", ignoreCase = true) -> "image/png"
-            else -> {
-                val extension = fileName.substringAfterLast(".", "").lowercase()
-                MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
-            }
-        }
-    }
-
-    private fun saveToMediaStore(
+    // Make save functions suspend and accept suspend lambda
+    private suspend fun saveToMediaStore(
         context: Context,
         inputStream: java.io.InputStream,
         fileName: String,
         mimeType: String,
         contentLength: Long,
-        onProgress: (Float) -> Unit
+        onProgress: suspend (Float) -> Unit
     ): Uri {
         val resolver = context.contentResolver
 
@@ -159,6 +160,7 @@ object FileDownloadManager {
                 totalBytesRead += bytesRead
 
                 if (contentLength > 0) {
+                    // Call suspend function directly - we're already in a suspend context
                     onProgress(totalBytesRead.toFloat() / contentLength)
                 }
             }
@@ -175,13 +177,13 @@ object FileDownloadManager {
         return uri
     }
 
-    private fun saveToExternalStorage(
+    private suspend fun saveToExternalStorage(
         context: Context,
         inputStream: java.io.InputStream,
         fileName: String,
         mimeType: String,
         contentLength: Long,
-        onProgress: (Float) -> Unit
+        onProgress: suspend (Float) -> Unit
     ): Uri {
         // For Android 9 and below, save to external storage
         val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -209,6 +211,7 @@ object FileDownloadManager {
                 totalBytesRead += bytesRead
 
                 if (contentLength > 0) {
+                    // Call suspend function directly - we're already in a suspend context
                     onProgress(totalBytesRead.toFloat() / contentLength)
                 }
             }
@@ -226,6 +229,20 @@ object FileDownloadManager {
         )
     }
 
+    private fun getMimeType(fileName: String): String {
+        return when {
+            fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+            fileName.endsWith(".csv", ignoreCase = true) -> "text/csv"
+            fileName.endsWith(".txt", ignoreCase = true) -> "text/plain"
+            fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+            fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+            else -> {
+                val extension = fileName.substringAfterLast(".", "").lowercase()
+                MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+            }
+        }
+    }
+
     fun shareFile(context: Context, uri: Uri, mimeType: String) {
         try {
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -240,24 +257,21 @@ object FileDownloadManager {
         }
     }
 
-    fun openFile(context: Context, uri: Uri, mimeType: String): Boolean {
-        return try {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, mimeType)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    fun getFileUri(context: Context, filePath: String): Uri {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // For Android 10+, filePath might be a content URI
+            if (filePath.startsWith("content://")) {
+                Uri.parse(filePath)
+            } else {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    File(filePath)
+                )
             }
-
-            context.startActivity(intent)
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error opening file", e)
-            false
-        }
-    }
-
-    fun getFileNameFromUrl(url: String): String {
-        return url.substringAfterLast("/").ifEmpty {
-            "export_${System.currentTimeMillis()}.pdf"
+        } else {
+            // For older versions
+            Uri.fromFile(File(filePath))
         }
     }
 }

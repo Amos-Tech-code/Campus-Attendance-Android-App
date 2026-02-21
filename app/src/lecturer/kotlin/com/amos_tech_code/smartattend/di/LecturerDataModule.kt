@@ -4,20 +4,24 @@ import android.app.Application
 import androidx.room.Room
 import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.local.room_db.ClassTrackProDatabase
+import com.amos_tech_code.smartattend.data.local.room_db.migrations.MIGRATION_1_2
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceRepository
 import com.amos_tech_code.smartattend.data.repository.ExportRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
+import com.amos_tech_code.smartattend.services.FileDownloadManager
 import org.koin.dsl.module
 
 val lecturerDataModule  = module {
 
     // Provide Session
     single { ClassTrackProSession(get()) }
-
+    // Provide SessionProvider
     single<SessionProvider> { get<ClassTrackProSession>() }
+    // Provide the FileDownloadManager
+    single { FileDownloadManager }
 
     // Provide Room Database
     single {
@@ -28,16 +32,18 @@ val lecturerDataModule  = module {
         )
             //.fallbackToDestructiveMigration(false) // optional, use only for development
             .fallbackToDestructiveMigrationOnDowngrade(true)
-            //.addMigrations(MIGRATION_1_2) // Add migration
+            .addMigrations(MIGRATION_1_2) // Add migration
             .build()
     }
 
-    // Provide DAO
+    // Provide DAOs
     single { get<ClassTrackProDatabase>().lecturerAcademicsDao() }
 
     single { get<ClassTrackProDatabase>().attendanceHistoryDao() }
 
-    // Provide Repository
+    single { get<ClassTrackProDatabase>().attendanceExportDao() }
+
+    // Provide Repositories
     single { AcademicSetUpRepository(get(), get(), get(), get()) }
 
     single { UniversityRepository(get()) }
@@ -46,6 +52,6 @@ val lecturerDataModule  = module {
 
     single { SessionRepository(get(), get()) }
 
-    single { ExportRepository(get()) }
+    single { ExportRepository(get(), get(), get(), get()) }
 
 }

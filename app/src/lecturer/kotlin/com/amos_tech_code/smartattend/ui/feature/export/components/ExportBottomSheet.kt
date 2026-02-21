@@ -633,7 +633,7 @@ fun WeekRangeSelector(
                                 start in 1..maxWeeks &&
                                 end in 1..maxWeeks &&
                                 start <= end) {
-                                onRangeSelected("custom-$start-$end")
+                                onRangeSelected("$start-$end")
                                 showCustomDialog = false
                             }
                         },

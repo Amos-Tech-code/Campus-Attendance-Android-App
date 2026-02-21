@@ -14,7 +14,8 @@ class UniversityRepository(
     private val lecturerAcademicsDao: LecturerAcademicsDao
 ) {
     /**
-     * @return
+     * Observes all universities with their statistics.
+     * @return A Flow of all universities with their statistics.
      */
     fun observeAllUniversitiesWithStats(): Flow<List<UniversityWithStats>> {
         return lecturerAcademicsDao.observeAllUniversities().map { universities ->
@@ -49,7 +50,7 @@ class UniversityRepository(
         return lecturerAcademicsDao.getUniversityWithProgrammesAndUnits(universityId)?.programmes ?: emptyList()
     }
 
-    suspend fun getUnitsForProgramme(programmeId: String, programmes: List<ProgrammeWithUnits>): List<UnitEntity> {
+    fun getUnitsForProgramme(programmeId: String, programmes: List<ProgrammeWithUnits>): List<UnitEntity> {
         return programmes.find { it.programme.id == programmeId }?.units ?: emptyList()
     }
 
