@@ -83,6 +83,7 @@ import com.amos_tech_code.smartattend.ui.components.ErrorState
 import com.amos_tech_code.smartattend.ui.components.LoadingState
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
+import com.amos_tech_code.smartattend.ui.navigation.ExportRoute
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
 import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
 import com.amos_tech_code.smartattend.ui.navigation.StartSessionRoute
@@ -130,7 +131,9 @@ fun HomeScreen(
 
             is HomeEvent.NavigateToExportSessionAttendance -> { }
 
-            is HomeEvent.NavigateToExport -> { }
+            is HomeEvent.NavigateToExport -> {
+                navController.navigate(ExportRoute)
+            }
 
             is HomeEvent.NavigateToSessionHistoryDetails -> {}
         }

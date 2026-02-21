@@ -15,6 +15,10 @@ enum class AttendanceSessionType {
     REGULAR, MAKEUP, SPECIAL
 }
 
+enum class ExportFormat {
+    PDF, CSV
+}
+
 enum class FlagType {
     LOCATION_MISMATCH, DEVICE_MISMATCH,
     METHOD_NOT_ALLOWED, SUSPICIOUS_DEVICE, OUTSIDE_SCHEDULE_WINDOW

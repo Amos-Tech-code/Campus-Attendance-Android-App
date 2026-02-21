@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.data.local.room_db.ClassTrackProDatabase
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceRepository
+import com.amos_tech_code.smartattend.data.repository.ExportRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
 import org.koin.dsl.module
@@ -44,5 +45,7 @@ val lecturerDataModule  = module {
     single { AttendanceRepository(get(), get()) }
 
     single { SessionRepository(get(), get()) }
+
+    single { ExportRepository(get()) }
 
 }

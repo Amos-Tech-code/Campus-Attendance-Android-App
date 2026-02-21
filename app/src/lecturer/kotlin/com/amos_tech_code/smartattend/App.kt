@@ -4,6 +4,7 @@ import SessionHistoryScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import com.amos_tech_code.smartattend.ui.feature.export.ExportScreen
 import com.amos_tech_code.smartattend.ui.feature.home.HomeScreen
 import com.amos_tech_code.smartattend.ui.feature.live_attendance.LiveAttendanceScreen
 import com.amos_tech_code.smartattend.ui.feature.notification.NotificationScreen
@@ -14,6 +15,8 @@ import com.amos_tech_code.smartattend.ui.feature.signIn.SignInScreen
 import com.amos_tech_code.smartattend.ui.feature.start_session.StartSessionScreen
 import com.amos_tech_code.smartattend.ui.feature.student_lookup.StudentLookupScreen
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
+import com.amos_tech_code.smartattend.ui.navigation.ExportDetailsRoute
+import com.amos_tech_code.smartattend.ui.navigation.ExportRoute
 import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
 import com.amos_tech_code.smartattend.ui.navigation.LiveAttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.NavRoutes
@@ -74,6 +77,14 @@ fun App(
 
         composable<SettingsRoute> {
             SettingsScreen(navController)
+        }
+
+        composable<ExportRoute> {
+            ExportScreen(navController)
+        }
+
+        composable<ExportDetailsRoute> {
+            //ExportDetailsScreen(navController)
         }
 
     }

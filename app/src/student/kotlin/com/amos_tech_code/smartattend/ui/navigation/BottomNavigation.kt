@@ -42,7 +42,9 @@ fun BottomNavigation(
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 8.dp
+            tonalElevation = 8.dp,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
         ) {
             items.forEach { item ->
 

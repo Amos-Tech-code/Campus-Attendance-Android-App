@@ -144,9 +144,6 @@ dependencies {
     // ML Kit Barcode Scanning
     implementation(libs.barcode.scanning)
 
-    // ZXing for additional QR processing
-    //implementation("com.google.zxing:core:3.5.2")
-
     // Room
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.runtime)
@@ -156,5 +153,4 @@ dependencies {
     // Paging 3
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
-
 }

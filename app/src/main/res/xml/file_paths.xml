@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-cache-path name="external_cache" path="." />
-    <cache-path name="internal_cache" path="." />
-    <external-path name="external_files" path="." />
+    <!-- For internal cache -->
+    <cache-path
+        name="cache"
+        path="." />
+
+    <!-- For external cache -->
+    <external-cache-path
+        name="external_cache"
+        path="." />
+
+    <!-- For external files (Downloads) -->
+    <external-path
+        name="external_downloads"
+        path="Download/" />
+
+    <!-- For external files in app-specific directory -->
+    <external-files-path
+        name="external_files"
+        path="." />
+
+    <!-- For files directory -->
+    <files-path
+        name="files"
+        path="." />
+
 </paths>

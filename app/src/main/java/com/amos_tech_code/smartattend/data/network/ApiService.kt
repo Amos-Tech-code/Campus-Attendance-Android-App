@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.data.network
 
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
+import com.amos_tech_code.smartattend.domain.request.AttendanceExportRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
@@ -16,9 +17,12 @@ import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateYearRequest
 import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
+import com.amos_tech_code.smartattend.domain.response.AttendanceExportRecordDto
+import com.amos_tech_code.smartattend.domain.response.AttendanceExportResponseDto
 import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.AttendanceStatsResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
+import com.amos_tech_code.smartattend.domain.response.ExportsListResponseDto
 import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
@@ -125,6 +129,23 @@ interface ApiService {
         @Body request: RemoveAttendanceRecordRequest
     ) : Response<Unit>
 
+
+    @POST("attendance-manage/record/export")
+    suspend fun exportAttendanceRecords(
+        @Body request: AttendanceExportRequest
+    ) : Response<AttendanceExportResponseDto>
+
+    @GET("attendance-manage/record/export/{exportId}")
+    suspend fun getExportStatus(
+        @Path("exportId") exportId: String
+    ) : Response<AttendanceExportRecordDto>
+
+    @GET("attendance-manage/record/export")
+    suspend fun getExportRecords(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 10,
+        //@Query("sort") sort: String = "desc"
+    ) : Response<ExportsListResponseDto>
 
     /**
      *

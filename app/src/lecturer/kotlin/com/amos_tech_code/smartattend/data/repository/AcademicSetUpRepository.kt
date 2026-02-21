@@ -13,6 +13,7 @@ import com.amos_tech_code.smartattend.data.mappers.toDomain
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.data.repositories.UniversitySuggestionsRepository
 import com.amos_tech_code.smartattend.domain.models.University
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest
@@ -26,7 +27,6 @@ import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupRespo
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
 import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
-import com.amos_tech_code.smartattend.models.TeachingStatistics
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +46,7 @@ class AcademicSetUpRepository(
      * @param request The request containing the search query and limit.
      * @return An [com.amos_tech_code.smartattend.data.network.utils.ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.UniversitySuggestion] on success, or an error on failure.
      */
-    suspend fun fetchMatchingUniversities(request: UniversitySuggestionRequest): ApiResult<List<UniversitySuggestion>> {
+    override suspend fun fetchMatchingUniversities(request: UniversitySuggestionRequest): ApiResult<List<UniversitySuggestion>> {
         return safeApiCall {
             apiService.fetchMatchingUniversities(
                 query = request.query,
@@ -75,7 +75,7 @@ class AcademicSetUpRepository(
      * @param request The request containing university ID, optional department ID, search query, and limit.
      * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion] on success, or an error on failure.
      */
-    suspend fun fetchMatchingProgrammes(request: ProgrammeSuggestionRequest): ApiResult<List<ProgrammeSuggestion>> {
+    override suspend fun fetchMatchingProgrammes(request: ProgrammeSuggestionRequest): ApiResult<List<ProgrammeSuggestion>> {
         return safeApiCall {
             apiService.fetchMatchingProgrammes(
                 universityId = request.universityId,
@@ -402,52 +402,6 @@ class AcademicSetUpRepository(
                     isActive = entity.isActive
                 )
             }
-        }
-    }
-
-    /**
-     * Calculates and retrieves teaching statistics for the currently active university.
-     * If no university is active, it returns zeroed-out or default statistics.
-     * @return A [com.amos_tech_code.smartattend.models.TeachingStatistics] object with totals for courses, students, and semester info.
-     */
-    suspend fun getTeachingStatistics(): TeachingStatistics {
-        return try {
-            // Get active university first
-            val activeUniversity =
-                lecturerAcademicsDao.getActiveUniversity() ?: return TeachingStatistics(
-                    totalCourses = 0,
-                    totalExpectedStudents = 0,
-                    currentSemester = "No active institution",
-                    activeInstitution = "",
-                    isInstitutionActive = false
-                )
-
-            // Get all statistics in parallel for efficiency
-            val statistics = lecturerAcademicsDao.getUniversityStatistics(activeUniversity.id)
-
-            // Format semester display
-            val semesterDisplay = statistics.activeTerm?.let { term ->
-                "Year ${term.academicYear}, Semester ${term.semester}"
-            } ?: "Not Set"
-
-            TeachingStatistics(
-                totalCourses = statistics.totalUnits,
-                totalExpectedStudents = statistics.totalExpectedStudents,
-                currentSemester = semesterDisplay,
-                totalProgrammes = statistics.totalProgrammes,
-                totalDepartments = statistics.totalDepartments,
-                activeInstitution = activeUniversity.name,
-                isInstitutionActive = activeUniversity.isActive
-            )
-        } catch (e: Exception) {
-            //Log.e("AcademicSetUpRepository", "Error getting teaching statistics", e)
-            TeachingStatistics(
-                totalCourses = 0,
-                totalExpectedStudents = 0,
-                currentSemester = "Error loading data",
-                activeInstitution = "",
-                isInstitutionActive = false
-            )
         }
     }
 
