@@ -214,7 +214,7 @@ fun ExportBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Export Button
             Button(

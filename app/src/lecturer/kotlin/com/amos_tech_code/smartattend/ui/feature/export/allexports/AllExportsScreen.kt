@@ -1,6 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.export.allexports
 
-import androidx.activity.compose.BackHandler
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,62 +46,126 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceExportEntity
 import com.amos_tech_code.smartattend.domain.models.ExportFormat
+import com.amos_tech_code.smartattend.services.FileDownloadManager
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.feature.export.DownloadProgress
+import com.amos_tech_code.smartattend.ui.feature.export.ExportEvent
 import com.amos_tech_code.smartattend.ui.feature.export.ExportViewModel
+import com.amos_tech_code.smartattend.ui.feature.export.components.CsvViewerScreen
+import com.amos_tech_code.smartattend.ui.feature.export.components.DeleteConfirmationDialog
+import com.amos_tech_code.smartattend.ui.feature.export.components.ExportDetailsDialog
+import com.amos_tech_code.smartattend.ui.feature.export.components.PdfViewerScreen
 import com.amos_tech_code.smartattend.ui.feature.export.formatDate
 import com.amos_tech_code.smartattend.ui.feature.export.formatFileSize
+import com.amos_tech_code.smartattend.utils.ObserveAsEvents
+import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AllExportsScreen(
-    viewModel: ExportViewModel,
-    onNavigateBack: () -> Unit,
-    snackbarHostState: SnackbarHostState,
-    onExportClick: (AttendanceExportEntity) -> Unit,
-    onShareClick: (AttendanceExportEntity) -> Unit,
-    onDownloadClick: (AttendanceExportEntity) -> Unit,
-    onViewPdf: (AttendanceExportEntity) -> Unit,
-    onViewCsv: (AttendanceExportEntity) -> Unit
+    navController: NavController,
+    viewModel: ExportViewModel = koinViewModel(),
 ) {
-    val pagedExportsFlow = viewModel.pagedExports.collectAsStateWithLifecycle().value
+    val pagedExportsFlow = viewModel.pagedExports
     val downloadingExports by viewModel.downloadingExports.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var isSearching by remember { mutableStateOf(false) }
+    // Navigation states
+    var showPdfViewer by rememberSaveable { mutableStateOf(false) }
+    var showCsvViewer by rememberSaveable { mutableStateOf(false) }
+    var pdfUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var csvUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var currentFileName by rememberSaveable { mutableStateOf("") }
+    var showExportDetails by rememberSaveable { mutableStateOf(false) }
+    var selectedExport by remember { mutableStateOf<AttendanceExportEntity?>(null) }
+    var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
+    var exportToDelete by remember { mutableStateOf<AttendanceExportEntity?>(null) }
 
-    BackHandler {
-        isSearching = false
-        searchQuery = ""
-        onNavigateBack()
+    ObserveAsEvents(viewModel.event) { event ->
+        when (event) {
+            is ExportEvent.ShowSnackbar -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+
+            is ExportEvent.OpenPdf -> {
+                pdfUri = event.uri
+                currentFileName = event.fileName
+                showPdfViewer = true
+            }
+
+            is ExportEvent.OpenCsv -> {
+                csvUri = event.uri
+                currentFileName = event.fileName
+                showCsvViewer = true
+            }
+
+            is ExportEvent.ShareExport -> {
+                scope.launch {
+                    val mimeType = when (event.export.exportFormat) {
+                        ExportFormat.PDF -> "application/pdf"
+                        ExportFormat.CSV -> "text/csv"
+                    }
+                    if (event.export.localFilePath != null) {
+                        viewModel.validateAndShareExport(event.export, context, mimeType)
+                    } else {
+                        snackbarHostState.showSnackbar("Please download the file first")
+                    }
+                }
+            }
+
+            is ExportEvent.ShowExportDetails -> {
+                selectedExport = event.export
+                showExportDetails = true
+            }
+            is ExportEvent.ConfirmDelete -> {
+                exportToDelete = event.export
+                showDeleteConfirmation = true
+            }
+
+            is ExportEvent.NavigateBack -> {
+                navController.popBackStack()
+            }
+
+            else -> { }
+
+        }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     if (isSearching) {
                         SmartAttendTextField(
                             value = searchQuery,
                             onValueChange = {
-                                searchQuery = it
                                 viewModel.searchExports(it)
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -107,11 +173,16 @@ fun AllExportsScreen(
                             label = "Search exports"
                         )
                     } else {
-                        Text("All Exports")
+                        Text(
+                            text = "All Exports",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -145,22 +216,24 @@ fun AllExportsScreen(
                 ) {
                     items(
                         count = lazyPagingItems.itemCount,
-                        key = lazyPagingItems.itemKey { it.exportId }, // Fixed: use exportId instead of id
+                        key = lazyPagingItems.itemKey { it.exportId },
                         contentType = lazyPagingItems.itemContentType { "export" }
                     ) { index ->
                         val export = lazyPagingItems[index]
                         export?.let {
-                            AllExportsHistoryItem( // Using a separate item composable for all exports
+                            AllExportsHistoryItem(
                                 export = it,
                                 downloadProgress = downloadingExports[it.exportId],
-                                onClick = { onExportClick(it) },
-                                onShare = { onShareClick(it) },
-                                onDownload = { onDownloadClick(it) },
-                                onView = {
-                                    when (it.exportFormat) {
-                                        ExportFormat.PDF -> onViewPdf(it)
-                                        ExportFormat.CSV -> onViewCsv(it)
-                                    }
+                                onClick = {
+                                    selectedExport = it
+                                    showExportDetails = true
+                                },
+                                onShare = { viewModel.shareExport(export) },
+                                onDownload = { viewModel.downloadExport(export, context) },
+                                onView = { viewModel.onViewClicked(export, context) },
+                                onDelete = {
+                                    exportToDelete = it
+                                    showDeleteConfirmation = true
                                 },
                                 modifier = Modifier.animateItem()
                             )
@@ -219,6 +292,88 @@ fun AllExportsScreen(
             }
         }
     }
+
+
+    // PDF Viewer
+    if (showPdfViewer && pdfUri != null) {
+        PdfViewerScreen(
+            uri = pdfUri!!,
+            fileName = currentFileName,
+            onClose = {
+                showPdfViewer = false
+                pdfUri = null
+            },
+            onShare = {
+                scope.launch {
+                    FileDownloadManager.shareFile(context, pdfUri!!, "application/pdf")
+                }
+            },
+            onDownload = {
+                showPdfViewer = false
+                pdfUri = null
+            }
+        )
+    }
+
+    // CSV Viewer
+    if (showCsvViewer && csvUri != null) {
+        CsvViewerScreen(
+            uri = csvUri!!,
+            fileName = currentFileName,
+            onClose = {
+                showCsvViewer = false
+                csvUri = null
+            },
+            onShare = {
+                scope.launch {
+                    FileDownloadManager.shareFile(context, csvUri!!, "text/csv")
+                }
+            },
+            onDownload = {
+                showCsvViewer = false
+                csvUri = null
+            }
+        )
+    }
+
+    // Export Details Dialog
+    if (showExportDetails && selectedExport != null) {
+        ExportDetailsDialog(
+            export = selectedExport!!,
+            onDismiss = {
+                showExportDetails = false
+                selectedExport = null
+            },
+            onView = {
+                viewModel.onViewClicked(selectedExport!!, context)
+            },
+            onDownload = {
+                viewModel.downloadExport(selectedExport!!, context)
+            },
+            onDelete = {
+                viewModel.deleteExport(selectedExport!!)
+            },
+            onShare = {
+                viewModel.shareExport(selectedExport!!)
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmation && exportToDelete != null) {
+        DeleteConfirmationDialog(
+            fileName = exportToDelete!!.fileName,
+            onConfirm = {
+                viewModel.deleteExport(exportToDelete!!)
+                exportToDelete = null
+            },
+            onDismiss = {
+                showDeleteConfirmation = false
+                exportToDelete = null
+            }
+        )
+    }
+
 }
 
 @Composable
@@ -229,6 +384,7 @@ fun AllExportsHistoryItem(
     onShare: () -> Unit,
     onDownload: () -> Unit,
     onView: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDownloading = downloadProgress?.isDownloading == true
@@ -249,7 +405,7 @@ fun AllExportsHistoryItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Format Icon
+                // Format Icon (same as above)
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = MaterialTheme.shapes.small,
@@ -276,7 +432,7 @@ fun AllExportsHistoryItem(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Content
+                // Content (same as above)
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
@@ -339,7 +495,7 @@ fun AllExportsHistoryItem(
                             )
                         }
 
-                        // Download status indicator
+                        // Downloaded indicator
                         if (export.localFilePath != null) {
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
@@ -351,9 +507,9 @@ fun AllExportsHistoryItem(
                     }
                 }
 
-                // Actions
+                // Actions (with delete button)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     if (export.localFilePath != null) {
                         IconButton(
@@ -403,6 +559,19 @@ fun AllExportsHistoryItem(
                             }
                         }
                     }
+
+                    // Delete button
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -410,7 +579,7 @@ fun AllExportsHistoryItem(
             if (isDownloading) {
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -43,32 +44,20 @@ class ExportViewModel(
     private val _event = Channel<ExportEvent>()
     val event = _event.receiveAsFlow()
 
-    // Paged exports flow
-    private val _pagedExports = MutableStateFlow<Flow<PagingData<AttendanceExportEntity>>?>(null)
-    val pagedExports: StateFlow<Flow<PagingData<AttendanceExportEntity>>?> = _pagedExports.asStateFlow()
-
-
     // Create a universityId StateFlow to drive other flows
     private val _universityIdFlow = MutableStateFlow<String?>(null)
     // StateFlow for search query
     private val _searchQuery = MutableStateFlow("")
-    // Recent exports flow now reacts to universityId and searchQuery
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    // Recent exports flow
     @OptIn(ExperimentalCoroutinesApi::class)
-    val recentExports: StateFlow<List<AttendanceExportEntity>> = combine(
-        _universityIdFlow,
-        _searchQuery
-    ) { universityId, query ->
-        universityId to query
-    }.flatMapLatest { (universityId, query) ->
+    val recentExports: StateFlow<List<AttendanceExportEntity>> = _universityIdFlow.flatMapLatest { universityId ->
         if (universityId == null) {
             flowOf(emptyList())
         } else {
-            if (query.isBlank()) {
-                exportRepository.observeRecentExports(universityId)
-            } else {
-                // Since search is a suspend fun, we wrap it in a flow
-                flowOf(exportRepository.searchExports(universityId, query))
-            }
+            // It only depends on the universityId now.
+            exportRepository.observeRecentExports(universityId)
         }
     }.stateIn(
         scope = viewModelScope,
@@ -76,7 +65,26 @@ class ExportViewModel(
         initialValue = emptyList()
     )
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val pagedExports: StateFlow<PagingData<AttendanceExportEntity>> = combine(
+        _universityIdFlow,
+        _searchQuery
+    ) { universityId, query ->
+        universityId to query
+    }.flatMapLatest { (universityId, query) ->
+        if (universityId == null) {
+            flowOf(PagingData.empty())
+        } else {
+            exportRepository.getPagedExports(universityId, query)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = PagingData.empty()
+    )
+
     // Combine statistics into the main uiState flow
+    @OptIn(ExperimentalCoroutinesApi::class)
     val exportStatistics: StateFlow<ExportRepository.ExportStatistics> = _universityIdFlow.flatMapLatest { universityId ->
         if (universityId != null) {
             exportRepository.getExportStatistics(universityId)
@@ -129,7 +137,6 @@ class ExportViewModel(
                     }
 
                     loadProgrammes(activeUniversity.id)
-                    initializePagedExports(activeUniversity.id)
 
                     val activeTerm = universityRepository.getActiveAcademicTerm(activeUniversity.id)
                     activeTerm?.let { term ->
@@ -144,11 +151,6 @@ class ExportViewModel(
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
-    }
-
-    private fun initializePagedExports(universityId: String) {
-        _pagedExports.value = exportRepository.getPagedExports(universityId)
-            .cachedIn(viewModelScope)
     }
 
     private fun loadProgrammes(universityId: String) {
@@ -207,9 +209,9 @@ class ExportViewModel(
                 yearOfStudy = state.yearOfStudy,
                 semester = state.semester,
                 exportFormat = state.selectedFormat,
-                programmeName = state.selectedProgramme!!.name,
-                unitName = state.selectedUnit!!.name,
-                unitCode = state.selectedUnit!!.code
+                programmeName = state.selectedProgramme.name,
+                unitName = state.selectedUnit.name,
+                unitCode = state.selectedUnit.code
             )
 
             when (result) {
@@ -428,17 +430,23 @@ class ExportViewModel(
         _event.trySend(ExportEvent.NavigateBack)
     }
 
-    fun showAllExports() {
-        _uiState.update { it.copy(showAllExports = true) }
-    }
-
-    fun hideAllExports() {
-        _uiState.update { it.copy(showAllExports = false) }
+    fun onViewAllExportsClick() {
+        _event.trySend(ExportEvent.ViewAllExports)
     }
 
     fun shareExport(export: AttendanceExportEntity) {
+        _event.trySend(ExportEvent.ShareExport(export))
+    }
+
+    fun onShowExportDetails(export: AttendanceExportEntity) {
         viewModelScope.launch {
-            _event.send(ExportEvent.ShareExport(export))
+            _event.send(ExportEvent.ShowExportDetails(export))
+        }
+    }
+
+    fun onDeleteClicked(export: AttendanceExportEntity) {
+        viewModelScope.launch {
+            _event.send(ExportEvent.ConfirmDelete(export))
         }
     }
 }

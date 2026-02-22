@@ -46,9 +46,6 @@ interface AttendanceExportDao {
     @Query("UPDATE attendance_exports SET isDownloading = 0, downloadProgress = 0 WHERE exportId = :exportId")
     suspend fun markDownloadFailed(exportId: String)
 
-    @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId AND (fileName LIKE '%' || :query || '%' OR unitName LIKE '%' || :query || '%' OR unitCode LIKE '%' || :query || '%') ORDER BY createdAt DESC")
-    suspend fun searchExports(universityId: String, query: String): List<AttendanceExportEntity>
-
     @Query("DELETE FROM attendance_exports WHERE expiresAt < :now AND expiresAt IS NOT NULL")
     suspend fun deleteExpiredExports(now: Long)
 
@@ -77,4 +74,18 @@ interface AttendanceExportDao {
     // Paging source
     @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId ORDER BY createdAt DESC")
     fun pagingSource(universityId: String): PagingSource<Int, AttendanceExportEntity>
+
+    @Query("""
+        SELECT * FROM attendance_exports 
+        WHERE universityId = :universityId 
+        AND (
+            fileName LIKE '%' || :query || '%' OR 
+            programmeName LIKE '%' || :query || '%' OR 
+            unitName LIKE '%' || :query || '%' OR 
+            unitCode LIKE '%' || :query || '%'
+        )
+        ORDER BY createdAt DESC
+    """)
+    fun pagingSourceWithQuery(universityId: String, query: String): PagingSource<Int, AttendanceExportEntity>
+
 }

@@ -47,4 +47,7 @@ object SettingsRoute : NavRoutes
 object ExportRoute : NavRoutes
 
 @Serializable
+object AllExportsRoute: NavRoutes
+
+@Serializable
 data class ExportDetailsRoute(val exportId: String) : NavRoutes

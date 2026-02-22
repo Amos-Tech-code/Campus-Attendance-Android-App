@@ -24,5 +24,4 @@ data class ExportUiState(
     val totalExports: Int = 0,
     val exportsThisMonth: Int = 0,
     val downloadedExports: Int = 0,
-    val showAllExports : Boolean = false
 )

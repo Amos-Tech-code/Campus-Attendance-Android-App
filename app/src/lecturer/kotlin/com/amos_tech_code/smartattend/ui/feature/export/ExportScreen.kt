@@ -81,10 +81,11 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.domain.models.ExportFormat
 import com.amos_tech_code.smartattend.domain.response.AttendanceExportResponseDto
 import com.amos_tech_code.smartattend.services.FileDownloadManager
-import com.amos_tech_code.smartattend.ui.feature.export.allexports.AllExportsScreen
 import com.amos_tech_code.smartattend.ui.feature.export.components.CsvViewerScreen
 import com.amos_tech_code.smartattend.ui.feature.export.components.ExportBottomSheet
+import com.amos_tech_code.smartattend.ui.feature.export.components.ExportDetailsDialog
 import com.amos_tech_code.smartattend.ui.feature.export.components.PdfViewerScreen
+import com.amos_tech_code.smartattend.ui.navigation.AllExportsRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -108,7 +109,9 @@ fun ExportScreen(
     var showCsvViewer by rememberSaveable { mutableStateOf(false) }
     var pdfUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var csvUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var currentFileName by remember { mutableStateOf("") }
+    var currentFileName by rememberSaveable { mutableStateOf("") }
+    var showExportDetails by rememberSaveable { mutableStateOf(false) }
+    var selectedExport by remember { mutableStateOf<AttendanceExportEntity?>(null) }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
@@ -149,200 +152,189 @@ fun ExportScreen(
                 }
             }
 
+            is ExportEvent.ShowExportDetails -> {
+                selectedExport = event.export
+                showExportDetails = true
+            }
+
             is ExportEvent.NavigateBack -> {
                 navController.popBackStack()
             }
 
+            is ExportEvent.ViewAllExports -> {
+                navController.navigate(AllExportsRoute)
+            }
+            else -> {}
+
         }
     }
 
-    if (!uiState.showAllExports) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Export Center",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = uiState.universityName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = viewModel::navigateBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    )
-                )
-            },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            )
-            {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Quick Stats Cards
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            ExportStatCard(
-                                modifier = Modifier.weight(1f),
-                                title = "Total Exports",
-                                value = uiState.totalExports.toString(),
-                                icon = Icons.Outlined.Description,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            ExportStatCard(
-                                modifier = Modifier.weight(1f),
-                                title = "This Month",
-                                value = uiState.exportsThisMonth.toString(),
-                                icon = Icons.Outlined.CalendarToday,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                            ExportStatCard(
-                                modifier = Modifier.weight(1f),
-                                title = "Downloaded",
-                                value = uiState.downloadedExports.toString(),
-                                icon = Icons.Outlined.DownloadDone,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-                    }
-
-                    // Selected Context Card
-                    if (uiState.selectedProgramme != null || uiState.selectedUnit != null) {
-                        item {
-                            SelectedContextCard(
-                                programme = uiState.selectedProgramme,
-                                unit = uiState.selectedUnit,
-                                onClearProgramme = { viewModel.clearProgrammeSelection() },
-                                onClearUnit = { viewModel.clearUnitSelection() }
-                            )
-                        }
-                    }
-
-                    // Quick Actions
-                    item {
-                        QuickExportActions(
-                            onQuickExport = { format ->
-                                viewModel.quickExport(format)
-                            }
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Export Center",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = uiState.universityName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
-
-                    // Export History Header
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Recent Exports",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            if (uiState.totalExports > 0) {
-                                TextButton(onClick = { viewModel.showAllExports() }) {
-                                    Text("View All (${uiState.totalExports})")
-                                }
-                            }
-                        }
+                },
+                navigationIcon = {
+                    IconButton(onClick = viewModel::navigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Quick Stats Cards
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ExportStatCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Total Exports",
+                            value = uiState.totalExports.toString(),
+                            icon = Icons.Outlined.Description,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        ExportStatCard(
+                            modifier = Modifier.weight(1f),
+                            title = "This Month",
+                            value = uiState.exportsThisMonth.toString(),
+                            icon = Icons.Outlined.CalendarToday,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        ExportStatCard(
+                            modifier = Modifier.weight(1f),
+                            title = "Downloaded",
+                            value = uiState.downloadedExports.toString(),
+                            icon = Icons.Outlined.DownloadDone,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
 
-                    // Export History Items
-                    if (recentExports.isEmpty()) {
-                        item {
-                            EmptyStateCard(
-                                onNewExport = { viewModel.showExportSheet() }
-                            )
+                // Selected Context Card
+                if (uiState.selectedProgramme != null || uiState.selectedUnit != null) {
+                    item {
+                        SelectedContextCard(
+                            programme = uiState.selectedProgramme,
+                            unit = uiState.selectedUnit,
+                            onClearProgramme = { viewModel.clearProgrammeSelection() },
+                            onClearUnit = { viewModel.clearUnitSelection() }
+                        )
+                    }
+                }
+
+                // Quick Actions
+                item {
+                    QuickExportActions(
+                        onQuickExport = { format ->
+                            viewModel.quickExport(format)
                         }
-                    } else {
-                        items(recentExports) { export ->
-                            ExportHistoryItem(
-                                export = export,
-                                downloadProgress = downloadingExports[export.exportId],
-                                onClick = {
-                                },
-                                onShare = { viewModel.shareExport(export) },
-                                onDownload = { viewModel.downloadExport(export, context) },
-                                onView = { viewModel.onViewClicked(export, context) }
-                            )
+                    )
+                }
+
+                // Export History Header
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Recent Exports",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (uiState.totalExports > 0) {
+                            TextButton(onClick = { viewModel.onViewAllExportsClick()}) {
+                                Text("View All (${uiState.totalExports})")
+                            }
                         }
                     }
                 }
 
-                // Loading Indicator
-                if (uiState.isLoading || uiState.isExporting) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
+                // Export History Items
+                if (recentExports.isEmpty()) {
+                    item {
+                        EmptyStateCard(
+                            onNewExport = { viewModel.showExportSheet() }
+                        )
+                    }
+                } else {
+                    items(recentExports) { export ->
+                        ExportHistoryItem(
+                            export = export,
+                            downloadProgress = downloadingExports[export.exportId],
+                            onClick = {
+                                selectedExport = export
+                                showExportDetails = true
+                            },
+                            onShare = { viewModel.shareExport(export) },
+                            onDownload = { viewModel.downloadExport(export, context) },
+                            onView = { viewModel.onViewClicked(export, context) }
+                        )
+                    }
+                }
+            }
+
+            // Loading Indicator
+            if (uiState.isLoading || uiState.isExporting) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                CircularProgressIndicator(
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = if (uiState.isExporting) "Generating Export..." else "Loading...",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (uiState.isExporting) "Generating Export..." else "Loading...",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
             }
         }
-    } else {
-        AllExportsScreen(
-            viewModel = viewModel,
-            onNavigateBack = { viewModel.hideAllExports() },
-            snackbarHostState = snackbarHostState,
-            onExportClick = {
-            },
-            onShareClick = { viewModel.shareExport(it) },
-            onDownloadClick = { viewModel.downloadExport(it, context)},
-            onViewPdf = {
-                viewModel.hideAllExports()
-                viewModel.onViewClicked(it, context)
-            },
-            onViewCsv = {
-                viewModel.hideAllExports()
-                viewModel.onViewClicked(it, context)
-            }
-        )
     }
 
     // Export Bottom Sheet
@@ -423,6 +415,29 @@ fun ExportScreen(
             onDownload = {
                 showCsvViewer = false
                 csvUri = null
+            }
+        )
+    }
+
+    // Export Details Dialog
+    if (showExportDetails && selectedExport != null) {
+        ExportDetailsDialog(
+            export = selectedExport!!,
+            onDismiss = {
+                showExportDetails = false
+                selectedExport = null
+            },
+            onView = {
+                viewModel.onViewClicked(selectedExport!!, context)
+            },
+            onDownload = {
+                viewModel.downloadExport(selectedExport!!, context)
+            },
+            onDelete = {
+                viewModel.deleteExport(selectedExport!!)
+            },
+            onShare = {
+                viewModel.shareExport(selectedExport!!)
             }
         )
     }
@@ -963,7 +978,6 @@ fun ExportViewerDialog(
         }
     )
 }
-
 
 // Helper functions
 fun formatFileSize(size: Long): String {

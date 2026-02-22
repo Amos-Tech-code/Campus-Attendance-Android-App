@@ -196,8 +196,10 @@ class ExportRepository(
     }
 
     // Get paginated exports
+    // In ExportRepository.kt
     fun getPagedExports(
         universityId: String,
+        query: String = "",
         pageSize: Int = 20
     ): Flow<PagingData<AttendanceExportEntity>> {
 
@@ -206,9 +208,14 @@ class ExportRepository(
                 pageSize = pageSize,
                 enablePlaceholders = false,
             ),
-            pagingSourceFactory = { exportDao.pagingSource(universityId) }
+            pagingSourceFactory = {
+                if (query.isBlank()) {
+                    exportDao.pagingSource(universityId)
+                } else {
+                    exportDao.pagingSourceWithQuery(universityId, query)
+                }
+            }
         ).flow
-
     }
 
     // Get recent exports
@@ -244,14 +251,6 @@ class ExportRepository(
         ) { total, thisMonth, downloaded ->
             ExportStatistics(total, thisMonth, downloaded)
         }
-    }
-
-    // Search exports
-    suspend fun searchExports(
-        universityId: String,
-        query: String
-    ): List<AttendanceExportEntity> {
-        return exportDao.searchExports(universityId, query)
     }
 
     // Clean up expired exports
