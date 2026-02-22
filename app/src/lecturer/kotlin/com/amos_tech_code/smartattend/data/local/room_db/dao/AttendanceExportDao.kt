@@ -1,8 +1,13 @@
 package com.amos_tech_code.smartattend.data.local.room_db.dao
 
-import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceExportEntity
 import androidx.paging.PagingSource
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceExportEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -29,23 +34,11 @@ interface AttendanceExportDao {
     @Query("SELECT * FROM attendance_exports WHERE exportId = :exportId")
     suspend fun getExportByExportId(exportId: String): AttendanceExportEntity?
 
-    @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId ORDER BY createdAt DESC LIMIT :limit")
-    suspend fun getRecentExports(universityId: String, limit: Int): List<AttendanceExportEntity>
-
     @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId ORDER BY createdAt DESC LIMIT :limit OFFSET :offset")
     suspend fun getPagedExports(universityId: String, limit: Int, offset: Int): List<AttendanceExportEntity>
 
-    @Query("SELECT COUNT(*) FROM attendance_exports WHERE universityId = :universityId")
-    suspend fun getTotalExportsCount(universityId: String): Int
-
-    @Query("SELECT COUNT(*) FROM attendance_exports WHERE universityId = :universityId AND createdAt >= :startOfMonth")
-    suspend fun getExportsThisMonth(universityId: String, startOfMonth: Long): Int
-
-    @Query("SELECT COUNT(*) FROM attendance_exports WHERE localFilePath IS NOT NULL AND universityId = :universityId")
-    suspend fun getDownloadedExportsCount(universityId: String): Int
-
-    @Query("UPDATE attendance_exports SET localFilePath = :filePath, isDownloading = false, downloadProgress = 100 WHERE exportId = :exportId")
-    suspend fun markAsDownloaded(exportId: String, filePath: String)
+    @Query("UPDATE attendance_exports SET localFilePath = :uriString, isDownloading = 0, downloadProgress = 100 WHERE exportId = :exportId")
+    suspend fun markAsDownloaded(exportId: String, uriString: String)
 
     @Query("UPDATE attendance_exports SET isDownloading = :isDownloading, downloadProgress = :progress WHERE exportId = :exportId")
     suspend fun updateDownloadProgress(exportId: String, isDownloading: Boolean, progress: Int)
@@ -59,7 +52,22 @@ interface AttendanceExportDao {
     @Query("DELETE FROM attendance_exports WHERE expiresAt < :now AND expiresAt IS NOT NULL")
     suspend fun deleteExpiredExports(now: Long)
 
+     @Query("UPDATE attendance_exports SET localFilePath = NULL WHERE exportId = :exportId")
+     suspend fun clearLocalFilePath(exportId: String)
+
     // Flow observers
+    @Query("SELECT COUNT(*) FROM attendance_exports WHERE universityId = :universityId")
+    fun observeTotalExportsCount(universityId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM attendance_exports WHERE universityId = :universityId AND createdAt >= :startOfMonth")
+    fun observeExportsThisMonth(universityId: String, startOfMonth: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM attendance_exports WHERE localFilePath IS NOT NULL AND universityId = :universityId")
+    fun observeDownloadedExportsCount(universityId: String): Flow<Int>
+
+    @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId ORDER BY createdAt DESC LIMIT :limit")
+    fun observeRecentExports(universityId: String, limit: Int): Flow<List<AttendanceExportEntity>>
+
     @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId ORDER BY createdAt DESC")
     fun observeAllExports(universityId: String): Flow<List<AttendanceExportEntity>>
 
@@ -68,5 +76,5 @@ interface AttendanceExportDao {
 
     // Paging source
     @Query("SELECT * FROM attendance_exports WHERE universityId = :universityId ORDER BY createdAt DESC")
-    fun getPagingSource(universityId: String): PagingSource<Int, AttendanceExportEntity>
+    fun pagingSource(universityId: String): PagingSource<Int, AttendanceExportEntity>
 }

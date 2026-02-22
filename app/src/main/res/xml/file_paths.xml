@@ -25,4 +25,9 @@
         name="files"
         path="." />
 
+    <!-- For Android 10+ MediaStore files -->
+    <root-path
+        name="root"
+        path="/" />
+
 </paths>

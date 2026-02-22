@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
+import com.amos_tech_code.smartattend.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeUnit
 
 object FileDownloadManager {
     private const val TAG = "FileDownloadManager"
+    private const val FILE_PROVIDER_AUTHORITY = "${BuildConfig.APPLICATION_ID}.fileprovider"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -257,21 +259,46 @@ object FileDownloadManager {
         }
     }
 
+    /**
+     * Get a content URI for a file - works for both content URIs and file paths
+     */
     fun getFileUri(context: Context, filePath: String): Uri {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // For Android 10+, filePath might be a content URI
-            if (filePath.startsWith("content://")) {
-                Uri.parse(filePath)
+        return if (filePath.startsWith("content://")) {
+            Uri.parse(filePath)
+        } else if (filePath.startsWith("/")) {
+            val file = File(filePath)
+            if (file.exists()) {
+                FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
             } else {
-                FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    File(filePath)
-                )
+                Log.e(TAG, "File does not exist at path: $filePath")
+                Uri.parse(filePath)
             }
         } else {
-            // For older versions
-            Uri.fromFile(File(filePath))
+            Uri.parse(filePath)
+        }
+    }
+
+    // Validate file before viewing/sharing
+    suspend fun validateAndGetUri(context: Context, uriString: String): Uri? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val uri = Uri.parse(uriString)
+                if (uri.scheme == "content") {
+                    // For content URIs, try to open input stream
+                    context.contentResolver.openInputStream(uri)?.close()
+                    uri
+                } else {
+                    val file = File(uri.path ?: return@withContext null)
+                    if (file.exists()) {
+                        FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
+                    } else {
+                        null
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "File validation failed", e)
+                null
+            }
         }
     }
 }

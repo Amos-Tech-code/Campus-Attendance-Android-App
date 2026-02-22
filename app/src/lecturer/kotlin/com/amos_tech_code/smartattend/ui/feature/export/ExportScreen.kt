@@ -57,7 +57,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -110,7 +109,6 @@ fun ExportScreen(
     var pdfUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var csvUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var currentFileName by remember { mutableStateOf("") }
-    var selectedExportForView by remember { mutableStateOf<AttendanceExportEntity?>(null) }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
@@ -125,30 +123,16 @@ fun ExportScreen(
                 showExportViewerDialog = true
             }
 
-            is ExportEvent.ViewPdf -> {
-                selectedExportForView = event.export
-                if (event.export.localFilePath != null) {
-                    // Use local file
-                    val uri = FileDownloadManager.getFileUri(context, event.export.localFilePath)
-                    pdfUri = uri
-                    currentFileName = event.export.fileName
-                    showPdfViewer = true
-                } else {
-                    // Download first then view
-                    viewModel.downloadExport(event.export, context)
-                }
+            is ExportEvent.OpenPdf -> {
+                pdfUri = event.uri
+                currentFileName = event.fileName
+                showPdfViewer = true
             }
 
-            is ExportEvent.ViewCsv -> {
-                selectedExportForView = event.export
-                if (event.export.localFilePath != null) {
-                    val uri = FileDownloadManager.getFileUri(context, event.export.localFilePath)
-                    csvUri = uri
-                    currentFileName = event.export.fileName
-                    showCsvViewer = true
-                } else {
-                    viewModel.downloadExport(event.export, context)
-                }
+            is ExportEvent.OpenCsv -> {
+                csvUri = event.uri
+                currentFileName = event.fileName
+                showCsvViewer = true
             }
 
             is ExportEvent.ShareExport -> {
@@ -158,9 +142,7 @@ fun ExportScreen(
                         ExportFormat.CSV -> "text/csv"
                     }
                     if (event.export.localFilePath != null) {
-                        val uri =
-                            FileDownloadManager.getFileUri(context, event.export.localFilePath)
-                        FileDownloadManager.shareFile(context, uri, mimeType)
+                        viewModel.validateAndShareExport(event.export, context, mimeType)
                     } else {
                         snackbarHostState.showSnackbar("Please download the file first")
                     }
@@ -171,33 +153,6 @@ fun ExportScreen(
                 navController.popBackStack()
             }
 
-        }
-    }
-
-    // Auto-view after download completes
-    LaunchedEffect(downloadingExports) {
-        if (selectedExportForView != null) {
-            val downloadState = downloadingExports[selectedExportForView!!.exportId]
-            if (downloadState?.isDownloading == false && downloadState.progress >= 1f) {
-                // Download completed, get updated export
-                val updatedExport = recentExports.find { it.exportId == selectedExportForView!!.exportId }
-                if (updatedExport?.localFilePath != null) {
-                    val uri = FileDownloadManager.getFileUri(context, updatedExport.localFilePath)
-                    when (updatedExport.exportFormat) {
-                        ExportFormat.PDF -> {
-                            pdfUri = uri
-                            currentFileName = updatedExport.fileName
-                            showPdfViewer = true
-                        }
-                        ExportFormat.CSV -> {
-                            csvUri = uri
-                            currentFileName = updatedExport.fileName
-                            showCsvViewer = true
-                        }
-                    }
-                }
-                selectedExportForView = null
-            }
         }
     }
 
@@ -332,7 +287,7 @@ fun ExportScreen(
                                 },
                                 onShare = { viewModel.shareExport(export) },
                                 onDownload = { viewModel.downloadExport(export, context) },
-                                onView = { viewModel.viewExport(export) }
+                                onView = { viewModel.onViewClicked(export, context) }
                             )
                         }
                     }
@@ -381,11 +336,11 @@ fun ExportScreen(
             onDownloadClick = { viewModel.downloadExport(it, context)},
             onViewPdf = {
                 viewModel.hideAllExports()
-                viewModel.viewExport(it)
+                viewModel.onViewClicked(it, context)
             },
             onViewCsv = {
                 viewModel.hideAllExports()
-                viewModel.viewExport(it)
+                viewModel.onViewClicked(it, context)
             }
         )
     }
@@ -413,23 +368,10 @@ fun ExportScreen(
             onDismiss = { showExportViewerDialog = false },
             onView = {
                 showExportViewerDialog = false
-                when (currentExport!!.exportFormat) {
-                    ExportFormat.PDF -> {
-                        // Convert to entity and view
-                        val exportEntity =
-                            recentExports.find { it.exportId == currentExport!!.exportId }
-                        if (exportEntity != null) {
-                            viewModel.viewExport(exportEntity)
-                        }
-                    }
-
-                    ExportFormat.CSV -> {
-                        val exportEntity =
-                            recentExports.find { it.exportId == currentExport!!.exportId }
-                        if (exportEntity != null) {
-                            viewModel.viewExport(exportEntity)
-                        }
-                    }
+                val exportEntity =
+                    recentExports.find { it.exportId == currentExport!!.exportId }
+                if (exportEntity != null) {
+                    viewModel.onViewClicked(exportEntity, context)
                 }
             },
             onDownload = {
@@ -485,7 +427,6 @@ fun ExportScreen(
         )
     }
 }
-
 
 
 @Composable

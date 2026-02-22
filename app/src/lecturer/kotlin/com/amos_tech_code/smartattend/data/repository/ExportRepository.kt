@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.data.repository
 
 import android.content.Context
+import android.net.Uri
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -16,14 +17,12 @@ import com.amos_tech_code.smartattend.domain.response.AttendanceExportRecordDto
 import com.amos_tech_code.smartattend.domain.response.AttendanceExportResponseDto
 import com.amos_tech_code.smartattend.domain.response.ExportsListResponseDto
 import com.amos_tech_code.smartattend.services.FileDownloadManager
+import com.amos_tech_code.smartattend.utils.toEpochMillisOrNull
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Locale
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 class ExportRepository(
     private val apiService: ApiService,
@@ -31,37 +30,52 @@ class ExportRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val fileDownloadManager: FileDownloadManager
 ) {
-    /*suspend fun exportAttendance(
-        universityId: String,
-        programmeId: String,
-        unitId: String,
-        weekRange: String,
-        sessionType: AttendanceSessionType?,
-        yearOfStudy: Int,
-        semester: Int,
-        exportFormat: ExportFormat
-    ): ApiResult<AttendanceExportResponseDto> {
-        return safeApiCall {
-            apiService.exportAttendanceRecords(
-                AttendanceExportRequest(
-                    universityId = universityId,
-                    programmeId = programmeId,
-                    unitId = unitId,
-                    weekRange = weekRange,
-                    sessionType = sessionType,
-                    yearOfStudy = yearOfStudy,
-                    semester = semester,
-                    exportFormat = exportFormat
-                )
-            )
-        }
-    }
-
-     */
 
     suspend fun getExportStatus(exportId: String): ApiResult<AttendanceExportRecordDto> {
         return safeApiCall {
             apiService.getExportStatus(exportId)
+        }
+    }
+
+    // Download file with progress tracking
+    suspend fun downloadExportFile(
+        context: Context,
+        exportId: String,
+        onProgress: (Float) -> Unit = {}
+    ): Result<Pair<String, Uri>> {
+        val export = exportDao.getExportByExportId(exportId)
+            ?: return Result.failure(Exception("Export not found"))
+
+        exportDao.updateDownloadProgress(exportId, true, 0)
+
+        return try {
+            val downloadResult = fileDownloadManager.downloadFile(
+                context = context,
+                url = export.fileUrl,
+                fileName = export.fileName,
+                onProgress = { progress ->
+                    val percent = (progress * 100).toInt()
+                    exportDao.updateDownloadProgress(exportId, true, percent)
+                    onProgress(progress)
+                }
+            )
+
+            if (downloadResult.isSuccess) {
+                val uri = downloadResult.getOrNull()!!
+
+                // IMPORTANT: Store the URI as a string, not the file path
+                val uriString = uri.toString()
+
+                exportDao.markAsDownloaded(exportId, uriString)
+                Result.success(Pair(uriString, uri))
+            } else {
+                val error = downloadResult.exceptionOrNull()
+                exportDao.markDownloadFailed(exportId)
+                Result.failure(error ?: Exception("Download failed"))
+            }
+        } catch (e: Exception) {
+            exportDao.markDownloadFailed(exportId)
+            Result.failure(e)
         }
     }
 
@@ -99,47 +113,7 @@ class ExportRepository(
         }
     }
 
-    private fun convertDtoToEntity(
-        dto: AttendanceExportRecordDto,
-        universityId: String
-    ): AttendanceExportEntity {
-        return AttendanceExportEntity(
-            exportId = dto.exportId,
-            universityId = universityId,
-            fileName = dto.fileName,
-            fileUrl = dto.fileUrl,
-            fileSize = dto.fileSize,
-            exportFormat = ExportFormat.valueOf(dto.exportFormat),
-            weekRange = dto.weekRange,
-            createdAt = parseDateString(dto.createdAt),
-            expiresAt = dto.expiresAt?.let { parseDateString(it) },
-            unitName = dto.unitName,
-            unitCode = dto.unitCode,
-            programmeName = dto.programmeName,
-            academicTerm = dto.academicTerm,
-            localFilePath = null,
-            isDownloading = false,
-            downloadProgress = 0
-        )
-    }
-
-    @OptIn(ExperimentalTime::class)
-    private fun parseDateString(dateString: String): Long {
-        return try {
-            // Try ISO format first
-            Instant.parse(dateString).toEpochMilliseconds()
-        } catch (e: Exception) {
-            // Fallback to SimpleDateFormat
-            try {
-                val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                format.parse(dateString)?.time ?: System.currentTimeMillis()
-            } catch (e2: Exception) {
-                System.currentTimeMillis()
-            }
-        }
-    }
-
-    // Network call with local caching
+    // Export attendance records and save to local database
     suspend fun exportAttendance(
         universityId: String,
         programmeId: String,
@@ -186,6 +160,7 @@ class ExportRepository(
         return result
     }
 
+    // Save export records to local database
     private suspend fun saveExportToDatabase(
         response: AttendanceExportResponseDto,
         universityId: String,
@@ -207,7 +182,7 @@ class ExportRepository(
             exportFormat = response.exportFormat,
             weekRange = weekRange,
             createdAt = now,
-            expiresAt = response.expiresAt?.let { parseExpiryToMillis(it) },
+            expiresAt = response.expiresAt?.toEpochMillisOrNull(),
             unitName = unitName,
             unitCode = unitCode,
             programmeName = programmeName,
@@ -231,17 +206,17 @@ class ExportRepository(
                 pageSize = pageSize,
                 enablePlaceholders = false,
             ),
-            pagingSourceFactory = { exportDao.getPagingSource(universityId) }
+            pagingSourceFactory = { exportDao.pagingSource(universityId) }
         ).flow
 
     }
 
     // Get recent exports
-    suspend fun getRecentExports(
+     fun observeRecentExports(
         universityId: String,
         limit: Int = 10
-    ): List<AttendanceExportEntity> {
-        return exportDao.getRecentExports(universityId, limit)
+    ): Flow<List<AttendanceExportEntity>> {
+        return exportDao.observeRecentExports(universityId, limit)
     }
 
     // Observe all exports
@@ -254,60 +229,21 @@ class ExportRepository(
         return exportDao.observeExport(exportId)
     }
 
-
-    // Download file with progress tracking
-    suspend fun downloadExportFile(
-        context: Context,
-        exportId: String,
-        onProgress: (Float) -> Unit = {}
-    ): Result<String> {
-        val export = exportDao.getExportByExportId(exportId)
-            ?: return Result.failure(Exception("Export not found"))
-
-        // Update to downloading state
-        exportDao.updateDownloadProgress(exportId, true, 0)
-
-        return try {
-            // FIXED: Handle the Result<Uri> from FileDownloadManager
-            val downloadResult = fileDownloadManager.downloadFile(
-                context = context,
-                url = export.fileUrl,
-                fileName = export.fileName,
-                onProgress = { progress ->
-                    val percent = (progress * 100).toInt()
-                    exportDao.updateDownloadProgress(exportId, true, percent)
-                    onProgress(progress)
-                }
-            )
-
-            // FIXED: Properly handle the Result<Uri>
-            if (downloadResult.isSuccess) {
-                val uri = downloadResult.getOrNull()
-                val filePath = uri?.path ?: return Result.failure(Exception("Invalid URI"))
-
-                // Mark as downloaded
-                exportDao.markAsDownloaded(exportId, filePath)
-                Result.success(filePath)
-            } else {
-                val error = downloadResult.exceptionOrNull()
-                exportDao.markDownloadFailed(exportId)
-                Result.failure(error ?: Exception("Download failed"))
-            }
-        } catch (e: Exception) {
-            exportDao.markDownloadFailed(exportId)
-            Result.failure(e)
-        }
-    }
-
     // Get statistics
-    suspend fun getExportStatistics(universityId: String): ExportStatistics {
+    fun getExportStatistics(universityId: String): Flow<ExportStatistics> {
         val startOfMonth = getStartOfMonthTimestamp()
 
-        return ExportStatistics(
-            totalExports = exportDao.getTotalExportsCount(universityId),
-            exportsThisMonth = exportDao.getExportsThisMonth(universityId, startOfMonth),
-            downloadedExports = exportDao.getDownloadedExportsCount(universityId)
-        )
+        val totalExportsFlow = exportDao.observeTotalExportsCount(universityId)
+        val exportsThisMonthFlow = exportDao.observeExportsThisMonth(universityId, startOfMonth)
+        val downloadedExportsFlow = exportDao.observeDownloadedExportsCount(universityId)
+        // Combine all flows into a single flow
+        return combine(
+            totalExportsFlow,
+            exportsThisMonthFlow,
+            downloadedExportsFlow
+        ) { total, thisMonth, downloaded ->
+            ExportStatistics(total, thisMonth, downloaded)
+        }
     }
 
     // Search exports
@@ -322,22 +258,38 @@ class ExportRepository(
     suspend fun cleanupExpiredExports() {
         exportDao.deleteExpiredExports(System.currentTimeMillis())
     }
+    suspend fun clearLocalFilePath(exportId: String) {
+        exportDao.clearLocalFilePath(exportId)
+    }
 
     // Delete export
     suspend fun deleteExport(exportId: String) {
         exportDao.deleteExportByExportId(exportId)
     }
 
-    // Helper function to parse expiry string to millis
-    @OptIn(ExperimentalTime::class)
-    private fun parseExpiryToMillis(expiryString: String): Long? {
-        return try {
-            // Parse ISO date string to milliseconds
-            // Implement based on your date format
-            Instant.parse(expiryString).toEpochMilliseconds()
-        } catch (e: Exception) {
-            null
-        }
+    // Helper functions
+    private fun convertDtoToEntity(
+        dto: AttendanceExportRecordDto,
+        universityId: String
+    ): AttendanceExportEntity {
+        return AttendanceExportEntity(
+            exportId = dto.exportId,
+            universityId = universityId,
+            fileName = dto.fileName,
+            fileUrl = dto.fileUrl,
+            fileSize = dto.fileSize,
+            exportFormat = ExportFormat.valueOf(dto.exportFormat),
+            weekRange = dto.weekRange,
+            createdAt = dto.createdAt.toEpochMillisOrNull() ?: System.currentTimeMillis(),
+            expiresAt = dto.expiresAt?.toEpochMillisOrNull(),
+            unitName = dto.unitName,
+            unitCode = dto.unitCode,
+            programmeName = dto.programmeName,
+            academicTerm = dto.academicTerm,
+            localFilePath = null,
+            isDownloading = false,
+            downloadProgress = 0
+        )
     }
 
     private fun getStartOfMonthTimestamp(): Long {

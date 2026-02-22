@@ -1,8 +1,13 @@
 package com.amos_tech_code.smartattend.utils
 
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Formats a given timestamp (in milliseconds) into a user-friendly date and time string.
@@ -43,3 +48,44 @@ fun String.toAmPmTime(): String {
         this
     }
 }
+
+/**
+ * Converts ISO-8601 date-time string to epoch millis.
+ *
+ * Supports:
+ * - 2026-03-01T09:00:42.867300850Z
+ * - 2026-03-01T09:00:42Z
+ * - 2026-03-01T09:00:42+03:00
+ * - 2026-03-01T09:00:42.867300850
+ *
+ * If timezone is missing, UTC is assumed.
+ */
+@OptIn(ExperimentalTime::class)
+fun String.toEpochMillisOrNull(): Long? {
+    if (this.isBlank()) return null
+    return runCatching {
+        // First try parsing as Instant (requires timezone or Z)
+        Instant.parse(this).toEpochMilliseconds()
+    }.getOrElse {
+        // If that fails, assume UTC and parse as LocalDateTime
+        runCatching {
+            LocalDateTime.parse(this)
+                .toInstant(TimeZone.UTC)
+                .toEpochMilliseconds()
+        }.getOrNull()
+    }
+}
+
+/**
+ * Parses ISO-8601 string that MUST contain timezone (Z or offset).
+ *
+ * Examples:
+ *  - 2026-03-01T09:00:42Z
+ *  - 2026-03-01T09:00:42.867300850Z
+ *  - 2026-03-01T09:00:42+03:00
+ *
+ * Throws IllegalArgumentException if timezone is missing or invalid.
+ */
+@OptIn(ExperimentalTime::class)
+fun String.toEpochMillisStrict(): Long =
+    Instant.parse(this).toEpochMilliseconds()
