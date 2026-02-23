@@ -21,11 +21,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TableChart
@@ -68,6 +68,7 @@ import androidx.paging.compose.itemKey
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceExportEntity
 import com.amos_tech_code.smartattend.domain.models.ExportFormat
 import com.amos_tech_code.smartattend.services.FileDownloadManager
+import com.amos_tech_code.smartattend.ui.components.LoadingDialog
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.feature.export.DownloadProgress
 import com.amos_tech_code.smartattend.ui.feature.export.ExportEvent
@@ -90,6 +91,7 @@ fun AllExportsScreen(
 ) {
     val pagedExportsFlow = viewModel.pagedExports
     val downloadingExports by viewModel.downloadingExports.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -175,7 +177,7 @@ fun AllExportsScreen(
                     } else {
                         Text(
                             text = "All Exports",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -190,11 +192,13 @@ fun AllExportsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { isSearching = !isSearching }) {
-                        Icon(
-                            imageVector = if (isSearching) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = if (isSearching) "Close search" else "Search"
-                        )
+                    if (!isRefreshing) {
+                        IconButton(onClick = { isSearching = !isSearching }) {
+                            Icon(
+                                imageVector = if (isSearching) Icons.Default.Close else Icons.Default.Search,
+                                contentDescription = if (isSearching) "Close search" else "Search"
+                            )
+                        }
                     }
                 }
             )
@@ -270,7 +274,8 @@ fun AllExportsScreen(
                         lazyPagingItems.itemCount == 0) {
                         item {
                             EmptyExportsState(
-                                onNewExport = { viewModel.showExportSheet() }
+                                onNewExport = { viewModel.showExportSheet() },
+                                onRefresh = { viewModel.refresh() }
                             )
                         }
                     }
@@ -371,6 +376,13 @@ fun AllExportsScreen(
                 showDeleteConfirmation = false
                 exportToDelete = null
             }
+        )
+    }
+
+    if (isRefreshing) {
+        LoadingDialog(
+            message = "Refreshing exports...",
+            onDismiss = { viewModel.navigateBack() }
         )
     }
 
@@ -561,17 +573,17 @@ fun AllExportsHistoryItem(
                     }
 
                     // Delete button
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+//                    IconButton(
+//                        onClick = onDelete,
+//                        modifier = Modifier.size(36.dp)
+//                    ) {
+//                        Icon(
+//                            imageVector = Icons.Default.Delete,
+//                            contentDescription = "Delete",
+//                            tint = MaterialTheme.colorScheme.error,
+//                            modifier = Modifier.size(18.dp)
+//                        )
+//                    }
                 }
             }
 
@@ -634,7 +646,8 @@ fun ErrorItem(
 
 @Composable
 fun EmptyExportsState(
-    onNewExport: () -> Unit
+    onNewExport: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -658,7 +671,7 @@ fun EmptyExportsState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "No Exports Found",
+                text = "No Exports Found, Try refreshing or:",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
@@ -681,6 +694,19 @@ fun EmptyExportsState(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("New Export")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onRefresh,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Refresh")
             }
         }
     }

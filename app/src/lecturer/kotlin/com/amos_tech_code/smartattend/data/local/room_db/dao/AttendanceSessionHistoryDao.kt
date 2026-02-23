@@ -33,7 +33,7 @@ interface AttendanceSessionHistoryDao {
     fun observeRecentSessions(limit: Int): Flow<List<AttendanceSessionHistoryEntity>>
 
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(
         sessions: List<AttendanceSessionHistoryEntity>
     )

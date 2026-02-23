@@ -3,8 +3,8 @@ package com.amos_tech_code.smartattend.data.mappers
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceSessionHistoryEntity
 import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryDto
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
+import com.amos_tech_code.smartattend.utils.toEpochMillisStrict
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 fun AttendanceSessionHistoryDto.toEntity(): AttendanceSessionHistoryEntity {
     return AttendanceSessionHistoryEntity(
@@ -22,8 +22,6 @@ fun AttendanceSessionHistoryDto.toEntity(): AttendanceSessionHistoryEntity {
 
 @OptIn(ExperimentalTime::class)
 fun StartAttendanceSessionResponse.toEntity() : AttendanceSessionHistoryEntity {
-    val instant = Instant.parse(this.timeInfo.startTime)
-    val timestampLong = instant.toEpochMilliseconds() // Returns Long
 
     return AttendanceSessionHistoryEntity(
         sessionId = this.sessionId,
@@ -33,7 +31,7 @@ fun StartAttendanceSessionResponse.toEntity() : AttendanceSessionHistoryEntity {
         sessionType = this.sessionType.name,
         attendanceMethod = this.method,
         status = this.status,
-        startedAt = timestampLong,
-        endedAt = null
+        startedAt = this.timeInfo.startTime.toEpochMillisStrict(),
+        endedAt = this.timeInfo.endTime.toEpochMillisStrict()
     )
 }

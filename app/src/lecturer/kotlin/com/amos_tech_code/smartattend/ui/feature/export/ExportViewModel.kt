@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceExportEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeWithUnits
@@ -19,12 +18,10 @@ import com.amos_tech_code.smartattend.domain.models.ExportFormat
 import com.amos_tech_code.smartattend.services.FileDownloadManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -49,6 +46,9 @@ class ExportViewModel(
     // StateFlow for search query
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    // Refresh state
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     // Recent exports flow
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -419,10 +419,7 @@ class ExportViewModel(
             selectExportFormat(format)
             executeExport()
         } else {
-            viewModelScope.launch {
-                _event.send(ExportEvent.ShowSnackbar("Please select a programme and unit first"))
-                showExportSheet()
-            }
+            showExportSheet()
         }
     }
 
@@ -447,6 +444,30 @@ class ExportViewModel(
     fun onDeleteClicked(export: AttendanceExportEntity) {
         viewModelScope.launch {
             _event.send(ExportEvent.ConfirmDelete(export))
+        }
+    }
+
+    /**
+     * Refresh exports history function
+     */
+    fun refresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                when(val result = exportRepository.syncExportRecords()) {
+                    is ApiResult.Success -> {
+                        _event.send(ExportEvent.ShowSnackbar("Refresh successful"))
+                    }
+                    is ApiResult.Failure -> {
+                        val message = result.error.extractApiErrorMessage()
+                        _event.send(ExportEvent.ShowSnackbar(message))
+                    }
+                }
+            } catch (e: Exception) {
+                _event.send(ExportEvent.ShowSnackbar("Refresh failed: ${e.message}"))
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 }

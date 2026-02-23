@@ -16,7 +16,7 @@ interface AttendanceExportDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExport(export: AttendanceExportEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAllExports(exports: List<AttendanceExportEntity>)
 
     @Update

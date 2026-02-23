@@ -18,10 +18,12 @@ import com.amos_tech_code.smartattend.domain.response.AttendanceExportResponseDt
 import com.amos_tech_code.smartattend.domain.response.ExportsListResponseDto
 import com.amos_tech_code.smartattend.services.FileDownloadManager
 import com.amos_tech_code.smartattend.utils.toEpochMillisOrNull
+import com.amos_tech_code.smartattend.utils.toEpochMillisStrict
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 class ExportRepository(
@@ -82,30 +84,52 @@ class ExportRepository(
     /**
      * Get export records from server and sync to local database
      */
-    suspend fun getExportRecords(
-        universityId: String,
-        page: Int = 0,
-        size: Int = 10,
-        sort: String = "desc"
-    ): ApiResult<ExportsListResponseDto> {
-        val result =  safeApiCall {
-            apiService.getExportRecords(page, size)
-        }
-        if (result is ApiResult.Success) {
-            // Sync to local database
-            withContext(ioDispatcher) {
-                syncExportsToDatabase(result.data, universityId)
+    suspend fun syncExportRecords(
+        pageSize: Int = 20
+    ): ApiResult<Unit> = withContext(ioDispatcher) {
+
+        var page = 0
+        var hasNext = true
+
+        while (hasNext && isActive) {
+
+            when (val result = safeApiCall {
+                apiService.getExportRecords(page = page, size = pageSize)
+            }) {
+
+                is ApiResult.Success -> {
+
+                    val response = result.data
+
+                    val entities = response.exports.mapNotNull { dto ->
+                        runCatching { convertDtoToEntity(dto) }.getOrNull()
+                    }
+
+                    if (entities.isNotEmpty()) {
+                        exportDao.insertAllExports(entities)
+                    }
+
+                    // Determine if more pages exist
+                    val nextOffset = (page + 1) * pageSize
+                    hasNext = nextOffset < response.total
+
+                    page++
+                }
+
+                is ApiResult.Failure -> {
+                    return@withContext ApiResult.Failure(result.error)
+                }
             }
         }
-        return result
+
+        ApiResult.Success(Unit)
     }
 
     private suspend fun syncExportsToDatabase(
         response: ExportsListResponseDto,
-        universityId: String
     ) {
         val entities = response.exports.map { dto ->
-            convertDtoToEntity(dto, universityId)
+            convertDtoToEntity(dto)
         }
 
         if (entities.isNotEmpty()) {
@@ -226,16 +250,6 @@ class ExportRepository(
         return exportDao.observeRecentExports(universityId, limit)
     }
 
-    // Observe all exports
-    fun observeAllExports(universityId: String): Flow<List<AttendanceExportEntity>> {
-        return exportDao.observeAllExports(universityId)
-    }
-
-    // Observe single export
-    fun observeExport(exportId: String): Flow<AttendanceExportEntity?> {
-        return exportDao.observeExport(exportId)
-    }
-
     // Get statistics
     fun getExportStatistics(universityId: String): Flow<ExportStatistics> {
         val startOfMonth = getStartOfMonthTimestamp()
@@ -253,10 +267,6 @@ class ExportRepository(
         }
     }
 
-    // Clean up expired exports
-    suspend fun cleanupExpiredExports() {
-        exportDao.deleteExpiredExports(System.currentTimeMillis())
-    }
     suspend fun clearLocalFilePath(exportId: String) {
         exportDao.clearLocalFilePath(exportId)
     }
@@ -269,18 +279,17 @@ class ExportRepository(
     // Helper functions
     private fun convertDtoToEntity(
         dto: AttendanceExportRecordDto,
-        universityId: String
     ): AttendanceExportEntity {
         return AttendanceExportEntity(
             exportId = dto.exportId,
-            universityId = universityId,
+            universityId = dto.universityId,
             fileName = dto.fileName,
             fileUrl = dto.fileUrl,
             fileSize = dto.fileSize,
             exportFormat = ExportFormat.valueOf(dto.exportFormat),
             weekRange = dto.weekRange,
-            createdAt = dto.createdAt.toEpochMillisOrNull() ?: System.currentTimeMillis(),
-            expiresAt = dto.expiresAt?.toEpochMillisOrNull(),
+            createdAt = dto.createdAt.toEpochMillisStrict(),
+            expiresAt = dto.expiresAt.toEpochMillisStrict(),
             unitName = dto.unitName,
             unitCode = dto.unitCode,
             programmeName = dto.programmeName,

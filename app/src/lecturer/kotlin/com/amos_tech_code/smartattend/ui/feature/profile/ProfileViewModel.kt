@@ -120,7 +120,7 @@ class ProfileViewModel(
             }
 
             ProfileUiEvent.ExportProfileData -> {
-                exportProfileData()
+                _event.trySend(ProfileEvent.ExportData)
             }
 
             ProfileUiEvent.EditProfile -> {
@@ -261,29 +261,6 @@ class ProfileViewModel(
                         isUpdatingProfile = false
                     )
                 }
-            }
-        }
-    }
-
-    private fun exportProfileData() {
-        viewModelScope.launch {
-            _state.update { it.copy(isExporting = true) }
-            try {
-                // Export personal data
-//                val exportData = PersonalDataExport(
-//                    lecturer = _state.value.lecturer,
-//                    institutions = _state.value.institutions,
-//                    exportDate = System.currentTimeMillis()
-//                )
-//
-//                // Create and share export file
-//                val fileName = "SmartAttend_Profile_${System.currentTimeMillis()}.json"
-//                _event.send(ProfileEvent.ExportData(exportData, fileName))
-
-            } catch (_: Exception) {
-                _event.send(ProfileEvent.ShowErrorMessage("Failed to export data"))
-            } finally {
-                _state.update { it.copy(isExporting = false) }
             }
         }
     }

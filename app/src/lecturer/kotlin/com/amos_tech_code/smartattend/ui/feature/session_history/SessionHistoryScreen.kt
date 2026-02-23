@@ -123,6 +123,11 @@ fun SessionHistoryScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     )
+//                    Text(
+//                        text = uiState.universityName,
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.primary
+//                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
