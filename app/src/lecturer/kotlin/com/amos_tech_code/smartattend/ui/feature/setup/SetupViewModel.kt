@@ -1,19 +1,11 @@
 package com.amos_tech_code.smartattend.ui.feature.setup
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Pending
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
-import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.ProgrammeSetupRequest
@@ -25,10 +17,6 @@ import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
 import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
-import com.amos_tech_code.smartattend.ui.theme.AbsentColor
-import com.amos_tech_code.smartattend.ui.theme.NeutralVariant50
-import com.amos_tech_code.smartattend.ui.theme.PendingColor
-import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -42,8 +30,7 @@ import kotlinx.coroutines.launch
 class SetupViewModel(
     private val session: ClassTrackProSession,
     private val academicSetUpRepository: AcademicSetUpRepository
-) :
-    ViewModel() {
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupUiState())
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
@@ -78,8 +65,11 @@ class SetupViewModel(
             is SetupUiEvent.SaveUnit -> onSaveUnit()
             is SetupUiEvent.CancelAddUnit -> onCancelAddUnit()
             is SetupUiEvent.RemoveUnit -> onRemoveUnit(intent.programmeId, intent.unitId)
+            is SetupUiEvent.ChangeStep -> onStepChanged(intent.step)
+            is SetupUiEvent.ToggleSetupConfirmation -> onToggleConfirmation(intent.confirmed)
             is SetupUiEvent.CompleteSetup -> onCompleteSetup()
         }
+        validateSteps()
     }
 
     // University actions
@@ -240,6 +230,7 @@ class SetupViewModel(
             )
         }
     }
+
     fun onRemoveProgramme(programmeId: String) {
         _uiState.update {
             it.copy(
@@ -401,9 +392,16 @@ class SetupViewModel(
 
     // Setup completion
     fun onCompleteSetup() {
-        if (!_uiState.value.isSetupValid) {
+        val state = _uiState.value
+
+        if (!state.isSetupValid) {
             viewModelScope.launch {
-                _events.send(SetupEvent.ShowErrorMessage("Please complete all required fields"))
+                val message = if (!state.isSetupConfirmed && state.currentSetupStep == SetupStep.REVIEW.ordinal) {
+                    "Please confirm that all information is accurate"
+                } else {
+                    "Please complete all required fields"
+                }
+                _events.send(SetupEvent.ShowErrorMessage(message))
             }
             return
         }
@@ -605,6 +603,38 @@ class SetupViewModel(
         }
     }
 
+    fun onStepChanged(step: Int) {
+        _uiState.update { it.copy(currentSetupStep = step) }
+        validateSteps()
+    }
+
+    private fun onToggleConfirmation(confirmed: Boolean) {
+        _uiState.update { it.copy(isSetupConfirmed = confirmed) }
+        validateSetup()
+    }
+
+    private fun validateSteps() {
+        val state = _uiState.value
+        _uiState.update {
+            it.copy(
+                isInstitutionStepValid = state.universityName.isNotBlank() &&
+                        state.academicYear.isNotBlank(),
+                isProgrammesStepValid = state.programmes.isNotEmpty() &&
+                        state.programmes.all { prog ->
+                            prog.name.isNotBlank() &&
+                                    prog.departmentName.isNotBlank() &&
+                                    prog.expectedStudentCount.isNotBlank()
+                        },
+                isUnitsStepValid = state.programmes.all { prog ->
+                    prog.units.isNotEmpty() &&
+                            prog.units.all { unit ->
+                                unit.code.isNotBlank() && unit.name.isNotBlank()
+                            }
+                }
+            )
+        }
+    }
+
     private fun validateSetup() {
         val state = _uiState.value
         val isValid = state.universityName.isNotBlank() &&
@@ -618,64 +648,10 @@ class SetupViewModel(
                             programme.units.all { unit ->
                                 unit.code.isNotBlank() && unit.name.isNotBlank()
                             }
-                }
+                } &&
+                (state.currentSetupStep != SetupStep.REVIEW.ordinal || state.isSetupConfirmed)
 
         _uiState.update { it.copy(isSetupValid = isValid) }
     }
 
-}
-
-
-enum class AttendanceStatus {
-    PRESENT, ABSENT, LATE, PENDING
-}
-
-data class Student(
-    val name: String = "",
-    val registrationNo: String = "",
-    val email: String = "",
-    val department: String = "",
-    val semester: String = "",
-    val profileImage: String? = null
-)
-
-
-data class AttendanceRecord(
-    val id: String,
-    val sessionId: String,
-    val courseName: String,
-    val courseCode: String,
-    val date: String,
-    val time: String,
-    val status: AttendanceStatus,
-    val method: AttendanceMethod,
-    val location: String? = null,
-    val distance: Int? = null,
-    val deviceVerified: Boolean = true,
-    val locationVerified: Boolean = true,
-    val verified: Boolean = false,
-    val lecturerName: String = "",
-    val sessionDuration: String = "60 min"
-) {
-    // Helper property for display
-    val displayDateTime: String
-        get() = "$date • $time"
-
-    // Helper property for status color
-    val statusColor: Color
-        get() = when (status) {
-            AttendanceStatus.PRESENT -> PresentColor
-            AttendanceStatus.ABSENT -> AbsentColor
-            AttendanceStatus.LATE -> PendingColor
-            AttendanceStatus.PENDING -> NeutralVariant50
-        }
-
-    // Helper property for status icon
-    val statusIcon: ImageVector
-        get() = when (status) {
-            AttendanceStatus.PRESENT -> Icons.Default.CheckCircle
-            AttendanceStatus.ABSENT -> Icons.Default.Cancel
-            AttendanceStatus.LATE -> Icons.Default.Schedule
-            AttendanceStatus.PENDING -> Icons.Default.Pending
-        }
 }

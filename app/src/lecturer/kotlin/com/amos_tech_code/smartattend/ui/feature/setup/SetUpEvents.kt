@@ -13,7 +13,6 @@ sealed interface SetupEvent {
 }
 
 // Intents
-// UI Events
 sealed interface SetupUiEvent {
     data class UniversityNameChanged(val name: String) : SetupUiEvent
     data class UniversitySelected(val suggestion: UniversitySuggestion) : SetupUiEvent
@@ -44,5 +43,9 @@ sealed interface SetupUiEvent {
     data object SaveUnit : SetupUiEvent
     data object CancelAddUnit : SetupUiEvent
     data class RemoveUnit(val programmeId: String, val unitId: String) : SetupUiEvent
+
+    data class ChangeStep(val step: Int) : SetupUiEvent
+    data class ToggleSetupConfirmation(val confirmed: Boolean) : SetupUiEvent
+
     data object CompleteSetup : SetupUiEvent
 }

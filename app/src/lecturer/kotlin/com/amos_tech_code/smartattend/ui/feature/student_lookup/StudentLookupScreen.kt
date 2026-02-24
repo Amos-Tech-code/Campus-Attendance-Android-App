@@ -63,7 +63,6 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendSecondaryButton
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceRecord
 import com.amos_tech_code.smartattend.ui.theme.AbsentColor
 import com.amos_tech_code.smartattend.ui.theme.PendingColor
 import com.amos_tech_code.smartattend.ui.theme.PresentColor

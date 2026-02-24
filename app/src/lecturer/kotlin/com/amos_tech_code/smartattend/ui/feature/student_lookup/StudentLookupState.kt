@@ -1,6 +1,17 @@
 package com.amos_tech_code.smartattend.ui.feature.student_lookup
 
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceRecord
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Pending
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
+import com.amos_tech_code.smartattend.ui.theme.AbsentColor
+import com.amos_tech_code.smartattend.ui.theme.NeutralVariant50
+import com.amos_tech_code.smartattend.ui.theme.PendingColor
+import com.amos_tech_code.smartattend.ui.theme.PresentColor
 
 //sealed class StudentLookupState {
 //    data object Nothing : StudentLookupState()
@@ -56,4 +67,58 @@ data class DeviceChangeRequest(
 
 enum class DeviceRequestStatus {
     PENDING, APPROVED, REJECTED
+}
+
+enum class AttendanceStatus {
+    PRESENT, ABSENT, LATE, PENDING
+}
+
+data class Student(
+    val name: String = "",
+    val registrationNo: String = "",
+    val email: String = "",
+    val department: String = "",
+    val semester: String = "",
+    val profileImage: String? = null
+)
+
+
+data class AttendanceRecord(
+    val id: String,
+    val sessionId: String,
+    val courseName: String,
+    val courseCode: String,
+    val date: String,
+    val time: String,
+    val status: AttendanceStatus,
+    val method: AttendanceMethod,
+    val location: String? = null,
+    val distance: Int? = null,
+    val deviceVerified: Boolean = true,
+    val locationVerified: Boolean = true,
+    val verified: Boolean = false,
+    val lecturerName: String = "",
+    val sessionDuration: String = "60 min"
+) {
+    // Helper property for display
+    val displayDateTime: String
+        get() = "$date • $time"
+
+    // Helper property for status color
+    val statusColor: Color
+        get() = when (status) {
+            AttendanceStatus.PRESENT -> PresentColor
+            AttendanceStatus.ABSENT -> AbsentColor
+            AttendanceStatus.LATE -> PendingColor
+            AttendanceStatus.PENDING -> NeutralVariant50
+        }
+
+    // Helper property for status icon
+    val statusIcon: ImageVector
+        get() = when (status) {
+            AttendanceStatus.PRESENT -> Icons.Default.CheckCircle
+            AttendanceStatus.ABSENT -> Icons.Default.Cancel
+            AttendanceStatus.LATE -> Icons.Default.Schedule
+            AttendanceStatus.PENDING -> Icons.Default.Pending
+        }
 }

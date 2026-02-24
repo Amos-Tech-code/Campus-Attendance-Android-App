@@ -33,7 +33,16 @@ data class SetupUiState(
 
     // Form visibility
     val activeProgrammeId: String? = null,
-    val isEditingProgramme: Boolean = false
+    val isEditingProgramme: Boolean = false,
+    // Review step confirmation
+    val isSetupConfirmed: Boolean = false,
+    // validation flags
+    val isInstitutionStepValid: Boolean = false,
+    val isProgrammesStepValid: Boolean = false,
+    val isUnitsStepValid: Boolean = false,
+
+    // step tracking
+    val currentSetupStep: Int = 0
 )
 
 data class ProgrammeUiState(
@@ -95,3 +104,25 @@ data class AddUnitState(
     val lectureTime: String = "",
     val lectureVenue: String = ""
 )
+
+
+// Step Enum
+enum class SetupStep {
+    INSTITUTION,
+    PROGRAMMES,
+    UNITS,
+    REVIEW;
+
+    companion object {
+        fun fromIndex(index: Int): SetupStep = entries[index]
+
+        fun SetupStep.setUpStepTitle() : String {
+            return when (this) {
+                INSTITUTION -> "Institution"
+                PROGRAMMES -> "Programmes"
+                UNITS -> "Units"
+                REVIEW -> "Review"
+            }
+        }
+    }
+}

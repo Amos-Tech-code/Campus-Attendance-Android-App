@@ -3,8 +3,6 @@ package com.amos_tech_code.smartattend.ui.feature.student_lookup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceRecord
-import com.amos_tech_code.smartattend.ui.feature.setup.AttendanceStatus
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
