@@ -164,10 +164,6 @@ class ProfileViewModel(
                 _event.trySend(ProfileEvent.NavigateToNotifications)
             }
 
-            ProfileUiEvent.ManageSecurity -> {
-                _event.trySend(ProfileEvent.NavigateToSecuritySettings)
-            }
-
             ProfileUiEvent.ViewAppInfo -> {
                 // Show app info dialog
                 //_event.send(ProfileEvent.ShowSuccessMessage("App Version: ${_state.value.appVersion}"))
@@ -177,7 +173,7 @@ class ProfileViewModel(
                 _event.trySend(ProfileEvent.NavigateToDataManagement)
             }
 
-            ProfileUiEvent.ManagePreferences -> {
+            is ProfileUiEvent.ManagePreferences -> {
                 _event.trySend(ProfileEvent.NavigateToPreferences)
             }
         }

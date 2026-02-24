@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.di
 
 import com.amos_tech_code.smartattend.ui.feature.export.ExportViewModel
 import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
+import com.amos_tech_code.smartattend.ui.feature.institution_details.InstitutionDetailsViewModel
 import com.amos_tech_code.smartattend.ui.feature.live_attendance.LiveAttendanceViewModel
 import com.amos_tech_code.smartattend.ui.feature.notification.NotificationViewModel
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileViewModel
@@ -37,5 +38,7 @@ val lecturerViewModelModule = module {
     viewModel { SettingsViewModel(get()) }
 
     viewModel { ExportViewModel(get(), get()) }
+
+    viewModel { InstitutionDetailsViewModel(get(), get()) }
 
 }

@@ -4,9 +4,11 @@ import SessionHistoryScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.amos_tech_code.smartattend.ui.feature.export.ExportScreen
 import com.amos_tech_code.smartattend.ui.feature.export.allexports.AllExportsScreen
 import com.amos_tech_code.smartattend.ui.feature.home.HomeScreen
+import com.amos_tech_code.smartattend.ui.feature.institution_details.InstitutionDetailsScreen
 import com.amos_tech_code.smartattend.ui.feature.live_attendance.LiveAttendanceScreen
 import com.amos_tech_code.smartattend.ui.feature.notification.NotificationScreen
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileScreen
@@ -19,6 +21,7 @@ import com.amos_tech_code.smartattend.ui.navigation.AllExportsRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.ExportRoute
 import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
+import com.amos_tech_code.smartattend.ui.navigation.InstitutionDetailsRoute
 import com.amos_tech_code.smartattend.ui.navigation.LiveAttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.NavRoutes
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
@@ -86,6 +89,11 @@ fun App(
 
         composable<AllExportsRoute> {
             AllExportsScreen(navController)
+        }
+
+        composable<InstitutionDetailsRoute> { backStackEntry ->
+            val institutionId = backStackEntry.toRoute<InstitutionDetailsRoute>().institutionId
+            InstitutionDetailsScreen(navController, institutionId)
         }
 
     }

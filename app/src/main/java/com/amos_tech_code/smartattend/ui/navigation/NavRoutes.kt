@@ -2,10 +2,11 @@ package com.amos_tech_code.smartattend.ui.navigation
 
 import kotlinx.serialization.Serializable
 
+/**
+ * Routes for the app.
+ * This is used to navigate between screens.
+ */
 interface NavRoutes
-
-@Serializable
-object OnboardingRoute : NavRoutes
 
 @Serializable
 object SignInRoute : NavRoutes
@@ -50,4 +51,4 @@ object ExportRoute : NavRoutes
 object AllExportsRoute: NavRoutes
 
 @Serializable
-data class ExportDetailsRoute(val exportId: String) : NavRoutes
+data class InstitutionDetailsRoute(val institutionId: String) : NavRoutes

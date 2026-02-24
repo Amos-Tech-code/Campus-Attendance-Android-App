@@ -34,11 +34,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
@@ -93,6 +90,7 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
 import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 import com.amos_tech_code.smartattend.ui.navigation.AllExportsRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
+import com.amos_tech_code.smartattend.ui.navigation.InstitutionDetailsRoute
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
 import com.amos_tech_code.smartattend.ui.navigation.SetUpRoute
 import com.amos_tech_code.smartattend.ui.navigation.SettingsRoute
@@ -140,15 +138,11 @@ fun ProfileScreen(
                 }
 
                 is ProfileEvent.NavigateToInstitutionDetail -> {
-                    //navController.navigate("institution_detail/${event.institutionId}")
+                    navController.navigate(InstitutionDetailsRoute(event.institutionId))
                 }
 
                 ProfileEvent.NavigateToNotifications -> {
                     navController.navigate(NotificationsRoute)
-                }
-
-                ProfileEvent.NavigateToSecuritySettings -> {
-                    //navController.navigate("security_settings")
                 }
 
                 ProfileEvent.NavigateToDataManagement -> {
@@ -351,16 +345,6 @@ private fun ProfileContent(
                 state.activeInstitution?.id?.let { onNavigateToInstitutionDetail(it) }
             },
             onAddInstitution = { onEvent(ProfileUiEvent.ToggleAddInstitution) },
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        SmartAttendHeightSpacer(24.dp)
-
-        // Account Settings Section
-        AccountSettingsSection(
-            onNotifications = { onEvent(ProfileUiEvent.ManageNotifications) },
-            onSecurity = { onEvent(ProfileUiEvent.ManageSecurity) },
-            onPreferences = { onEvent(ProfileUiEvent.ManagePreferences) },
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
@@ -976,76 +960,6 @@ private fun InstitutionListItem(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun AccountSettingsSection(
-    onNotifications: () -> Unit,
-    onSecurity: () -> Unit,
-    onPreferences: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Account Settings",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold
-            ),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column {
-                // Notifications
-                SettingsItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notifications",
-                    subtitle = "Manage notification preferences",
-                    onClick = onNotifications
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                    thickness = 1.dp
-                )
-
-                // Security
-                SettingsItem(
-                    icon = Icons.Default.Security,
-                    title = "Security",
-                    subtitle = "Password, biometrics, privacy",
-                    onClick = onSecurity
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                    thickness = 1.dp
-                )
-
-                // Preferences
-                SettingsItem(
-                    icon = Icons.Default.Settings,
-                    title = "Preferences",
-                    subtitle = "Appearance, language, defaults",
-                    onClick = onPreferences
-                )
             }
         }
     }
