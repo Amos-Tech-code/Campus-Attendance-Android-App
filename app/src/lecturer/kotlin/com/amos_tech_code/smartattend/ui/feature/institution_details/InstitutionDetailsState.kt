@@ -4,7 +4,6 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEn
 import com.amos_tech_code.smartattend.data.local.room_db.entities.DepartmentEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.domain.request.NewAcademicTermDraft
-import com.amos_tech_code.smartattend.domain.request.NewProgrammeDraft
 import com.amos_tech_code.smartattend.domain.request.NewUnitDraft
 
 // State

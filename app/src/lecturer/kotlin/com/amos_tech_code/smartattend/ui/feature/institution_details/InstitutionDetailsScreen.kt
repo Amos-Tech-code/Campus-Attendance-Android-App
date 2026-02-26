@@ -61,8 +61,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -100,7 +98,6 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeWithU
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.domain.request.DepartmentRef
-import com.amos_tech_code.smartattend.domain.request.NewProgrammeDraft
 import com.amos_tech_code.smartattend.domain.request.NewUnitDraft
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
