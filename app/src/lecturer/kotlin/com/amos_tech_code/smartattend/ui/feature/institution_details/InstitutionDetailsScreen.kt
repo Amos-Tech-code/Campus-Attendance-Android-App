@@ -37,15 +37,12 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Info
@@ -55,11 +52,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -108,6 +105,7 @@ import com.amos_tech_code.smartattend.domain.request.NewUnitDraft
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -260,8 +258,14 @@ fun InstitutionDetailsScreen(
 
     // Bottom Sheets
     if (showProgrammeSheet != null) {
+        // Get the department name from your data
+        val departmentName = state.departments.find {
+            it.id == showProgrammeSheet!!.programme.departmentId
+        }?.name ?: ""
+
         ProgrammeEditBottomSheet(
             programme = showProgrammeSheet!!.programme,
+            initialDepartmentName = departmentName,
             units = showProgrammeSheet!!.units,
             onDismiss = { showProgrammeSheet = null },
             onSave = { programmeEdit, unitEdits ->
@@ -298,6 +302,7 @@ fun InstitutionDetailsScreen(
 
     if (showTermSheet) {
         val allTerms = state.institution?.let {
+            // You'd need to fetch all terms, not just active term
             listOfNotNull(state.activeTerm)
         } ?: emptyList()
 
@@ -309,7 +314,8 @@ fun InstitutionDetailsScreen(
                 viewModel.onAction(InstitutionDetailsAction.SetActiveTerm(termId))
                 showTermSheet = false
             },
-            onAddTerm = { academicYear, semester ->
+            onAddTerm = { newTermDraft ->
+                viewModel.onAction(InstitutionDetailsAction.AddAcademicTerm(newTermDraft))
                 showTermSheet = false
             }
         )
@@ -321,16 +327,22 @@ fun InstitutionDetailsScreen(
             units = emptyList(),
             onDismiss = { showAddProgrammeSheet = false },
             onSave = { programmeEdit, _ ->
-                val newProgramme = NewProgrammeDraft(
+                val programmeWithTempId = ProgrammeEdit(
+                    id = UUID.randomUUID().toString(), // ✅ TEMP ID GENERATED HERE
                     name = programmeEdit.name,
-                    department = DepartmentRef(
-                        departmentId = programmeEdit.departmentId,
-                        draftName = programmeEdit.departmentName
-                    )
+                    departmentId = programmeEdit.departmentId,
+                    departmentName = programmeEdit.departmentName,
+                    yearOfStudy = programmeEdit.yearOfStudy,
+                    expectedStudentCount = programmeEdit.expectedStudentCount,
+                    isActive = true
                 )
-                viewModel.onAction(InstitutionDetailsAction.AddProgramme(newProgramme))
+
+                viewModel.onAction(
+                    InstitutionDetailsAction.AddProgramme(programmeWithTempId)
+                )
                 showAddProgrammeSheet = false
             },
+            initialDepartmentName = "",
             onDelete = {
 
             }
@@ -341,16 +353,24 @@ fun InstitutionDetailsScreen(
         UnitEditBottomSheet(
             unit = null,
             programmes = state.institution?.programmes?.map { it.programme } ?: emptyList(),
-            //selectedProgrammeId = null,
             onDismiss = { showAddUnitSheet = false },
             onSave = { unitEdit, programmeId ->
+                // Find the selected programme
+                val selectedProgramme = state.institution?.programmes
+                    ?.find { it.programme.id == programmeId }
+
+                // Use the programme's department for the new unit
+                val departmentRef = DepartmentRef(
+                    departmentId = selectedProgramme?.programme?.departmentId,
+                    draftName = selectedProgramme?.programme?.let {
+                        state.departments.find { dept -> dept.id == it.departmentId }?.name
+                    }
+                )
+
                 val newUnit = NewUnitDraft(
                     code = unitEdit.code,
                     name = unitEdit.name,
-                    department = DepartmentRef(
-                        departmentId = null,
-                        draftName = ""
-                    )
+                    department = departmentRef
                 )
                 viewModel.onAction(InstitutionDetailsAction.AddUnit(newUnit, programmeId))
                 showAddUnitSheet = false
@@ -358,6 +378,7 @@ fun InstitutionDetailsScreen(
             onDelete = {}
         )
     }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -515,7 +536,6 @@ private fun InstitutionContent(
             InstitutionHeaderCard(
                 institution = state.institution!!,
                 activeTerm = state.activeTerm,
-                isEditing = state.editMode != EditMode.VIEW,
                 pendingUniversityName = state.pendingChanges.universityName,
                 onUniversityNameChange = {
                     onAction(InstitutionDetailsAction.UpdateUniversityName(it))
@@ -597,13 +617,11 @@ private fun InstitutionContent(
 private fun InstitutionHeaderCard(
     institution: UniversityWithProgrammesAndUnits,
     activeTerm: AcademicTermEntity?,
-    isEditing: Boolean,
     pendingUniversityName: String?,
     onUniversityNameChange: (String) -> Unit,
     onEditTerms: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isEditingName by remember { mutableStateOf(false) }
     val displayName = pendingUniversityName ?: institution.university.name
 
     Card(
@@ -636,33 +654,6 @@ private fun InstitutionHeaderCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isEditing && isEditingName) {
-                OutlinedTextField(
-                    value = displayName,
-                    onValueChange = onUniversityNameChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Institution Name") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.onPrimary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
-                        focusedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-                        cursorColor = MaterialTheme.colorScheme.onPrimary,
-                        focusedTextColor = MaterialTheme.colorScheme.onPrimary,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = { isEditingName = false }) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Done",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
-                )
-            } else {
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -670,23 +661,12 @@ private fun InstitutionHeaderCard(
                 ) {
                     Text(
                         text = displayName,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
 
                     Row {
-                        if (isEditing) {
-                            IconButton(
-                                onClick = { isEditingName = true }
-                            ) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Edit Name",
-                                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                                )
-                            }
-                        }
 
                         IconButton(
                             onClick = onEditTerms
@@ -699,7 +679,7 @@ private fun InstitutionHeaderCard(
                         }
                     }
                 }
-            }
+
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -734,59 +714,6 @@ private fun InstitutionHeaderCard(
 }
 
 @Composable
-private fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Search programmes or units...") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                ),
-                singleLine = true
-            )
-
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Clear",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun QuickStatsGrid(
     institution: UniversityWithProgrammesAndUnits,
     isEditing: Boolean,
@@ -803,7 +730,7 @@ private fun QuickStatsGrid(
         QuickStatCard(
             value = institution.programmes.size.toString(),
             label = "Programmes",
-            icon = Icons.Default.MenuBook,
+            icon = Icons.AutoMirrored.Filled.MenuBook,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f)
         )
@@ -872,7 +799,9 @@ private fun QuickStatCard(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
             )
         }
     }
@@ -987,7 +916,7 @@ private fun ProgrammesSection(
 ) {
     ExpandableSection(
         title = "Programmes",
-        icon = Icons.Default.MenuBook,
+        icon = Icons.AutoMirrored.Filled.MenuBook,
         isExpanded = isExpanded,
         onToggleExpand = onToggleExpand,
         action = {
@@ -1292,7 +1221,7 @@ private fun UnitsOverviewSection(
                         programme = programme,
                         unit = unit,
                         isEditing = isEditing,
-                        onEdit = { onEditUnit(unit, programme) }
+                        onEdit = { onEditUnit(unit, programme) },
                     )
                 }
             }
@@ -1305,7 +1234,7 @@ private fun UnitListItem(
     programme: ProgrammeEntity,
     unit: UnitEntity,
     isEditing: Boolean,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1441,6 +1370,7 @@ private fun UnitListItem(
             }
         }
     }
+
 }
 
 @Composable
@@ -1510,7 +1440,7 @@ private fun ExpandableSection(
             )
         }
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(top = 8.dp),
             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
         )

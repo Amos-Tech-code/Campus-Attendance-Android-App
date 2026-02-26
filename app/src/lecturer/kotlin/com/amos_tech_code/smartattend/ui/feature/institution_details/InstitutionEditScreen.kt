@@ -15,9 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -25,7 +28,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
@@ -34,8 +36,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +46,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -59,11 +60,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
+import com.amos_tech_code.smartattend.domain.request.NewAcademicTermDraft
 import kotlinx.coroutines.launch
 
 // ==================== PROGRAMME BOTTOM SHEET ====================
@@ -73,6 +77,7 @@ import kotlinx.coroutines.launch
 fun ProgrammeEditBottomSheet(
     programme: ProgrammeEntity?,
     units: List<UnitEntity>,
+    initialDepartmentName: String,
     onDismiss: () -> Unit,
     onSave: (ProgrammeEdit, List<UnitEdit>) -> Unit,
     onDelete: (String) -> Unit
@@ -100,6 +105,7 @@ fun ProgrammeEditBottomSheet(
         }
     ) {
         var programmeName by remember { mutableStateOf(programme?.name ?: "") }
+        var departmentName by remember { mutableStateOf(initialDepartmentName) }
         var yearOfStudy by remember { mutableStateOf(programme?.yearOfStudy?.toString() ?: "1") }
         var expectedStudents by remember { mutableStateOf(programme?.expectedStudentCount?.toString() ?: "0") }
         var isActive by remember { mutableStateOf(programme != null) }
@@ -160,13 +166,33 @@ fun ProgrammeEditBottomSheet(
                     placeholder = { Text("e.g., Bachelor of Computer Science") },
                     leadingIcon = {
                         Icon(
-                            Icons.Default.MenuBook,
+                            Icons.AutoMirrored.Filled.MenuBook,
                             contentDescription = null
                         )
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     isError = programmeName.isBlank()
+                )
+            }
+
+            // Department
+            item {
+                OutlinedTextField(
+                    value = departmentName,
+                    onValueChange = { departmentName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Department Name *") },
+                    placeholder = { Text("e.g., IT Department") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Business,
+                            contentDescription = null
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    isError = departmentName.isBlank()
                 )
             }
 
@@ -185,10 +211,9 @@ fun ProgrammeEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
-
             // Expected Students
             item {
                 OutlinedTextField(
@@ -204,7 +229,7 @@ fun ProgrammeEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
 
@@ -238,9 +263,6 @@ fun ProgrammeEditBottomSheet(
                         Switch(
                             checked = isActive,
                             onCheckedChange = { isActive = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary
-                            )
                         )
                     }
                 }
@@ -300,8 +322,7 @@ fun ProgrammeEditBottomSheet(
                         val programmeEdit = ProgrammeEdit(
                             id = programme?.id ?: "",
                             name = programmeName,
-                            departmentId = programme?.departmentId,
-                            departmentName = "", // This would come from department data
+                            departmentName = departmentName,
                             yearOfStudy = yearOfStudy.toIntOrNull() ?: 1,
                             expectedStudentCount = expectedStudents.toIntOrNull() ?: 0,
                             isActive = isActive
@@ -364,6 +385,7 @@ fun UnitEditBottomSheet(
         skipPartiallyExpanded = true
     )
     val scope = rememberCoroutineScope()
+    val isNewUnit = unit == null
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -374,9 +396,12 @@ fun UnitEditBottomSheet(
         var unitCode by remember { mutableStateOf(unit?.code ?: "") }
         var unitName by remember { mutableStateOf(unit?.name ?: "") }
         var semester by remember { mutableStateOf(unit?.semester?.toString() ?: "1") }
+
+        // Only for existing units - lecture details
         var lectureDay by remember { mutableStateOf(unit?.lectureDay ?: "") }
         var lectureTime by remember { mutableStateOf(unit?.lectureTime ?: "") }
         var lectureVenue by remember { mutableStateOf(unit?.lectureVenue ?: "") }
+
         var isActive by remember { mutableStateOf(unit != null) }
         var selectedProgrammeId by remember { mutableStateOf(programmes.firstOrNull()?.id ?: "") }
         var showDeleteDialog by remember { mutableStateOf(false) }
@@ -396,7 +421,7 @@ fun UnitEditBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (unit == null) "Add Unit" else "Edit Unit",
+                        text = if (isNewUnit) "Add Unit" else "Edit Unit",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -409,32 +434,23 @@ fun UnitEditBottomSheet(
                 }
             }
 
-            // Programme Selection (for new units)
-            if (unit == null && programmes.isNotEmpty()) {
+            // Programme Selection (for new units only)
+            if (isNewUnit && programmes.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Select Programme",
+                        text = "Select Programme *",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    programmes.take(3).forEach { programme ->
+                    programmes.forEach { programme ->
                         ProgrammeSelectionChip(
                             programme = programme,
                             isSelected = selectedProgrammeId == programme.id,
                             onSelected = { selectedProgrammeId = programme.id }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    if (programmes.size > 3) {
-                        TextButton(
-                            onClick = { /* Show all programmes */ },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("View all ${programmes.size} programmes")
-                        }
                     }
                 }
             }
@@ -445,7 +461,7 @@ fun UnitEditBottomSheet(
                     value = unitCode,
                     onValueChange = { unitCode = it.uppercase() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Unit Code") },
+                    label = { Text(if (isNewUnit) "Unit Code *" else "Unit Code") },
                     placeholder = { Text("e.g., CS401") },
                     leadingIcon = {
                         Icon(
@@ -455,9 +471,9 @@ fun UnitEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    isError = unitCode.isBlank(),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters
+                    isError = isNewUnit && unitCode.isBlank(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters
                     )
                 )
             }
@@ -468,17 +484,17 @@ fun UnitEditBottomSheet(
                     value = unitName,
                     onValueChange = { unitName = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Unit Name") },
+                    label = { Text(if (isNewUnit) "Unit Name *" else "Unit Name") },
                     placeholder = { Text("e.g., Mobile Application Development") },
                     leadingIcon = {
                         Icon(
-                            Icons.Default.MenuBook,
+                            Icons.AutoMirrored.Filled.MenuBook,
                             contentDescription = null
                         )
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    isError = unitName.isBlank()
+                    isError = isNewUnit && unitName.isBlank()
                 )
             }
 
@@ -488,7 +504,7 @@ fun UnitEditBottomSheet(
                     value = semester,
                     onValueChange = { if (it.all { char -> char.isDigit() }) semester = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Semester") },
+                    label = { Text(if (isNewUnit) "Semester *" else "Semester") },
                     leadingIcon = {
                         Icon(
                             Icons.Default.DateRange,
@@ -497,76 +513,77 @@ fun UnitEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    isError = isNewUnit && semester.toIntOrNull() == null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
 
-            // Lecture Details Section
-            item {
-                Text(
-                    text = "Lecture Details (Optional)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
+            // Lecture Details Section - ONLY FOR EXISTING UNITS
+            if (!isNewUnit) {
+                item {
+                    Text(
+                        text = "Lecture Details (Optional)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
 
-            item {
-                OutlinedTextField(
-                    value = lectureDay,
-                    onValueChange = { lectureDay = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Lecture Day") },
-                    placeholder = { Text("e.g., Monday") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.CalendarMonth,
-                            contentDescription = null
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true
-                )
-            }
+                item {
+                    OutlinedTextField(
+                        value = lectureDay,
+                        onValueChange = { lectureDay = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Lecture Day") },
+                        placeholder = { Text("e.g., Monday") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.CalendarMonth,
+                                contentDescription = null
+                            )
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true
+                    )
+                }
 
-            item {
-                OutlinedTextField(
-                    value = lectureTime,
-                    onValueChange = { lectureTime = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Lecture Time") },
-                    placeholder = { Text("e.g., 9:00 AM - 11:00 AM") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true
-                )
-            }
+                item {
+                    OutlinedTextField(
+                        value = lectureTime,
+                        onValueChange = { lectureTime = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Lecture Time") },
+                        placeholder = { Text("e.g., 9:00 AM - 11:00 AM") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null
+                            )
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true
+                    )
+                }
 
-            item {
-                OutlinedTextField(
-                    value = lectureVenue,
-                    onValueChange = { lectureVenue = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Venue") },
-                    placeholder = { Text("e.g., Room 101") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true
-                )
-            }
+                item {
+                    OutlinedTextField(
+                        value = lectureVenue,
+                        onValueChange = { lectureVenue = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Venue") },
+                        placeholder = { Text("e.g., Room 101") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = null
+                            )
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true
+                    )
+                }
 
-            // Active Switch (for existing units)
-            if (unit != null) {
+                // Active Switch (only for existing units)
                 item {
                     Row(
                         modifier = Modifier
@@ -595,16 +612,11 @@ fun UnitEditBottomSheet(
                         Switch(
                             checked = isActive,
                             onCheckedChange = { isActive = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary
-                            )
                         )
                     }
                 }
-            }
 
-            // Delete Button (for existing units)
-            if (unit != null) {
+                // Delete Button (for existing units)
                 item {
                     OutlinedButton(
                         onClick = { showDeleteDialog = true },
@@ -636,9 +648,10 @@ fun UnitEditBottomSheet(
                             code = unitCode,
                             name = unitName,
                             semester = semester.toIntOrNull() ?: 1,
-                            lectureDay = lectureDay.takeIf { it.isNotBlank() },
-                            lectureTime = lectureTime.takeIf { it.isNotBlank() },
-                            lectureVenue = lectureVenue.takeIf { it.isNotBlank() },
+                            // Only include lecture details for existing units
+                            lectureDay = if (!isNewUnit) lectureDay.takeIf { it.isNotBlank() } else null,
+                            lectureTime = if (!isNewUnit) lectureTime.takeIf { it.isNotBlank() } else null,
+                            lectureVenue = if (!isNewUnit) lectureVenue.takeIf { it.isNotBlank() } else null,
                             isActive = isActive
                         )
                         onSave(unitEdit, selectedProgrammeId)
@@ -647,16 +660,22 @@ fun UnitEditBottomSheet(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = unitCode.isNotBlank() && unitName.isNotBlank() &&
-                            (unit != null || selectedProgrammeId.isNotBlank()),
+                    enabled = if (isNewUnit) {
+                        unitCode.isNotBlank() &&
+                                unitName.isNotBlank() &&
+                                semester.toIntOrNull() != null &&
+                                selectedProgrammeId.isNotBlank()
+                    } else {
+                        unitCode.isNotBlank() && unitName.isNotBlank() && semester.toIntOrNull() != null
+                    },
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Save Changes")
+                    Text(if (isNewUnit) "Add Unit" else "Save Changes")
                 }
             }
         }
 
-        // Delete Confirmation Dialog
+        // Delete Confirmation Dialog (only for existing units)
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
@@ -716,7 +735,7 @@ private fun ProgrammeSelectionChip(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                Icons.Default.MenuBook,
+                Icons.AutoMirrored.Filled.MenuBook,
                 contentDescription = null,
                 tint = if (isSelected)
                     MaterialTheme.colorScheme.primary
@@ -800,7 +819,7 @@ private fun UnitEditItem(
             }
 
             if (isExpanded) {
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp),
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                 )
@@ -874,12 +893,11 @@ fun AcademicTermBottomSheet(
     activeTerm: AcademicTermEntity?,
     onDismiss: () -> Unit,
     onSetActive: (String) -> Unit,
-    onAddTerm: (String, Int) -> Unit
+    onAddTerm: (NewAcademicTermDraft) -> Unit // Changed to accept NewAcademicTermDraft
 ) {
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
-    val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -977,13 +995,18 @@ fun AcademicTermBottomSheet(
                                 label = { Text("Semester") },
                                 shape = RoundedCornerShape(12.dp),
                                 singleLine = true,
-                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             )
 
                             Button(
                                 onClick = {
                                     if (newAcademicYear.isNotBlank()) {
-                                        onAddTerm(newAcademicYear, newSemester.toIntOrNull() ?: 1)
+                                        val newTerm = NewAcademicTermDraft(
+                                            academicYear = newAcademicYear,
+                                            semester = newSemester.toIntOrNull() ?: 1,
+                                            weekCount = 14
+                                        )
+                                        onAddTerm(newTerm)
                                         newAcademicYear = ""
                                         newSemester = "1"
                                         showAddTerm = false

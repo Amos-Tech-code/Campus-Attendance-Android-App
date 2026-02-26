@@ -22,7 +22,9 @@ class MainActivity : BaseSmartAttendActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
+
         installSplashScreen()
 
         setContent {

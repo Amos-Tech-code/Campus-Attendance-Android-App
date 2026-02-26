@@ -14,7 +14,6 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEnti
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.models.UniversityStatistics
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 
 @Dao
 interface LecturerAcademicsDao {
@@ -72,6 +71,10 @@ interface LecturerAcademicsDao {
 
     @Query("SELECT * FROM units WHERE universityId = :universityId")
     suspend fun getAllUnitsForUniversity(universityId: String): List<UnitEntity>
+
+    @Query("SELECT * FROM departments WHERE universityId = :universityId")
+    suspend fun getAllDepartmentsForUniversity(universityId: String): List<DepartmentEntity>
+
     /*------------------------
         READ OPERATIONS - Flow
     ------------------------*/
@@ -87,25 +90,6 @@ interface LecturerAcademicsDao {
 
     @Query("SELECT * FROM units WHERE universityId = :universityId")
     fun observeUnitsForUniversity(universityId: String): Flow<List<UnitEntity>>
-
-    // Statistics with Flow
-    fun observeUniversityStatistics(universityId: String): Flow<UniversityStatistics> {
-        return combine(
-            observeUnitsCount(universityId),
-            observeExpectedStudents(universityId),
-            observeProgrammesCount(universityId),
-            observeDepartmentsCount(universityId),
-            observeActiveAcademicTerm(universityId)
-        ) { units, students, programmes, departments, term ->
-            UniversityStatistics(
-                totalUnits = units,
-                totalExpectedStudents = students,
-                totalProgrammes = programmes,
-                totalDepartments = departments,
-                activeTerm = term
-            )
-        }
-    }
 
     @Query("SELECT COUNT(*) FROM units WHERE universityId = :universityId")
     fun observeUnitsCount(universityId: String): Flow<Int>

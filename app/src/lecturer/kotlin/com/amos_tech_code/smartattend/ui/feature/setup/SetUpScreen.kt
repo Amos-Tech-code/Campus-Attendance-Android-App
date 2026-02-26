@@ -1927,7 +1927,7 @@ private fun SemesterChips(
 }
 
 /**
- * Generates a list of academic year strings for the current and next two years.
+ * Generates a list of academic year strings for the previous, current and next two years.
  * e.g., "2024-2025", "2025-2026", "2026-2027"
  */
 private fun getCurrentAcademicYearOptions(): List<String> {

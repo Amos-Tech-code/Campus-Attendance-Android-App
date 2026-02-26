@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.data.repository
 
 import com.amos_tech_code.smartattend.data.local.room_db.dao.LecturerAcademicsDao
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.DepartmentEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeWithUnits
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityEntity
@@ -54,7 +55,7 @@ class UniversityRepository(
         return programmes.find { it.programme.id == programmeId }?.units ?: emptyList()
     }
 
-    suspend fun getAllUnitsForUniversity(universityId: String): List<UnitEntity> =
-        lecturerAcademicsDao.getAllUnitsForUniversity(universityId)
-
+    suspend fun getDepartmentsForUniversity(universityId: String): List<DepartmentEntity> {
+        return lecturerAcademicsDao.getAllDepartmentsForUniversity(universityId)
+    }
 }

@@ -2,14 +2,14 @@ package com.amos_tech_code.smartattend.ui.feature.institution_details
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeWithUnits
-import com.amos_tech_code.smartattend.data.local.room_db.entities.UniversityWithProgrammesAndUnits
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
 import com.amos_tech_code.smartattend.domain.request.AcademicTermRef
+import com.amos_tech_code.smartattend.domain.request.DepartmentRef
+import com.amos_tech_code.smartattend.domain.request.NewAcademicTermDraft
 import com.amos_tech_code.smartattend.domain.request.NewProgrammeDraft
 import com.amos_tech_code.smartattend.domain.request.NewUnitDraft
 import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
@@ -24,111 +24,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// State
-data class InstitutionDetailsState(
-    val isLoading: Boolean = false,
-    val isSaving: Boolean = false,
-    val institution: UniversityWithProgrammesAndUnits? = null,
-    val activeTerm: AcademicTermEntity? = null,
-    val editMode: EditMode = EditMode.VIEW,
-    val pendingChanges: PendingChanges = PendingChanges(),
-    val expandedSections: Set<String> = emptySet(),
-    val searchQuery: String = "",
-    val showDeleteConfirmation: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null
-)
-
-enum class EditMode {
-    VIEW,
-    EDIT,
-    BULK_EDIT
-}
-
-data class PendingChanges(
-    val universityName: String? = null,
-    val updatedProgrammes: Map<String, ProgrammeEdit> = emptyMap(),
-    val newProgrammes: List<NewProgrammeDraft> = emptyList(),
-    val removedProgrammeIds: Set<String> = emptySet(),
-    val updatedUnits: Map<String, UnitEdit> = emptyMap(),
-    val newUnits: List<NewUnitDraft> = emptyList(),
-    val removedUnitIds: Set<String> = emptySet(),
-    val updatedAcademicTerms: Map<String, AcademicTermEdit> = emptyMap()
-)
-
-data class ProgrammeEdit(
-    val id: String,
-    val name: String,
-    val departmentId: String?,
-    val departmentName: String,
-    val yearOfStudy: Int,
-    val expectedStudentCount: Int,
-    val isActive: Boolean
-)
-
-data class UnitEdit(
-    val id: String,
-    val code: String,
-    val name: String,
-    val semester: Int,
-    val lectureDay: String?,
-    val lectureTime: String?,
-    val lectureVenue: String?,
-    val isActive: Boolean
-)
-
-data class AcademicTermEdit(
-    val id: String,
-    val academicYear: String,
-    val semester: Int,
-    val isActive: Boolean
-)
-
-// Events
-sealed class InstitutionDetailsEvent {
-    data class ShowMessage(val message: String) : InstitutionDetailsEvent()
-    data class ShowError(val error: String) : InstitutionDetailsEvent()
-    data object NavigateBack : InstitutionDetailsEvent()
-}
-
-// UI Actions
-sealed class InstitutionDetailsAction {
-    data class LoadInstitution(val institutionId: String) : InstitutionDetailsAction()
-    data class ToggleEditMode(val mode: EditMode) : InstitutionDetailsAction()
-    data class ToggleSection(val sectionId: String) : InstitutionDetailsAction()
-    data class UpdateUniversityName(val name: String) : InstitutionDetailsAction()
-
-    // Programme actions
-    data class UpdateProgramme(val programme: ProgrammeEdit) : InstitutionDetailsAction()
-    data class AddProgramme(val programme: NewProgrammeDraft) : InstitutionDetailsAction()
-    data class RemoveProgramme(val programmeId: String) : InstitutionDetailsAction()
-
-    // Unit actions
-    data class UpdateUnit(val unit: UnitEdit) : InstitutionDetailsAction()
-    data class AddUnit(val unit: NewUnitDraft, val programmeId: String) : InstitutionDetailsAction()
-    data class RemoveUnit(val unitId: String) : InstitutionDetailsAction()
-
-    // Term actions
-    data class UpdateAcademicTerm(val term: AcademicTermEdit) : InstitutionDetailsAction()
-    data class SetActiveTerm(val termId: String) : InstitutionDetailsAction()
-
-    // Save/Cancel
-    data object SaveChanges : InstitutionDetailsAction()
-    data object CancelChanges : InstitutionDetailsAction()
-    data object ConfirmDelete : InstitutionDetailsAction()
-    data object DismissDelete : InstitutionDetailsAction()
-    data object DeleteInstitution : InstitutionDetailsAction()
-
-    // Dismiss messages
-    data object DismissError : InstitutionDetailsAction()
-    data object DismissSuccess : InstitutionDetailsAction()
-}
-
-// ViewModel
 class InstitutionDetailsViewModel(
     private val academicSetUpRepository: AcademicSetUpRepository,
     private val universityRepository: UniversityRepository
-) : ViewModel() {
+) : ViewModel()
+{
 
     private val _state = MutableStateFlow(InstitutionDetailsState())
     val state: StateFlow<InstitutionDetailsState> = _state.asStateFlow()
@@ -148,8 +48,9 @@ class InstitutionDetailsViewModel(
             is InstitutionDetailsAction.UpdateUnit -> updateUnit(action.unit)
             is InstitutionDetailsAction.AddUnit -> addUnit(action.unit, action.programmeId)
             is InstitutionDetailsAction.RemoveUnit -> removeUnit(action.unitId)
-            is InstitutionDetailsAction.UpdateAcademicTerm -> updateAcademicTerm(action.term)
+            //is InstitutionDetailsAction.UpdateAcademicTerm -> updateAcademicTerm(action.term)
             is InstitutionDetailsAction.SetActiveTerm -> setActiveTerm(action.termId)
+            is InstitutionDetailsAction.AddAcademicTerm -> addAcademicTerm(action.term)
             InstitutionDetailsAction.SaveChanges -> saveChanges()
             InstitutionDetailsAction.CancelChanges -> cancelChanges()
             InstitutionDetailsAction.ConfirmDelete -> confirmDelete()
@@ -167,12 +68,14 @@ class InstitutionDetailsViewModel(
                 val institution = universityRepository.getUniversitiesWithProgrammesAndUnits()
                     .find { it.university.id == institutionId }
                 val activeTerm = universityRepository.getActiveAcademicTerm(institutionId)
+                val departments = universityRepository.getDepartmentsForUniversity(institutionId) // Add this
 
                 _state.update {
                     it.copy(
                         isLoading = false,
                         institution = institution,
                         activeTerm = activeTerm,
+                        departments = departments,
                         expandedSections = setOf("overview", "programmes")
                     )
                 }
@@ -222,7 +125,7 @@ class InstitutionDetailsViewModel(
         }
     }
 
-    private fun addProgramme(programme: NewProgrammeDraft) {
+    private fun addProgramme(programme: ProgrammeEdit) {
         _state.update { state ->
             state.copy(
                 pendingChanges = state.pendingChanges.copy(
@@ -234,12 +137,33 @@ class InstitutionDetailsViewModel(
 
     private fun removeProgramme(programmeId: String) {
         _state.update { state ->
-            state.copy(
-                pendingChanges = state.pendingChanges.copy(
-                    removedProgrammeIds = state.pendingChanges.removedProgrammeIds + programmeId,
-                    updatedProgrammes = state.pendingChanges.updatedProgrammes - programmeId
+
+            val isNewProgramme =
+                state.pendingChanges.newProgrammes.any { it.id == programmeId }
+
+            if (isNewProgramme) {
+                // 🔹 Remove completely (it was never saved to backend)
+                state.copy(
+                    pendingChanges = state.pendingChanges.copy(
+                        newProgrammes = state.pendingChanges.newProgrammes
+                            .filterNot { it.id == programmeId },
+
+                        // Also remove any new units attached to it
+                        newUnits = state.pendingChanges.newUnits - programmeId
+                    )
                 )
-            )
+            } else {
+                // 🔹 Existing programme → mark for removal
+                state.copy(
+                    pendingChanges = state.pendingChanges.copy(
+                        removedProgrammeIds =
+                            state.pendingChanges.removedProgrammeIds + programmeId,
+
+                        updatedProgrammes =
+                            state.pendingChanges.updatedProgrammes - programmeId
+                    )
+                )
+            }
         }
     }
 
@@ -254,11 +178,14 @@ class InstitutionDetailsViewModel(
     }
 
     private fun addUnit(unit: NewUnitDraft, programmeId: String) {
-        // Store unit with programme association
         _state.update { state ->
+
+            val existing = state.pendingChanges.newUnits[programmeId].orEmpty()
+
             state.copy(
                 pendingChanges = state.pendingChanges.copy(
-                    newUnits = state.pendingChanges.newUnits + unit
+                    newUnits = state.pendingChanges.newUnits +
+                            (programmeId to (existing + unit))
                 )
             )
         }
@@ -293,6 +220,16 @@ class InstitutionDetailsViewModel(
             state.copy(
                 pendingChanges = state.pendingChanges.copy(
                     updatedAcademicTerms = updatedTerms
+                )
+            )
+        }
+    }
+
+    private fun addAcademicTerm(term: NewAcademicTermDraft) {
+        _state.update { state ->
+            state.copy(
+                pendingChanges = state.pendingChanges.copy(
+                    newAcademicTerms = state.pendingChanges.newAcademicTerms + term
                 )
             )
         }
@@ -333,6 +270,7 @@ class InstitutionDetailsViewModel(
                                 error = "Failed to save changes: ${result.error.extractApiErrorMessage()}"
                             )
                         }
+                        _events.send(InstitutionDetailsEvent.ShowError("Failed to save changes"))
                     }
                 }
             } catch (e: Exception) {
@@ -363,24 +301,168 @@ class InstitutionDetailsViewModel(
         )
     }
 
+    private fun buildProgrammes(state: InstitutionDetailsState): List<UpdateProgrammeSetupDto> {
+        val programmes = mutableListOf<UpdateProgrammeSetupDto>()
+        val institution = state.institution ?: return emptyList()
+
+        // 1. Handle EXISTING programmes being updated (ONLY programmeId, NO draft)
+        institution.programmes.forEach { programmeWithUnits ->
+
+            val programmeId = programmeWithUnits.programme.id
+            val edit = state.pendingChanges.updatedProgrammes[programmeId]
+
+            if (programmeId !in state.pendingChanges.removedProgrammeIds) {
+
+                programmes.add(
+                    UpdateProgrammeSetupDto(
+                        programmeId = programmeId,
+                        draft = null,
+                        isActive = edit?.isActive ?: true,
+                        yearOfStudy = edit?.yearOfStudy
+                            ?: programmeWithUnits.programme.yearOfStudy,
+                        expectedStudentCount = edit?.expectedStudentCount
+                            ?: programmeWithUnits.programme.expectedStudentCount,
+                        units = buildUnits(programmeId, programmeWithUnits, state)
+                    )
+                )
+            }
+        }
+
+        // 2. Handle NEW programmes being added (ONLY draft, NO programmeId)
+        state.pendingChanges.newProgrammes.forEach { programmeEdit ->
+
+            programmes.add(
+                UpdateProgrammeSetupDto(
+                    programmeId = null,
+                    draft = NewProgrammeDraft(
+                        name = programmeEdit.name,
+                        department = DepartmentRef(
+                            departmentId = programmeEdit.departmentId,
+                            draftName = programmeEdit.departmentName
+                        )
+                    ),
+                    isActive = true,
+                    yearOfStudy = programmeEdit.yearOfStudy,
+                    expectedStudentCount = programmeEdit.expectedStudentCount,
+                    units = buildNewProgrammeUnits(programmeEdit, state)
+                )
+            )
+        }
+
+        return programmes
+    }
+
+    private fun buildNewProgrammeUnits(
+        programmeEdit: ProgrammeEdit,
+        state: InstitutionDetailsState
+    ): List<UpdateUnitAssignmentDto> {
+
+        val units = mutableListOf<UpdateUnitAssignmentDto>()
+
+        val drafts = state.pendingChanges.newUnits[programmeEdit.id].orEmpty()
+
+        drafts.forEach { draft ->
+            units.add(
+                UpdateUnitAssignmentDto(
+                    unitId = null,
+                    draft = draft,
+                    isActive = true,
+                    academicTermRef = resolveAcademicTermRef(state),
+                    yearOfStudy = programmeEdit.yearOfStudy,
+                    lectureDay = null,
+                    lectureTime = null,
+                    lectureVenue = null
+                )
+            )
+        }
+
+        return units
+    }
+
+    private fun buildUnits(
+        programmeId: String,
+        programmeWithUnits: ProgrammeWithUnits,
+        state: InstitutionDetailsState
+    ): List<UpdateUnitAssignmentDto> {
+        val units = mutableListOf<UpdateUnitAssignmentDto>()
+
+        // 1. Handle EXISTING units being updated (ONLY unitId, NO draft)
+        programmeWithUnits.units.forEach { unit ->
+
+            val edit = state.pendingChanges.updatedUnits[unit.id]
+
+            if (unit.id !in state.pendingChanges.removedUnitIds) {
+
+                units.add(
+                    UpdateUnitAssignmentDto(
+                        unitId = unit.id,
+                        draft = null,
+                        isActive = edit?.isActive ?: true,
+                        academicTermRef = resolveAcademicTermRef(state),
+                        yearOfStudy = programmeWithUnits.programme.yearOfStudy,
+                        lectureDay = edit?.lectureDay ?: unit.lectureDay,
+                        lectureTime = edit?.lectureTime ?: unit.lectureTime,
+                        lectureVenue = edit?.lectureVenue ?: unit.lectureVenue
+                    )
+                )
+            }
+        }
+
+        // 2. Handle NEW units being added (ONLY draft, NO unitId)
+        // Note: New units come from state.pendingChanges.newUnits
+        val newUnitsForProgramme =
+            state.pendingChanges.newUnits[programmeId].orEmpty()
+
+        newUnitsForProgramme.forEach { draft ->
+
+            units.add(
+                UpdateUnitAssignmentDto(
+                    unitId = null,
+                    draft = draft,
+                    isActive = true,
+                    academicTermRef = resolveAcademicTermRef(state),
+                    yearOfStudy = programmeWithUnits.programme.yearOfStudy,
+                    lectureDay = null,
+                    lectureTime = null,
+                    lectureVenue = null
+                )
+            )
+        }
+
+        return units
+    }
+
     private fun buildAcademicTerms(state: InstitutionDetailsState): List<UpdateAcademicTermDto> {
         val terms = mutableListOf<UpdateAcademicTermDto>()
 
-        // Add existing terms with updates
+        // 1. Handle EXISTING terms being updated (ONLY academicTermId, NO draft)
         state.pendingChanges.updatedAcademicTerms.values.forEach { termEdit ->
             terms.add(
                 UpdateAcademicTermDto(
-                    academicTermId = termEdit.id,
+                    academicTermId = termEdit.id, // ONLY the ID for existing
+                    draft = null, // NO draft for existing
                     isActive = termEdit.isActive
                 )
             )
         }
 
-        // If no active term is set, include the current active term
-        if (terms.none { it.isActive } && state.activeTerm != null) {
+        // 2. Handle NEW terms being added (ONLY draft, NO academicTermId)
+        state.pendingChanges.newAcademicTerms.forEach { newTerm ->
+            terms.add(
+                UpdateAcademicTermDto(
+                    academicTermId = null, // NO ID for new
+                    draft = newTerm, // ONLY draft for new
+                    isActive = true
+                )
+            )
+        }
+
+        // 3. If no terms are being sent, include the current active term
+        if (terms.isEmpty() && state.activeTerm != null) {
             terms.add(
                 UpdateAcademicTermDto(
                     academicTermId = state.activeTerm.id,
+                    draft = null,
                     isActive = true
                 )
             )
@@ -389,71 +471,27 @@ class InstitutionDetailsViewModel(
         return terms
     }
 
-    private fun buildProgrammes(state: InstitutionDetailsState): List<UpdateProgrammeSetupDto> {
-        val programmes = mutableListOf<UpdateProgrammeSetupDto>()
-        val institution = state.institution ?: return emptyList()
-
-        // Add updated existing programmes
-        institution.programmes.forEach { programmeWithUnits ->
-            val programmeEdit = state.pendingChanges.updatedProgrammes[programmeWithUnits.programme.id]
-
-            if (programmeWithUnits.programme.id !in state.pendingChanges.removedProgrammeIds) {
-                programmes.add(
-                    UpdateProgrammeSetupDto(
-                        programmeId = programmeWithUnits.programme.id,
-                        isActive = programmeEdit?.isActive ?: true,
-                        yearOfStudy = programmeEdit?.yearOfStudy ?: programmeWithUnits.programme.yearOfStudy,
-                        expectedStudentCount = programmeEdit?.expectedStudentCount
-                            ?: programmeWithUnits.programme.expectedStudentCount,
-                        units = buildUnits(programmeWithUnits, state)
-                    )
-                )
-            }
-        }
-
-        // Add new programmes
-        state.pendingChanges.newProgrammes.forEach { newProgramme ->
-            programmes.add(
-                UpdateProgrammeSetupDto(
-                    draft = newProgramme,
-                    isActive = true,
-                    yearOfStudy = 1, // Default
-                    expectedStudentCount = 0,
-                    units = emptyList()
-                )
-            )
-        }
-
-        return programmes
-    }
-
-    private fun buildUnits(
-        programmeWithUnits: ProgrammeWithUnits,
+    private fun resolveAcademicTermRef(
         state: InstitutionDetailsState
-    ): List<UpdateUnitAssignmentDto> {
-        val units = mutableListOf<UpdateUnitAssignmentDto>()
+    ): AcademicTermRef {
 
-        programmeWithUnits.units.forEach { unit ->
-            val unitEdit = state.pendingChanges.updatedUnits[unit.id]
-
-            if (unit.id !in state.pendingChanges.removedUnitIds) {
-                units.add(
-                    UpdateUnitAssignmentDto(
-                        unitId = unit.id,
-                        isActive = unitEdit?.isActive ?: true,
-                        academicTermRef = AcademicTermRef(
-                            academicTermId = state.activeTerm?.id
-                        ),
-                        yearOfStudy = programmeWithUnits.programme.yearOfStudy,
-                        lectureDay = unitEdit?.lectureDay ?: unit.lectureDay,
-                        lectureTime = unitEdit?.lectureTime ?: unit.lectureTime,
-                        lectureVenue = unitEdit?.lectureVenue ?: unit.lectureVenue
-                    )
+        return when {
+            state.activeTerm != null -> {
+                AcademicTermRef(
+                    academicTermId = state.activeTerm.id,
+                    draft = null
                 )
             }
-        }
 
-        return units
+            state.pendingChanges.newAcademicTerms.isNotEmpty() -> {
+                AcademicTermRef(
+                    academicTermId = null,
+                    draft = state.pendingChanges.newAcademicTerms.first()
+                )
+            }
+
+            else -> error("No academic term available")
+        }
     }
 
     private fun cancelChanges() {
