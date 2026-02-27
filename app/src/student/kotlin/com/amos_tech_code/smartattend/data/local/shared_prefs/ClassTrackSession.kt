@@ -23,6 +23,14 @@ class ClassTrackSession(context: Context) : SessionProvider {
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_DEVICE_MODEL = "device_model"
         private const val KEY_DEVICE_OS = "device_os"
+
+        // SYNC STATUS
+        private const val KEY_ATTENDANCE_SYNC_STATUS = "attendance_sync_status"
+        private const val KEY_ENROLLMENT_SYNC_STATUS = "enrollment_sync_status"
+
+        private const val KEY_ATTENDANCE_STATS_SYNC_STATUS = "attendance_stats_sync_status"
+        private const val KEY_ATTENDANCE_STATS_SYNC_TIMESTAMP = "attendance_stats_sync_timestamp"
+
     }
 
     fun saveStudentSession(
@@ -55,20 +63,16 @@ class ClassTrackSession(context: Context) : SessionProvider {
         }
     }
 
-    override fun saveName(name: String) {
+    fun saveName(name: String) {
         prefs.edit {
             putString(KEY_NAME, name)
         }
     }
 
-    override fun saveRegistrationNumber(registrationNo: String) {
+    fun saveRegistrationNumber(registrationNo: String) {
         prefs.edit {
             putString(KEY_REG_NO, registrationNo)
         }
-    }
-
-    fun clearSession() {
-        prefs.edit { clear() }
     }
 
     fun getName(): String? = prefs.getString(KEY_NAME, null)
@@ -109,5 +113,51 @@ class ClassTrackSession(context: Context) : SessionProvider {
 
     // Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null
+
+    fun setAttendanceSyncStatus(status: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_ATTENDANCE_SYNC_STATUS, status)
+        }
+
+    }
+
+    fun setEnrollmentSyncStatus(status: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_ENROLLMENT_SYNC_STATUS, status)
+        }
+    }
+
+    fun isEnrolmentSynced(): Boolean {
+        return prefs.getBoolean(KEY_ENROLLMENT_SYNC_STATUS, false)
+    }
+
+    fun isAttendanceSynced(): Boolean {
+        return prefs.getBoolean(KEY_ATTENDANCE_SYNC_STATUS, false)
+    }
+
+    fun setAttendanceStatsSyncStatus(status: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_ATTENDANCE_STATS_SYNC_STATUS, status)
+
+            if (status) {
+                putLong(KEY_ATTENDANCE_STATS_SYNC_TIMESTAMP, System.currentTimeMillis())
+            }
+        }
+
+    }
+
+    // Return true if timestamp not old than 5 days and attendance status is true
+    fun isAttendanceStatsSynced(): Boolean {
+        val lastSyncTimestamp = prefs.getLong(KEY_ATTENDANCE_STATS_SYNC_TIMESTAMP,
+            System.currentTimeMillis() - (5 * 24 * 60 * 60 * 1000))
+        val currentTimestamp = System.currentTimeMillis()
+
+        return (currentTimestamp - lastSyncTimestamp) < (5 * 24 * 60 * 60 * 1000) &&
+                prefs.getBoolean(KEY_ATTENDANCE_STATS_SYNC_STATUS, false)
+    }
+
+    fun clearSession() {
+        prefs.edit { clear() }
+    }
 
 }

@@ -79,6 +79,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
+import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -102,7 +103,7 @@ fun ProfileScreen(
     ObserveAsEvents(viewModel.events) { event ->
             when (event) {
                 is ProfileEvent.NavigateToLogin -> {
-                    navController.navigate("login") {
+                    navController.navigate(SignInRoute) {
                         popUpTo(0) { inclusive = true }
                     }
                 }

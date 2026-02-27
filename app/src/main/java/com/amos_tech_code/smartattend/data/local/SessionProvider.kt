@@ -4,9 +4,4 @@ interface SessionProvider {
 
     fun getValidToken(): String?
 
-    fun saveName(name: String)
-
-    fun saveRegistrationNumber(registrationNo: String)
-
-
 }

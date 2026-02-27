@@ -6,6 +6,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.filter
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
@@ -20,7 +21,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class HistoryViewModel(
-    private val attendanceSessionRepository: AttendanceSessionRepository
+    private val attendanceSessionRepository: AttendanceSessionRepository,
+    session: ClassTrackSession
 ) : ViewModel() {
 
     private val _filterState = MutableStateFlow(HistoryFilterState())
@@ -31,6 +33,12 @@ class HistoryViewModel(
 
     private val _event = Channel<AttendanceHistoryEvent>()
     val event = _event.receiveAsFlow()
+
+    init {
+        if(!session.isAttendanceSynced()) {
+            refresh()
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val attendancePagingData: Flow<PagingData<StudentAttendanceRecordEntity>> =

@@ -6,7 +6,7 @@ import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
-import com.amos_tech_code.smartattend.data.repositories.AccountRepository
+import com.amos_tech_code.smartattend.data.repository.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
 import com.amos_tech_code.smartattend.domain.models.StudentEnrollmentSource
 import com.amos_tech_code.smartattend.domain.request.ProgrammeSuggestionRequest
@@ -43,6 +43,9 @@ class ProfileViewModel(
 
     init {
         loadInitialData()
+        if (!session.isEnrolmentSynced()) {
+            syncEnrollment()
+        }
         observeEnrollment()
         setupUniversitySearchDebounce()
         setupProgrammeSearchDebounce()
@@ -368,7 +371,7 @@ class ProfileViewModel(
         }
 
         viewModelScope.launch {
-            session.clearSession()
+            accountRepository.logOut()
             _profileState.update {
                 it.copy(isLoggingOut = false)
             }

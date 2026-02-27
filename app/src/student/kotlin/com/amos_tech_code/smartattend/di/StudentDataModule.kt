@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.data.local.room.ClassTrackDatabase
 import com.amos_tech_code.smartattend.data.local.room.MIGRATION_1_2
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.repositories.UniversitySuggestionsRepository
+import com.amos_tech_code.smartattend.data.repository.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
 import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
 import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
@@ -44,10 +45,12 @@ val studentDataModule = module {
     single { get<ClassTrackDatabase>().studentAttendanceStatsDao() }
 
     // Repository
-    single { EnrollmentRepository(get(), get()) }
+    single { AccountRepository(get(), get(), get(), get(), get()) }
+
+    single { EnrollmentRepository(get(), get(), get()) }
 
     single<UniversitySuggestionsRepository> { get<EnrollmentRepository>() }
 
-    single { AttendanceSessionRepository(get(), get(), get()) }
+    single { AttendanceSessionRepository(get(), get(), get(), get()) }
 
 }

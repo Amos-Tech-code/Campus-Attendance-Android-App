@@ -1,5 +1,8 @@
 package com.amos_tech_code.smartattend.domain.response
 
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
+import com.amos_tech_code.smartattend.domain.models.AttendanceSessionType
 import com.amos_tech_code.smartattend.domain.models.FlagType
 import com.amos_tech_code.smartattend.domain.models.SeverityLevel
 import kotlinx.serialization.Serializable
@@ -13,8 +16,19 @@ data class MarkAttendanceResponse(
     val flags: List<AttendanceFlag> = emptyList(),
     val requiresProgrammeSelection: Boolean = false,
     val availableProgrammes: List<ProgrammeInfoResponse> = emptyList(),
+    val sessionDetails: SessionDetailsResponse? = null,
     val attendedAt: String,
     val message: String? = null
+)
+
+@Serializable
+data class SessionDetailsResponse(
+    val sessionStatus: AttendanceSessionStatus,
+    val attendanceMethod: AttendanceMethod,
+    val sessionType: AttendanceSessionType,
+    val unitCode: String,
+    val unitName: String,
+    val sessionTitle: String? = null,
 )
 
 @Serializable

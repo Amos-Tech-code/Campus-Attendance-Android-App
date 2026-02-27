@@ -13,6 +13,9 @@ interface StudentAttendanceStatsDao {
     @Query("SELECT * FROM student_attendance_stats WHERE id = 'singleton'")
     fun getStats(): Flow<StudentAttendanceStatsEntity?>
 
+    @Query("SELECT * FROM student_attendance_stats WHERE id = 'singleton'")
+    suspend fun getStatsOnce(): StudentAttendanceStatsEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(stats: StudentAttendanceStatsEntity)
 

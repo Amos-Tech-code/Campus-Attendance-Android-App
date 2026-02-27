@@ -195,7 +195,7 @@ interface ApiService {
         @Path("enrollmentId") enrollmentId: String
     ) : Response<Unit>
 
-    @GET("students/attendance/stats")
+    @GET("attendance-manage/record/students/stats")
     suspend fun getStudentAttendanceStats(
     ): Response<AttendanceStatsResponse>
 }

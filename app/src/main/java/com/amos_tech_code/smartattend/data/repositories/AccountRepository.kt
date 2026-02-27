@@ -8,6 +8,7 @@ import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileReques
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
 import com.amos_tech_code.smartattend.domain.response.GenericResponse
 
+/*
 class AccountRepository(
     private val apiService: ApiService,
     private val sessionProvider: SessionProvider
@@ -36,3 +37,5 @@ class AccountRepository(
     }
 
 }
+
+ */

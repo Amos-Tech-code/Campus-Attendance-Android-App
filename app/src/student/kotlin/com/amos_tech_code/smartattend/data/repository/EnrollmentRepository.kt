@@ -2,6 +2,7 @@ package com.amos_tech_code.smartattend.data.repository
 
 import com.amos_tech_code.smartattend.data.local.room.dao.EnrollmentDao
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentEnrollmentEntity
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
@@ -22,6 +23,7 @@ import kotlinx.coroutines.withContext
 class EnrollmentRepository(
     private val apiService: ApiService,
     private val enrollmentDao: EnrollmentDao,
+    private val session: ClassTrackSession,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): UniversitySuggestionsRepository {
 
@@ -65,8 +67,9 @@ class EnrollmentRepository(
                     // Save to local database
                     enrollmentDao.upsertEnsuringSingleActive(result.data.toEntity())
                 }
-            } catch (e: Exception) {
-                //e.printStackTrace()
+                session.setEnrollmentSyncStatus(true)
+            } catch (_: Exception) {
+                session.setEnrollmentSyncStatus(false)
             }
         }
 
@@ -83,8 +86,8 @@ class EnrollmentRepository(
                     // Save to local database
                     enrollmentDao.upsertEnsuringSingleActive(result.data.toEntity())
                 }
-            } catch (e: Exception) {
-                //e.printStackTrace()
+            } catch (_: Exception) {
+                session.setEnrollmentSyncStatus(false)
             }
         }
 
@@ -106,8 +109,8 @@ class EnrollmentRepository(
                     // Update local database
                     enrollmentDao.upsertEnsuringSingleActive(result.data.toEntity())
                 }
-            } catch (e: Exception) {
-                //e.printStackTrace()
+            } catch (_: Exception) {
+                session.setEnrollmentSyncStatus(false)
             }
         }
 
@@ -125,8 +128,8 @@ class EnrollmentRepository(
                     // Update to local database
                     enrollmentDao.deleteById(enrollmentId)
                 }
-            } catch (e: Exception) {
-                //e.printStackTrace()
+            } catch (_: Exception) {
+                session.setEnrollmentSyncStatus(false)
             }
         }
 

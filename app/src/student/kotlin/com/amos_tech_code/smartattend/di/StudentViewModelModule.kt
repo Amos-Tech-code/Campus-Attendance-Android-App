@@ -18,7 +18,7 @@ val studentViewModelModule = module {
     viewModel { AttendanceViewModel(
         get(), get(), get(), get(), get()
     )}
-    viewModel { HistoryViewModel(get()) }
+    viewModel { HistoryViewModel(get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get()) }
 
 }

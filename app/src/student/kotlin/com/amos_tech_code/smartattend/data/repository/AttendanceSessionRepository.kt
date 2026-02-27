@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.data.local.room.dao.AttendanceDao
 import com.amos_tech_code.smartattend.data.local.room.dao.StudentAttendanceStatsDao
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceStatsEntity
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
@@ -18,15 +19,18 @@ import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 
+
 class AttendanceSessionRepository (
     private val apiService: ApiService,
     private val attendanceDao: AttendanceDao,
     private val attendanceStatsDao: StudentAttendanceStatsDao,
+    private val session: ClassTrackSession,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
@@ -35,9 +39,23 @@ class AttendanceSessionRepository (
      */
 
     suspend fun markAttendance(request: MarkAttendanceRequest) : ApiResult<MarkAttendanceResponse> {
-        return safeApiCall {
+        val result = safeApiCall {
             apiService.markAttendanceSession(request)
         }
+
+        if (result is ApiResult.Success) {
+            if (result.data.success) {
+                try {
+                    withContext(ioDispatcher) {
+                        attendanceDao.insert(result.data.toEntity())
+                    }
+                } catch (_: Exception) {
+                    session.setAttendanceSyncStatus(false)
+                }
+            }
+        }
+
+        return result
     }
 
     /**
@@ -68,39 +86,51 @@ class AttendanceSessionRepository (
     /**
      * Sync Attendance Records from server
      */
-    suspend fun syncStudentAttendanceRecords() : ApiResult<Unit> {
+    suspend fun syncStudentAttendanceRecords(): ApiResult<Unit> {
 
-        return withContext(ioDispatcher) {
-            try {
-                var page = 0
-                var hasNext = true
+        var syncSuccessful = false
 
-                while (hasNext && isActive) {
-                    val result = safeApiCall { apiService.getAttendanceRecords(page) }
+        val result = try {
 
-                    when (result) {
-                        is ApiResult.Success -> {
-                            // Save to local database
-                            val response = result.data
+            var page = 0
+            var hasNext = true
 
-                            attendanceDao.insertAll(response.records.map { it.toEntity() })
+            while (hasNext && currentCoroutineContext().isActive) {
 
-                            hasNext = response.hasNext
-                            page++
+                when (val apiResult =
+                    safeApiCall { apiService.getAttendanceRecords(page) }
+                ) {
+
+                    is ApiResult.Success -> {
+
+                        val response = apiResult.data
+
+                        withContext(ioDispatcher) {
+                            attendanceDao.insertAll(
+                                response.records.map { it.toEntity() }
+                            )
                         }
 
-                        is ApiResult.Failure -> {
-                            return@withContext ApiResult.Failure(result.error)
-                        }
+                        hasNext = response.hasNext
+                        page++
+                    }
+
+                    is ApiResult.Failure -> {
+                        return apiResult
                     }
                 }
-
-                ApiResult.Success(Unit)
-
-            } catch (e: Exception) {
-                return@withContext ApiResult.Failure(ApiError.UnknownError(e))
             }
+
+            syncSuccessful = true
+            ApiResult.Success(Unit)
+
+        } catch (e: Exception) {
+            ApiResult.Failure(ApiError.UnknownError(e))
         }
+
+        session.setAttendanceSyncStatus(syncSuccessful)
+
+        return result
     }
 
     /**
@@ -114,23 +144,58 @@ class AttendanceSessionRepository (
      * Refresh stats from API
      */
     suspend fun refreshStats(): ApiResult<StudentAttendanceStatsEntity> {
+
         return withContext(ioDispatcher) {
+
             try {
-                val response = safeApiCall { apiService.getStudentAttendanceStats() }
+
+                // ✅ Check cache validity
+                if (session.isAttendanceStatsSynced()) {
+
+                    val localStats =
+                        attendanceStatsDao.getStatsOnce()
+
+                    // ✅ Return cached if available
+                    if (localStats != null) {
+                        return@withContext ApiResult.Success(localStats)
+                    }
+
+                    // ⚠ Cache inconsistent → fall through
+                    // force API refresh
+                }
+
+                // ✅ Always recover via API
+                val response =
+                    safeApiCall { apiService.getStudentAttendanceStats() }
+
                 when (response) {
+
                     is ApiResult.Success -> {
+
                         val entity = StudentAttendanceStatsEntity(
                             totalSessions = response.data.totalSessions,
                             attendedSessions = response.data.attendedSessions,
                             currentStreak = response.data.currentStreak,
                             lastUpdated = System.currentTimeMillis()
                         )
+
                         attendanceStatsDao.insertOrUpdate(entity)
+
+                        session.setAttendanceStatsSyncStatus(true)
+
                         ApiResult.Success(entity)
                     }
-                    is ApiResult.Failure -> ApiResult.Failure(response.error)
+
+                    is ApiResult.Failure -> {
+                        session.setAttendanceStatsSyncStatus(false)
+                        ApiResult.Failure(response.error)
+                    }
                 }
+
             } catch (e: Exception) {
+
+                session.setAttendanceStatsSyncStatus(false)
+
                 ApiResult.Failure(ApiError.UnknownError(e))
             }
         }
