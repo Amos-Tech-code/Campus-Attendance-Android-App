@@ -6,6 +6,7 @@ import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.login.LoginViewModel
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileViewModel
 import com.amos_tech_code.smartattend.ui.feature.register.RegisterViewModel
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -15,8 +16,11 @@ val studentViewModelModule = module {
     viewModel { LoginViewModel(get(), get(), get()) }
 
     viewModel { HomeViewModel(get(), get(), get()) }
+    // Provide ContentResolver
+    single { androidContext().contentResolver }
+
     viewModel { AttendanceViewModel(
-        get(), get(), get(), get(), get()
+        get(), get(), get(), get(), get(), get()
     )}
     viewModel { HistoryViewModel(get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get()) }

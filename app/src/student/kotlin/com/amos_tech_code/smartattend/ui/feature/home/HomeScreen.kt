@@ -153,15 +153,15 @@ fun HomeScreen(
                 }
 
                 // Today's Schedule Section
-                item {
-                    TodayScheduleSection(
-                        sessions = state.todaySessions,
-                        onSessionClick = { sessionId ->
-                            //navController.navigate("session_details/$sessionId")
-                        },
-                        modifier = Modifier.animateItem()
-                    )
-                }
+//                item {
+//                    TodayScheduleSection(
+//                        sessions = state.todaySessions,
+//                        onSessionClick = { sessionId ->
+//                            //navController.navigate("session_details/$sessionId")
+//                        },
+//                        modifier = Modifier.animateItem()
+//                    )
+//                }
 
                 // Quick Actions Grid
                 item {
@@ -181,13 +181,31 @@ fun HomeScreen(
 
                 // Recent Activity
                 item {
-                    RecentActivitySection(
-                        recentAttendance = state.recentAttendance,
-                        onViewAllClick = {
-                            navController.navigate(AttendanceHistoryRoute)
-                        },
-                        modifier = Modifier.animateItem()
-                    )
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Recent Activity",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            TextButton(
+                                onClick = {
+                                navController.navigate(AttendanceHistoryRoute)
+                            }) {
+                                Text("View All")
+                            }
+                        }
+                        RecentActivitySection(
+                            recentAttendance = state.recentAttendance,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
                 }
 
             }
@@ -736,7 +754,6 @@ private fun QuickActionCard(
 @Composable
 private fun RecentActivitySection(
     recentAttendance: List<RecentAttendance>,
-    onViewAllClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -750,22 +767,6 @@ private fun RecentActivitySection(
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recent Activity",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                TextButton(onClick = onViewAllClick) {
-                    Text("View All")
-                }
-            }
 
             if (recentAttendance.isEmpty()) {
                 Row(

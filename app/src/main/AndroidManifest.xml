@@ -10,7 +10,11 @@
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- For older Android versions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Required for Android 13+ to access photos -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <!-- For Android 10+ -->
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />

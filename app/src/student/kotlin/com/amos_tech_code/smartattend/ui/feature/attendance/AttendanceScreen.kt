@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,9 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.School
@@ -40,6 +43,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -81,6 +86,15 @@ fun AttendanceScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         // Base screen content - order matters here!
         when {
+            // Photo Picker (new)
+            state.isPickingImage -> {
+                PhotoPickerScreen(
+                    viewModel = viewModel,
+                    onBack = {
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                    }
+                )
+            }
             // Success screen has highest priority
             state.showSuccess -> {
                 state.attendanceResult?.let { result ->
@@ -161,22 +175,6 @@ private fun MainAttendanceScaffold(
                 }
             )
         },
-//        floatingActionButton = {
-//            if (state.activeSessions.isNotEmpty()) {
-//                ExtendedFloatingActionButton(
-//                    onClick = {
-//                        viewModel.showQrScanner()
-//                    },
-//                    icon = {
-//                        Icon(Icons.Default.QrCode, "Scan QR")
-//                    },
-//                    text = {
-//                        Text("Quick Scan")
-//                    },
-//                    containerColor = MaterialTheme.colorScheme.primary
-//                )
-//            }
-//        },
         bottomBar = {
             BottomNavigation(navController)
         }
@@ -186,20 +184,6 @@ private fun MainAttendanceScaffold(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Loading State
-//            if (state.isLoading && state.activeSessions.isEmpty()) {
-//                item {
-//                    Box(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .height(200.dp),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        CircularProgressIndicator()
-//                    }
-//                }
-//            }
-
             // Error Message
             state.errorMessage?.let {
                 item {
@@ -210,33 +194,15 @@ private fun MainAttendanceScaffold(
                 }
             }
 
-            // Active Sessions or Empty State
-//            if (state.activeSessions.isNotEmpty()) {
-//                item {
-//                    ActiveSessionsSection(
-//                        sessions = state.activeSessions,
-//                        modifier = Modifier.padding(16.dp)
-//                    )
-//                }
-//            }
-
-
             // Attendance Methods
             item {
                 AttendanceMethodsSection(
                     onScanQR = { viewModel.showQrScanner() },
                     onEnterCode = { viewModel.showCodeEntry() },
+                    onPickImage = { viewModel.onEvent(AttendanceUiEvent.PickImageFromGallery) },
                     modifier = Modifier.padding(16.dp)
                 )
             }
-
-            // Recent Attendance
-//            item {
-//                RecentAttendanceSection(
-//                    recentAttendance = state.recentAttendance,
-//                    modifier = Modifier.padding(16.dp)
-//                )
-//            }
         }
     }
 }
@@ -245,6 +211,7 @@ private fun MainAttendanceScaffold(
 private fun AttendanceMethodsSection(
     onScanQR: () -> Unit,
     onEnterCode: () -> Unit,
+    onPickImage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -265,17 +232,38 @@ private fun AttendanceMethodsSection(
                 icon = Icons.Default.QrCode2,
                 title = "Scan QR",
                 description = "Scan the lecturer's QR code.",
+                gradient = listOf(
+                    Color(0xFF4158D0),
+                    Color(0xFFC850C0)
+                ),
                 onClick = onScanQR
             )
 
             AttendanceMethodCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Pin,
                 title = "Enter Code",
                 description = "Use the lecturer's code.",
+                icon = Icons.Default.Keyboard,
+                gradient = listOf(
+                    Color(0xFF0093E9),
+                    Color(0xFF80D0C7)
+                ),
                 onClick = onEnterCode
             )
         }
+        SmartAttendHeightSpacer(12.dp)
+        // Pick from Gallery (full width)
+        AttendanceMethodCard(
+            modifier = Modifier.fillMaxWidth(),
+            title = "Pick from Gallery",
+            description = "Select a QR code image from your gallery.",
+            icon = Icons.Default.PhotoLibrary,
+            gradient = listOf(
+                Color(0xFF11998e),
+                Color(0xFF38ef7d)
+            ),
+            onClick = onPickImage
+        )
     }
 }
 
@@ -285,142 +273,44 @@ private fun AttendanceMethodCard(
     icon: ImageVector,
     title: String,
     description: String,
+    gradient: List<Color>,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = modifier.height(140.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
-            SmartAttendHeightSpacer(8.dp)
-            Text(text = title, fontWeight = FontWeight.Bold)
-            SmartAttendHeightSpacer(4.dp)
-            Text(text = description, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-/*
-@Composable
-fun ActiveSessionsSection(
-    sessions: List<Session>,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Active Sessions",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        SmartAttendHeightSpacer(12.dp)
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(sessions) {
-                // Replace with your ActiveSessionCard
-            }
-        }
-    }
-}
-
-@Composable
-fun RecentAttendanceSection(recentAttendance: List<RecentAttendance>, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Recent Attendance",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        SmartAttendHeightSpacer(12.dp)
-        if (recentAttendance.isEmpty()) {
-            EmptyState(
-                icon = Icons.Default.History,
-                title = "No recent attendance",
-                description = "Your attendance records will appear here"
-            )
-        } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                recentAttendance.take(5).forEach { attendance ->
-                    RecentAttendanceItem(attendance = attendance)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentAttendanceItem(attendance: RecentAttendance) {
-    Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Status Icon
-            Icon(
-                imageVector = when (attendance.status) {
-                    AttendanceStatus.PRESENT -> Icons.Default.CheckCircle
-                    AttendanceStatus.ABSENT -> Icons.Default.Cancel
-                    AttendanceStatus.LATE -> Icons.Default.Schedule
-                    AttendanceStatus.PENDING -> Icons.Default.Pending
-                },
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = when (attendance.status) {
-                    AttendanceStatus.PRESENT -> PresentColor
-                    AttendanceStatus.ABSENT -> AbsentColor
-                    AttendanceStatus.LATE -> PendingColor
-                    AttendanceStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = attendance.courseName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "Via ${attendance.method.name.replace("_", " ")}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (attendance.location != null) {
-                    Text(
-                        text = attendance.location,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = gradient,
+                        startY = 0f,
+                        endY = 400f
                     )
-                }
+                )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(icon, contentDescription = title, tint = Color.White)
+                SmartAttendHeightSpacer(8.dp)
+                Text(text = title, fontWeight = FontWeight.Bold, color = Color.White)
+                SmartAttendHeightSpacer(4.dp)
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    color = Color.White
+                )
             }
-
-            Text(
-                text = attendance.timestamp,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
         }
     }
 }
-*/
 
 @Composable
 fun VerifiedSessionState(

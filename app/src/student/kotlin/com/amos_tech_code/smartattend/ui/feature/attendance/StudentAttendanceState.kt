@@ -44,7 +44,8 @@ data class StudentAttendanceState(
 
     // Navigation states
     val showQRScanner: Boolean = false,
-    val showCodeEntry: Boolean = false
+    val showCodeEntry: Boolean = false,
+    val isPickingImage: Boolean = false
 )
 
 enum class QRScannerState {

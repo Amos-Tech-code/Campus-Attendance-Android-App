@@ -485,7 +485,6 @@ private fun InstructionsContent() {
         style = MaterialTheme.typography.bodyMedium,
         color = Color.White,
         modifier = Modifier
-        //.padding(bottom = 100.dp)
     )
 }
 
@@ -534,70 +533,6 @@ private fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
         )
     }
 }
-
-/*
-@Composable
-fun ErrorState(
-    errorMessage: String?,
-    onRetry: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.ErrorOutline,
-                "Error",
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(64.dp)
-            )
-
-            SmartAttendHeightSpacer(16.dp)
-
-            Text(
-                text = "Something went wrong",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            SmartAttendHeightSpacer(8.dp)
-
-            errorMessage?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            SmartAttendHeightSpacer(24.dp)
-
-            SmartAttendOutlinedButton(
-                text = "Retry",
-                onClick = onRetry,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            SmartAttendHeightSpacer(16.dp)
-
-            SmartAttendPrimaryButton(
-                text = "Go Back",
-                size = SmartAttendButtonSize.Small,
-                onClick = onBack
-            )
-
-        }
-    }
-}
-
- */
 
 @Composable
 private fun ErrorState(

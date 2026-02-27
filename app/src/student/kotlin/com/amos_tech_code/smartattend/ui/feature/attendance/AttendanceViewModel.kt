@@ -1,7 +1,9 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.Context
+import android.net.Uri
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
@@ -17,6 +19,10 @@ import com.amos_tech_code.smartattend.domain.request.VerifySessionRequest
 import com.amos_tech_code.smartattend.services.LocationService
 import com.amos_tech_code.smartattend.utils.DeviceInfoProvider
 import com.amos_tech_code.smartattend.utils.VibrationHelper
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +35,7 @@ class AttendanceViewModel(
     private val deviceInfoProvider: DeviceInfoProvider,
     private val locationService: LocationService,
     private val session: ClassTrackSession,
+    private val contentResolver: ContentResolver,
     context: Context
 ) : ViewModel() {
     private val _attendanceState = MutableStateFlow(StudentAttendanceState())
@@ -57,6 +64,20 @@ class AttendanceViewModel(
                         unitCode = event.unitCode.take(8),
                         codeEntryErrorMessage = null
                     )
+                }
+            }
+            is AttendanceUiEvent.ImageSelected -> {
+                extractQRCodeFromImage(event.uri)
+            }
+
+            AttendanceUiEvent.ImagePickerError -> {
+                _event.trySend(AttendanceEvent.ShowErrorMessage("Failed to pick image"))
+            }
+
+            AttendanceUiEvent.PickImageFromGallery -> {
+                // Just update state to show we're picking, actual picker is handled in UI
+                _attendanceState.update {
+                    it.copy(isPickingImage = true)
                 }
             }
             is AttendanceUiEvent.VerifySession -> {
@@ -177,6 +198,68 @@ class AttendanceViewModel(
             state.unitCode.length > 8 -> "Unit code cannot exceed 8 characters"
             else -> null
         }
+    }
+
+
+    private fun extractQRCodeFromImage(uri: Uri) {
+        viewModelScope.launch {
+            _attendanceState.update {
+                it.copy(
+                    qrScannerState = QRScannerState.SCANNING,
+                    isPickingImage = false,
+                    errorMessage = null
+                )
+            }
+
+            try {
+                val inputStream = contentResolver.openInputStream(uri)
+                val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (bitmap == null) {
+                    handleImageExtractionError("Failed to decode image")
+                    return@launch
+                }
+
+                // Use ML Kit to detect QR code in the image
+                val image = InputImage.fromBitmap(bitmap, 0)
+                val scanner = BarcodeScanning.getClient(
+                    BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                        .build()
+                )
+
+                scanner.process(image)
+                    .addOnSuccessListener { barcodes ->
+                        if (barcodes.isNotEmpty()) {
+                            barcodes.firstOrNull()?.rawValue?.let { qrData ->
+                                // Process the QR code data
+                                onEvent(AttendanceUiEvent.QRCodeScanned(qrData))
+                            } ?: run {
+                                handleImageExtractionError("No QR code found in image")
+                            }
+                        } else {
+                            handleImageExtractionError("No QR code found in image")
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        handleImageExtractionError("Failed to process image: ${e.message}")
+                    }
+            } catch (e: Exception) {
+                handleImageExtractionError("Error processing image: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleImageExtractionError(message: String) {
+        _attendanceState.update {
+            it.copy(
+                qrScannerState = QRScannerState.ERROR,
+                errorMessage = message,
+                isPickingImage = false
+            )
+        }
+        _event.trySend(AttendanceEvent.ShowErrorMessage(message))
     }
 
     private fun processQRCode(qrData: String) {
