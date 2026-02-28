@@ -23,6 +23,11 @@ sealed class AttendanceUiEvent {
     object CancelLocationCapture : AttendanceUiEvent()
     data class RetryVerifySession(val sessionCode: String, val unitCode: String) : AttendanceUiEvent()
     data object RetryMarkAttendance : AttendanceUiEvent()
+
+    // New photo picker events
+    data object PhotoPickerProcessing : AttendanceUiEvent()
+    data class PhotoPickerError(val message: String) : AttendanceUiEvent()
+    data object RetryPhotoPicker : AttendanceUiEvent()
 }
 
 // View Events

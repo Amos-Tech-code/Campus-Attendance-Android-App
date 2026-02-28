@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.attendance
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,7 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
 @Composable
 fun CodeEntryScreen(
     viewModel: AttendanceViewModel,
+    context: Context,
     onBack: () -> Unit
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()
@@ -93,9 +95,6 @@ fun CodeEntryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState()),
-            //verticalArrangement = Arrangement.spacedBy(16.dp),
-            //horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (state.codeEntryState) {
                 CodeEntryState.IDLE -> {
@@ -114,7 +113,9 @@ fun CodeEntryScreen(
                             "Must be 6 digits"
                         else null,
                         unitCodeError = if (state.unitCode.isBlank()) "Required" else null,
-                        modifier = Modifier.imePadding()
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .imePadding()
                     )
                 }
                 CodeEntryState.VERIFYING_SESSION -> {
@@ -161,6 +162,28 @@ fun CodeEntryScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
+            }
+
+            // Show Location Capture as overlay
+            if (state.showLocationCapture) {
+                LocationCaptureScreen(
+                    viewModel = viewModel,
+                    context = context,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.CancelLocationCapture) }
+                )
+            }
+
+            // Show Programme Selection as overlay
+            if (state.showProgrammeSelection) {
+                ProgrammeSelectionDialog(
+                    programmes = state.verificationResult?.availableProgrammes ?: emptyList(),
+                    onProgrammeSelected = { programmeId ->
+                        viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                    },
+                    onDismiss = {
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                    }
+                )
             }
         }
     }

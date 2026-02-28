@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,9 +47,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +57,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -143,22 +143,6 @@ fun ProfileScreen(
                 title = "My Profile",
                 onSyncClick = { viewModel.syncEnrollment() },
                 isLoading = state.isLoading
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { viewModel.showEditProfile() },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Profile"
-                    )
-                },
-                text = {
-                    Text("Edit Profile")
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -668,6 +652,30 @@ private fun ProfileHeader(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
+
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = (-4).dp, y = (-4).dp)
+                        .size(36.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = CircleShape
+                        )
+                        .border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Profile",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             // Student Info
@@ -716,7 +724,7 @@ private fun ProfileHeader(
                 )
 
                 if (student.programme.isNotEmpty()) {
-                    Divider(
+                    VerticalDivider(
                         modifier = Modifier
                             .height(40.dp)
                             .width(1.dp),

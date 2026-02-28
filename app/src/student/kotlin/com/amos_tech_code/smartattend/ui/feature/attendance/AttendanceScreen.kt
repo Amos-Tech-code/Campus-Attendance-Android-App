@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Warning
@@ -38,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,6 +63,7 @@ import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
+/*
 @Composable
 fun AttendanceScreen(
     navController: NavController,
@@ -146,6 +147,108 @@ fun AttendanceScreen(
             else -> {
                 MainAttendanceScaffold(navController = navController, viewModel = viewModel, state = state)
             }
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.Center)
+        )
+    }
+}
+*/
+
+@Composable
+fun AttendanceScreen(
+    navController: NavController,
+    screen: String,
+    viewModel: AttendanceViewModel = koinViewModel()
+) {
+    val state by viewModel.attendanceState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    ObserveAsEvents(viewModel.event) { event ->
+        when (event) {
+            is AttendanceEvent.ShowErrorMessage -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(screen) {
+        when (screen) {
+            "QRScanner" -> viewModel.showQrScanner()
+            "CodeEntry" -> viewModel.showCodeEntry()
+            else -> {}
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Render based on current screen
+        when (val currentScreen = state.currentScreen) {
+            is AttendanceScreen.Main -> {
+                MainAttendanceScaffold(
+                    navController = navController,
+                    viewModel = viewModel,
+                    state = state
+                )
+            }
+
+            is AttendanceScreen.QRScanner -> {
+                QRScannerScreen(
+                    viewModel = viewModel,
+                    context = context,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
+            }
+
+            is AttendanceScreen.CodeEntry -> {
+                CodeEntryScreen(
+                    viewModel = viewModel,
+                    context = context,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
+            }
+
+            is AttendanceScreen.PhotoPicker -> {
+                PhotoPickerScreen(
+                    viewModel = viewModel,
+                    context = context,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
+            }
+
+            is AttendanceScreen.Success -> {
+                AttendanceSuccessScreen(
+                    result = currentScreen.result,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.ResetState) }
+                )
+            }
+        }
+
+        // Show Location Capture as overlay
+        if (state.showLocationCapture) {
+            LocationCaptureScreen(
+                viewModel = viewModel,
+                context = context,
+                onBack = { viewModel.onEvent(AttendanceUiEvent.CancelLocationCapture) }
+            )
+        }
+
+        // Show Programme Selection as overlay
+        if (state.showProgrammeSelection) {
+            ProgrammeSelectionDialog(
+                programmes = state.verificationResult?.availableProgrammes ?: emptyList(),
+                onProgrammeSelected = { programmeId ->
+                    viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                },
+                onDismiss = {
+                    viewModel.onEvent(AttendanceUiEvent.ResetState)
+                }
+            )
         }
 
         SnackbarHost(

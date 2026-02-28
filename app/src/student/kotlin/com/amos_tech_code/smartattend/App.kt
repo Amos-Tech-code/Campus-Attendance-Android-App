@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.amos_tech_code.smartattend.ui.feature.attendance.AttendanceScreen
 import com.amos_tech_code.smartattend.ui.feature.history.HistoryScreen
 import com.amos_tech_code.smartattend.ui.feature.home.HomeScreen
@@ -39,8 +40,9 @@ fun App(
             HomeScreen(navController)
         }
 
-        composable<AttendanceRoute> {
-            AttendanceScreen(navController)
+        composable<AttendanceRoute> { backStackEntry ->
+            val screen = backStackEntry.toRoute<AttendanceRoute>().screen
+            AttendanceScreen(navController, screen)
 
         }
 

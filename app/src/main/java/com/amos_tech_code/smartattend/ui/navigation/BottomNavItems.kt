@@ -33,11 +33,11 @@ sealed class BottomNavItem(
     )
 
     object Attendance : BottomNavItem(
-        route = AttendanceRoute,
+        route = AttendanceRoute(),
         title = "Attendance",
         selectedIcon = Icons.Default.QrCodeScanner,
         unselectedIcon = Icons.Outlined.QrCodeScanner,
-        badgeCount = 1
+        badgeCount = 0
     )
 
     object History : BottomNavItem(

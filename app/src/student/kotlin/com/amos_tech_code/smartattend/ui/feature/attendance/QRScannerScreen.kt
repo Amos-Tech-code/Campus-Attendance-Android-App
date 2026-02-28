@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.util.Size
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -170,7 +171,16 @@ fun QRScannerScreen(
                     ErrorState(
                         errorMessage = state.errorMessage,
                         isMarkingError = state.errorType == AttendanceErrorType.MARKING_ERROR,
-                        onRetryVerify = { viewModel.retryVerifySession() },
+                        onRetryVerify = {
+                            if (state.currentSessionCode != null && state.currentUnitCode != null) {
+                                viewModel.retryVerifySession(
+                                    state.currentSessionCode!!,
+                                    state.currentUnitCode!!
+                                )
+                            } else {
+                                Toast.makeText(context, "Please try recapturing the QR Image again.",Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         onRetryMarkAttendance = { viewModel.retryMarkAttendance() },
                         onBack = { viewModel.resetQRScanner() },
                         modifier = Modifier.fillMaxSize()
@@ -206,6 +216,28 @@ fun QRScannerScreen(
                         )
                     }
                 }
+            }
+
+            // Show Location Capture as overlay
+            if (state.showLocationCapture) {
+                LocationCaptureScreen(
+                    viewModel = viewModel,
+                    context = context,
+                    onBack = { viewModel.onEvent(AttendanceUiEvent.CancelLocationCapture) }
+                )
+            }
+
+            // Show Programme Selection as overlay
+            if (state.showProgrammeSelection) {
+                ProgrammeSelectionDialog(
+                    programmes = state.verificationResult?.availableProgrammes ?: emptyList(),
+                    onProgrammeSelected = { programmeId ->
+                        viewModel.onEvent(AttendanceUiEvent.ProgrammeSelected(programmeId))
+                    },
+                    onDismiss = {
+                        viewModel.onEvent(AttendanceUiEvent.ResetState)
+                    }
+                )
             }
         }
     }

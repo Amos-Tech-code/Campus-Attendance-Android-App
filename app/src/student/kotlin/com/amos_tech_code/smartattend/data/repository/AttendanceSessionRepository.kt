@@ -140,38 +140,20 @@ class AttendanceSessionRepository (
         return attendanceStatsDao.getStats()
     }
 
+
     /**
-     * Refresh stats from API
+     * Refresh stats from API and update DAO
      */
     suspend fun refreshStats(): ApiResult<StudentAttendanceStatsEntity> {
-
         return withContext(ioDispatcher) {
-
             try {
-
-                // ✅ Check cache validity
-                if (session.isAttendanceStatsSynced()) {
-
-                    val localStats =
-                        attendanceStatsDao.getStatsOnce()
-
-                    // ✅ Return cached if available
-                    if (localStats != null) {
-                        return@withContext ApiResult.Success(localStats)
-                    }
-
-                    // ⚠ Cache inconsistent → fall through
-                    // force API refresh
+                // Always try API first for fresh data
+                val response = safeApiCall {
+                    apiService.getStudentAttendanceStats()
                 }
 
-                // ✅ Always recover via API
-                val response =
-                    safeApiCall { apiService.getStudentAttendanceStats() }
-
                 when (response) {
-
                     is ApiResult.Success -> {
-
                         val entity = StudentAttendanceStatsEntity(
                             totalSessions = response.data.totalSessions,
                             attendedSessions = response.data.attendedSessions,
@@ -180,61 +162,22 @@ class AttendanceSessionRepository (
                         )
 
                         attendanceStatsDao.insertOrUpdate(entity)
-
                         session.setAttendanceStatsSyncStatus(true)
 
                         ApiResult.Success(entity)
                     }
 
                     is ApiResult.Failure -> {
+                        // Just return the failure
                         session.setAttendanceStatsSyncStatus(false)
                         ApiResult.Failure(response.error)
                     }
                 }
-
             } catch (e: Exception) {
-
                 session.setAttendanceStatsSyncStatus(false)
-
                 ApiResult.Failure(ApiError.UnknownError(e))
             }
         }
-    }
-
-    /**
-     * Calculate streak from local attendance records
-     */
-    suspend fun calculateCurrentStreak(): Int {
-        val attendanceDays = attendanceDao.getDistinctAttendanceDays()
-        if (attendanceDays.isEmpty()) return 0
-
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val today = calendar.timeInMillis
-
-        // Check if attended today
-        val attendedToday = attendanceDays.any { isSameDay(it, today) }
-        if (!attendedToday) return 0
-
-        var streak = 1
-        var expectedDate = today - 86400000 // Yesterday
-
-        while (attendanceDays.any { isSameDay(it, expectedDate) }) {
-            streak++
-            expectedDate -= 86400000
-        }
-
-        return streak
-    }
-
-    private fun isSameDay(timestamp1: Long, timestamp2: Long): Boolean {
-        val cal1 = Calendar.getInstance().apply { timeInMillis = timestamp1 }
-        val cal2 = Calendar.getInstance().apply { timeInMillis = timestamp2 }
-        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 
     suspend fun getTodaySessions(): List<StudentAttendanceRecordEntity> {
@@ -254,14 +197,6 @@ class AttendanceSessionRepository (
         return attendanceDao.getTodaySessions(startOfDay, endOfDay)
     }
 
-    suspend fun getTotalSessionsCount(): Int = attendanceDao.getTotalSessionsCount()
-
-    suspend fun getAttendedSessionsCount(): Int = attendanceDao.getAttendedSessionsCount()
-
-    suspend fun getRecentAttendance(limit: Int): List<StudentAttendanceRecordEntity> =
-        attendanceDao.getRecentAttendance(limit)
-
-    suspend fun getCurrentStreak(): Int = calculateCurrentStreak()
 
 
 }

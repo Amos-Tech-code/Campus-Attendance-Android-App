@@ -18,7 +18,7 @@ object RegisterRoute : NavRoutes
 object HomeRoute : NavRoutes
 
 @Serializable
-object AttendanceRoute : NavRoutes
+data class AttendanceRoute(val screen: String = "Main") : NavRoutes
 
 @Serializable
 object AttendanceHistoryRoute : NavRoutes

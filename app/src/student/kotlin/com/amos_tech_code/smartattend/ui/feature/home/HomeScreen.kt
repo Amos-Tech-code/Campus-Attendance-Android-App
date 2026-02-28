@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.PullToRefreshIndicator
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
+import com.amos_tech_code.smartattend.ui.navigation.AttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
@@ -138,8 +139,7 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 contentPadding = PaddingValues(
-                    top = 16.dp,
-                    bottom = 80.dp // Space for bottom navigation
+                   horizontal = 16.dp
                 )
             ) {
                 // Quick Stats Cards
@@ -167,13 +167,13 @@ fun HomeScreen(
                 item {
                     QuickActionsGrid(
                         onQRScanClick = {
-                            //navController.navigate("qr_scanner")
+                            navController.navigate(AttendanceRoute("QRScanner"))
                         },
                         onManualCodeClick = {
-                            //navController.navigate("manual_code")
+                            navController.navigate(AttendanceRoute("CodeEntry"))
                         },
                         onHistoryClick = {
-                            //navController.navigate("history")
+                            navController.navigate(AttendanceHistoryRoute)
                         },
                         modifier = Modifier.animateItem()
                     )

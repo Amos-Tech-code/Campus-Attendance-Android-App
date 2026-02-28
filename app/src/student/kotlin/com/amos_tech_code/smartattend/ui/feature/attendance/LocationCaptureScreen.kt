@@ -55,7 +55,6 @@ import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
 fun LocationCaptureScreen(
     viewModel: AttendanceViewModel,
     context: Context,
-    isFromQR: Boolean,
     onBack: () -> Unit
 ) {
     val state by viewModel.attendanceState.collectAsStateWithLifecycle()

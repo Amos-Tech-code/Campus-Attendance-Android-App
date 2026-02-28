@@ -66,26 +66,63 @@ class AttendanceViewModel(
                     )
                 }
             }
-            is AttendanceUiEvent.ImageSelected -> {
-                extractQRCodeFromImage(event.uri)
-            }
 
             AttendanceUiEvent.ImagePickerError -> {
                 _event.trySend(AttendanceEvent.ShowErrorMessage("Failed to pick image"))
             }
 
             AttendanceUiEvent.PickImageFromGallery -> {
-                // Just update state to show we're picking, actual picker is handled in UI
                 _attendanceState.update {
-                    it.copy(isPickingImage = true)
+                    it.copy(
+                        currentScreen = AttendanceScreen.PhotoPicker.Selecting,
+                        selectedImageUri = null,
+                        errorMessage = null,
+                        errorType = null
+                    )
                 }
             }
+
+            AttendanceUiEvent.PhotoPickerProcessing -> {
+                _attendanceState.update {
+                    it.copy(
+                        currentScreen = AttendanceScreen.PhotoPicker.Processing
+                    )
+                }
+            }
+
+            is AttendanceUiEvent.PhotoPickerError -> {
+                _attendanceState.update {
+                    it.copy(
+                        currentScreen = AttendanceScreen.PhotoPicker.Error(event.message),
+                        errorMessage = event.message
+                    )
+                }
+            }
+
+            AttendanceUiEvent.RetryPhotoPicker -> {
+                _attendanceState.update {
+                    it.copy(
+                        currentScreen = AttendanceScreen.PhotoPicker.Selecting,
+                        selectedImageUri = null,
+                        errorMessage = null,
+                        errorType = null
+                    )
+                }
+            }
+
+            is AttendanceUiEvent.ImageSelected -> {
+                _attendanceState.update {
+                    it.copy(selectedImageUri = event.uri)
+                }
+                extractQRCodeFromImage(event.uri)
+            }
+
             is AttendanceUiEvent.VerifySession -> {
                 verifySessionFromCode(event.sessionCode, event.unitCode)
             }
 
             is AttendanceUiEvent.RetryVerifySession -> {
-                retryVerifySession()
+                retryVerifySession(event.sessionCode, event.unitCode)
             }
 
             is AttendanceUiEvent.RetryMarkAttendance -> {
@@ -93,12 +130,14 @@ class AttendanceViewModel(
             }
 
             is AttendanceUiEvent.ProgrammeSelected -> {
+                _attendanceState.update { it.copy(showProgrammeSelection = false) }
                 markAttendanceWithProgramme(event.programmeId)
             }
 
             is AttendanceUiEvent.QRCodeScanned -> {
                 processQRCode(event.qrData)
             }
+
             AttendanceUiEvent.ResetState -> {
                 _attendanceState.update { StudentAttendanceState() }
             }
@@ -142,7 +181,7 @@ class AttendanceViewModel(
                     _attendanceState.update {
                         it.copy(
                             showLocationCapture = false,
-                            showProgrammeSelection = true
+                            showProgrammeSelection = true,
                         )
                     }
                 } else {
@@ -152,12 +191,15 @@ class AttendanceViewModel(
 
             is AttendanceUiEvent.CancelLocationCapture -> {
                 _attendanceState.update {
-                    it.copy(showLocationCapture = false)
-                }
-                if (_attendanceState.value.showQRScanner) {
-                    resetQRScanner()
-                } else {
-                    resetCodeEntry()
+                    it.copy(
+                        currentScreen = when (val currentScreen = it.currentScreen) {
+                            is AttendanceScreen.QRScanner -> AttendanceScreen.QRScanner
+                            is AttendanceScreen.CodeEntry -> AttendanceScreen.CodeEntry
+                            is AttendanceScreen.PhotoPicker -> AttendanceScreen.PhotoPicker.Selecting
+                            else -> AttendanceScreen.Main
+                        },
+                        showLocationCapture = false
+                    )
                 }
             }
         }
@@ -166,8 +208,7 @@ class AttendanceViewModel(
     fun showQrScanner() {
         _attendanceState.update {
             it.copy(
-                showQRScanner = true,
-                showCodeEntry = false,
+                currentScreen = AttendanceScreen.QRScanner,
                 qrScannerState = QRScannerState.IDLE,
                 scannedQRData = null,
                 errorMessage = null,
@@ -179,8 +220,7 @@ class AttendanceViewModel(
     fun showCodeEntry() {
         _attendanceState.update {
             it.copy(
-                showCodeEntry = true,
-                showQRScanner = false,
+                currentScreen = AttendanceScreen.CodeEntry,
                 codeEntryState = CodeEntryState.IDLE,
                 codeEntryErrorMessage = null,
                 errorType = null
@@ -200,28 +240,18 @@ class AttendanceViewModel(
         }
     }
 
-
     private fun extractQRCodeFromImage(uri: Uri) {
         viewModelScope.launch {
-            _attendanceState.update {
-                it.copy(
-                    qrScannerState = QRScannerState.SCANNING,
-                    isPickingImage = false,
-                    errorMessage = null
-                )
-            }
-
             try {
                 val inputStream = contentResolver.openInputStream(uri)
                 val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
                 inputStream?.close()
 
                 if (bitmap == null) {
-                    handleImageExtractionError("Failed to decode image")
+                    onEvent(AttendanceUiEvent.PhotoPickerError("Failed to decode image"))
                     return@launch
                 }
 
-                // Use ML Kit to detect QR code in the image
                 val image = InputImage.fromBitmap(bitmap, 0)
                 val scanner = BarcodeScanning.getClient(
                     BarcodeScannerOptions.Builder()
@@ -233,33 +263,25 @@ class AttendanceViewModel(
                     .addOnSuccessListener { barcodes ->
                         if (barcodes.isNotEmpty()) {
                             barcodes.firstOrNull()?.rawValue?.let { qrData ->
-                                // Process the QR code data
-                                onEvent(AttendanceUiEvent.QRCodeScanned(qrData))
+                                _attendanceState.update {
+                                    it.copy(
+                                        currentScreen = AttendanceScreen.PhotoPicker.Success(qrData)
+                                    )
+                                }
                             } ?: run {
-                                handleImageExtractionError("No QR code found in image")
+                                onEvent(AttendanceUiEvent.PhotoPickerError("No QR code found in image"))
                             }
                         } else {
-                            handleImageExtractionError("No QR code found in image")
+                            onEvent(AttendanceUiEvent.PhotoPickerError("No QR code found in image"))
                         }
                     }
                     .addOnFailureListener { e ->
-                        handleImageExtractionError("Failed to process image: ${e.message}")
+                        onEvent(AttendanceUiEvent.PhotoPickerError("Failed to process image: ${e.message}"))
                     }
             } catch (e: Exception) {
-                handleImageExtractionError("Error processing image: ${e.message}")
+                onEvent(AttendanceUiEvent.PhotoPickerError("Error processing image: ${e.message}"))
             }
         }
-    }
-
-    private fun handleImageExtractionError(message: String) {
-        _attendanceState.update {
-            it.copy(
-                qrScannerState = QRScannerState.ERROR,
-                errorMessage = message,
-                isPickingImage = false
-            )
-        }
-        _event.trySend(AttendanceEvent.ShowErrorMessage(message))
     }
 
     private fun processQRCode(qrData: String) {
@@ -325,23 +347,36 @@ class AttendanceViewModel(
         verifySessionInternal(sessionCode, unitCode, isFromQR = false)
     }
 
-    // Consolidated function for retrying verification
-    fun retryVerifySession() {
+    fun verifySessionFromPhotoPicker(sessionCode: String, unitCode: String) {
+        _attendanceState.update {
+            it.copy(
+                currentScreen = AttendanceScreen.PhotoPicker.VerifyingSession,
+                isLoading = true,
+                errorMessage = null,
+                currentSessionCode = sessionCode,
+                currentUnitCode = unitCode
+            )
+        }
+        verifySessionInternal(sessionCode, unitCode, isFromPhotoPicker = true)
+    }
+
+    fun retryVerifySession(sessionCode: String, unitCode: String) {
         _attendanceState.update { it.copy(errorType = null) }
-        val state = _attendanceState.value
-        val sessionCode = state.currentSessionCode
-        val unitCode = state.currentUnitCode
 
-        if (sessionCode == null || unitCode == null) return
-
-        if (state.showQRScanner) {
-            verifySessionFromQR(sessionCode, unitCode)
-        } else {
-            verifySessionFromCode(sessionCode, unitCode)
+        when (val currentScreen = _attendanceState.value.currentScreen) {
+            is AttendanceScreen.QRScanner -> verifySessionFromQR(sessionCode, unitCode)
+            is AttendanceScreen.CodeEntry -> verifySessionFromCode(sessionCode, unitCode)
+            is AttendanceScreen.PhotoPicker -> verifySessionFromPhotoPicker(sessionCode, unitCode)
+            else -> {}
         }
     }
 
-    private fun verifySessionInternal(sessionCode: String, unitCode: String, isFromQR: Boolean) {
+    private fun verifySessionInternal(
+        sessionCode: String,
+        unitCode: String,
+        isFromQR: Boolean = false,
+        isFromPhotoPicker: Boolean = false
+    ) {
         viewModelScope.launch {
             try {
                 val result = attendanceRepository.verifyAttendanceSession(
@@ -353,205 +388,194 @@ class AttendanceViewModel(
                         val requiresProgrammeSelection = result.data.requiresProgrammeSelection
                         val requiresLocation = result.data.requiresLocation
 
-                        if (isFromQR) {
-                            _attendanceState.update {
-                                it.copy(
-                                    qrScannerState = QRScannerState.VERIFIED,
-                                    isLoading = false,
-                                    verificationResult = result.data,
-                                    showProgrammeSelection = false,
-                                    showLocationCapture = false
-                                )
+                        when {
+                            isFromQR -> {
+                                _attendanceState.update {
+                                    it.copy(
+                                        qrScannerState = QRScannerState.VERIFIED,
+                                        isLoading = false,
+                                        verificationResult = result.data
+                                    )
+                                }
                             }
-                        } else {
-                            _attendanceState.update {
-                                it.copy(
-                                    codeEntryState = CodeEntryState.VERIFIED,
-                                    isLoading = false,
-                                    verificationResult = result.data,
-                                    showProgrammeSelection = false,
-                                    showLocationCapture = false
-                                )
+                            isFromPhotoPicker -> {
+                                _attendanceState.update {
+                                    it.copy(
+                                        currentScreen = AttendanceScreen.PhotoPicker.Verified,
+                                        isLoading = false,
+                                        verificationResult = result.data
+                                    )
+                                }
+                            }
+                            else -> {
+                                _attendanceState.update {
+                                    it.copy(
+                                        codeEntryState = CodeEntryState.VERIFIED,
+                                        isLoading = false,
+                                        verificationResult = result.data
+                                    )
+                                }
                             }
                         }
 
                         vibrationHelper.vibrate(100)
 
-                        if (requiresLocation && _attendanceState.value.studentLocation == null) {
-                            _attendanceState.update {
-                                it.copy(showLocationCapture = true)
+                        when {
+                            requiresLocation && _attendanceState.value.studentLocation == null -> {
+                                _attendanceState.update {
+                                    it.copy(showLocationCapture = true)
+                                }
                             }
-                        } else if (requiresProgrammeSelection) {
-                            _attendanceState.update {
-                                it.copy(showProgrammeSelection = true)
+                            requiresProgrammeSelection -> {
+                                _attendanceState.update {
+                                    it.copy(
+                                        showProgrammeSelection = true
+                                    )
+                                }
                             }
-                        } else {
-                            markAttendanceVerifiedSession()
+                            else -> {
+                                markAttendanceVerifiedSession()
+                            }
                         }
                     }
                     is ApiResult.Failure -> {
                         val errorMessage = extractApiErrorMessage(result.error)
-                        if (isFromQR) {
-                            _attendanceState.update {
-                                it.copy(
-                                    qrScannerState = QRScannerState.ERROR,
-                                    isLoading = false,
-                                    errorMessage = errorMessage,
-                                    errorType = AttendanceErrorType.VERIFICATION_ERROR
-                                )
-                            }
-                        } else {
-                            _attendanceState.update {
-                                it.copy(
-                                    codeEntryState = CodeEntryState.ERROR,
-                                    isLoading = false,
-                                    codeEntryErrorMessage = errorMessage,
-                                    errorType = AttendanceErrorType.VERIFICATION_ERROR
-                                )
-                            }
-                        }
-                        _event.send(AttendanceEvent.ShowErrorMessage(errorMessage))
+                        handleVerificationError(errorMessage, isFromQR, isFromPhotoPicker)
                     }
                 }
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "An unknown error occurred"
-                if (isFromQR) {
-                    _attendanceState.update {
-                        it.copy(
-                            qrScannerState = QRScannerState.ERROR,
-                            isLoading = false,
-                            errorMessage = errorMessage,
-                            errorType = AttendanceErrorType.VERIFICATION_ERROR
-                        )
-                    }
-                } else {
-                    _attendanceState.update {
-                        it.copy(
-                            codeEntryState = CodeEntryState.ERROR,
-                            isLoading = false,
-                            codeEntryErrorMessage = errorMessage,
-                            errorType = AttendanceErrorType.VERIFICATION_ERROR
-                        )
-                    }
-                }
-                _event.send(AttendanceEvent.ShowErrorMessage(errorMessage))
+                handleVerificationError(errorMessage, isFromQR, isFromPhotoPicker)
             }
         }
     }
 
-    // Consolidated function to mark attendance
+    private fun handleVerificationError(
+        errorMessage: String,
+        isFromQR: Boolean,
+        isFromPhotoPicker: Boolean
+    ) {
+        when {
+            isFromQR -> {
+                _attendanceState.update {
+                    it.copy(
+                        qrScannerState = QRScannerState.ERROR,
+                        isLoading = false,
+                        errorMessage = errorMessage,
+                        errorType = AttendanceErrorType.VERIFICATION_ERROR
+                    )
+                }
+            }
+            isFromPhotoPicker -> {
+                _attendanceState.update {
+                    it.copy(
+                        currentScreen = AttendanceScreen.PhotoPicker.Error(errorMessage),
+                        isLoading = false,
+                        errorMessage = errorMessage,
+                        errorType = AttendanceErrorType.VERIFICATION_ERROR
+                    )
+                }
+            }
+            else -> {
+                _attendanceState.update {
+                    it.copy(
+                        codeEntryState = CodeEntryState.ERROR,
+                        isLoading = false,
+                        codeEntryErrorMessage = errorMessage,
+                        errorType = AttendanceErrorType.VERIFICATION_ERROR
+                    )
+                }
+            }
+        }
+        _event.trySend(AttendanceEvent.ShowErrorMessage(errorMessage))
+    }
+
     private fun markAttendanceVerifiedSession() {
         val state = _attendanceState.value
-        val isFromQR = state.showQRScanner
         val sessionCode = state.currentSessionCode
         val unitCode = state.currentUnitCode
 
         if (sessionCode == null || unitCode == null) return
 
-        markAttendanceFromFlow(sessionCode, unitCode, isFromQR = isFromQR)
+        val method = when (state.currentScreen) {
+            is AttendanceScreen.QRScanner -> AttendanceMethod.QR_CODE
+            is AttendanceScreen.CodeEntry -> AttendanceMethod.MANUAL_CODE
+            is AttendanceScreen.PhotoPicker -> AttendanceMethod.QR_CODE // Photo picker also uses QR
+            else -> AttendanceMethod.MANUAL_CODE
+        }
+
+        markAttendanceFromFlow(sessionCode, unitCode, method)
     }
 
-    // Single consolidated function for marking attendance
     private fun markAttendanceFromFlow(
         sessionCode: String,
         unitCode: String,
-        isFromQR: Boolean,
+        method: AttendanceMethod,
         programmeId: String? = null
     ) {
-        // Set appropriate state
-        if (isFromQR) {
-            _attendanceState.update {
-                if (it.qrScannerState == QRScannerState.VERIFIED ||
-                    it.qrScannerState == QRScannerState.ERROR) {
-                    it.copy(
+        // Set appropriate state based on current screen
+        _attendanceState.update { currentState ->
+            when (val screen = currentState.currentScreen) {
+                is AttendanceScreen.QRScanner -> {
+                    currentState.copy(
                         qrScannerState = QRScannerState.MARKING_ATTENDANCE,
                         isLoading = true,
-                        errorMessage = null,
-                        showProgrammeSelection = false
+                        errorMessage = null
                     )
-                } else {
-                    it
                 }
-            }
-        } else {
-            _attendanceState.update {
-                if (it.codeEntryState == CodeEntryState.VERIFIED ||
-                    it.codeEntryState == CodeEntryState.ERROR) {
-                    it.copy(
+                is AttendanceScreen.CodeEntry -> {
+                    currentState.copy(
                         codeEntryState = CodeEntryState.MARKING_ATTENDANCE,
                         isLoading = true,
-                        codeEntryErrorMessage = null,
-                        showProgrammeSelection = false
+                        codeEntryErrorMessage = null
                     )
-                } else {
-                    it
                 }
+                is AttendanceScreen.PhotoPicker -> {
+                    currentState.copy(
+                        currentScreen = AttendanceScreen.PhotoPicker.MarkingAttendance,
+                        isLoading = true,
+                        errorMessage = null
+                    )
+                }
+                else -> currentState
             }
         }
 
         viewModelScope.launch {
             try {
-                val request = createMarkAttendanceRequest(sessionCode, unitCode, programmeId)
+                val request = createMarkAttendanceRequest(sessionCode, unitCode, method, programmeId)
                 when (val result = attendanceRepository.markAttendance(request)) {
                     is ApiResult.Success -> {
-                        if (isFromQR) {
-                            _attendanceState.update {
-                                it.copy(
-                                    qrScannerState = QRScannerState.IDLE,
-                                    isLoading = false,
-                                    attendanceResult = result.data,
-                                    showSuccess = true,
-                                    showQRScanner = false,
-                                    showProgrammeSelection = false,
-                                    verificationResult = null,
-                                    studentLocation = null,
-                                    locationState = LocationState.IDLE
-                                )
-                            }
-                        } else {
-                            _attendanceState.update {
-                                it.copy(
-                                    codeEntryState = CodeEntryState.IDLE,
-                                    isLoading = false,
-                                    attendanceResult = result.data,
-                                    showSuccess = true,
-                                    showCodeEntry = false,
-                                    showProgrammeSelection = false,
-                                    verificationResult = null,
-                                    studentLocation = null,
-                                    locationState = LocationState.IDLE
-                                )
-                            }
+                        _attendanceState.update {
+                            it.copy(
+                                isLoading = false,
+                                attendanceResult = result.data,
+                                currentScreen = AttendanceScreen.Success(result.data),
+                                verificationResult = null,
+                                studentLocation = null,
+                                locationState = LocationState.IDLE,
+                                qrScannerState = QRScannerState.IDLE,
+                                codeEntryState = CodeEntryState.IDLE
+                            )
                         }
                         vibrationHelper.vibrate(200)
                     }
                     is ApiResult.Failure -> {
                         val errorMessage = extractApiErrorMessage(result.error)
-                        if (isFromQR) {
-                            _attendanceState.update {
-                                it.copy(
-                                    qrScannerState = QRScannerState.ERROR,
-                                    isLoading = false,
-                                    errorMessage = errorMessage,
-                                    errorType = AttendanceErrorType.MARKING_ERROR
-                                )
-                            }
-                        } else {
-                            _attendanceState.update {
-                                it.copy(
-                                    codeEntryState = CodeEntryState.ERROR,
-                                    isLoading = false,
-                                    codeEntryErrorMessage = errorMessage,
-                                    errorType = AttendanceErrorType.MARKING_ERROR
-                                )
-                            }
-                        }
-                        _event.send(AttendanceEvent.ShowErrorMessage("Attendance marking failed: $errorMessage"))
+                        handleMarkingError(errorMessage, method)
                     }
                 }
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Network error occurred"
-                if (isFromQR) {
+                handleMarkingError(errorMessage, method)
+            }
+        }
+    }
+
+    private fun handleMarkingError(errorMessage: String, method: AttendanceMethod) {
+        when (method) {
+            AttendanceMethod.QR_CODE -> {
+                if (_attendanceState.value.currentScreen is AttendanceScreen.QRScanner) {
                     _attendanceState.update {
                         it.copy(
                             qrScannerState = QRScannerState.ERROR,
@@ -563,19 +587,30 @@ class AttendanceViewModel(
                 } else {
                     _attendanceState.update {
                         it.copy(
-                            codeEntryState = CodeEntryState.ERROR,
+                            currentScreen = AttendanceScreen.PhotoPicker.Error(errorMessage),
                             isLoading = false,
-                            codeEntryErrorMessage = errorMessage,
+                            errorMessage = errorMessage,
                             errorType = AttendanceErrorType.MARKING_ERROR
                         )
                     }
                 }
-                _event.send(AttendanceEvent.ShowErrorMessage(errorMessage))
             }
+            AttendanceMethod.MANUAL_CODE -> {
+                _attendanceState.update {
+                    it.copy(
+                        codeEntryState = CodeEntryState.ERROR,
+                        isLoading = false,
+                        codeEntryErrorMessage = errorMessage,
+                        errorType = AttendanceErrorType.MARKING_ERROR
+                    )
+                }
+            }
+
+            else -> { }
         }
+        _event.trySend(AttendanceEvent.ShowErrorMessage("Attendance marking failed: $errorMessage"))
     }
 
-    // Consolidated function for retrying mark attendance
     fun retryMarkAttendance() {
         _attendanceState.update { it.copy(errorType = null) }
         val state = _attendanceState.value
@@ -584,26 +619,37 @@ class AttendanceViewModel(
 
         if (sessionCode == null || unitCode == null) return
 
-        markAttendanceFromFlow(sessionCode, unitCode, state.showQRScanner)
+        val method = when (state.currentScreen) {
+            is AttendanceScreen.QRScanner -> AttendanceMethod.QR_CODE
+            is AttendanceScreen.CodeEntry -> AttendanceMethod.MANUAL_CODE
+            is AttendanceScreen.PhotoPicker -> AttendanceMethod.QR_CODE
+            else -> AttendanceMethod.MANUAL_CODE
+        }
+
+        markAttendanceFromFlow(sessionCode, unitCode, method)
     }
 
-    // Mark attendance with programme (uses the same consolidated function)
     private fun markAttendanceWithProgramme(programmeId: String) {
         val state = _attendanceState.value
-        val isFromQR = state.showQRScanner
         val sessionCode = state.currentSessionCode
         val unitCode = state.currentUnitCode
 
-        if (!isFromQR && !state.showCodeEntry) return
         if (sessionCode == null || unitCode == null) return
 
-        // Use the consolidated marking function
-        markAttendanceFromFlow(sessionCode, unitCode, isFromQR, programmeId)
+        val method = when (state.currentScreen) {
+            is AttendanceScreen.QRScanner -> AttendanceMethod.QR_CODE
+            is AttendanceScreen.CodeEntry -> AttendanceMethod.MANUAL_CODE
+            is AttendanceScreen.PhotoPicker -> AttendanceMethod.QR_CODE
+            else -> AttendanceMethod.MANUAL_CODE
+        }
+
+        markAttendanceFromFlow(sessionCode, unitCode, method, programmeId)
     }
 
     private suspend fun createMarkAttendanceRequest(
         sessionCode: String,
         unitCode: String,
+        method: AttendanceMethod,
         programmeId: String? = null
     ): MarkAttendanceRequest {
         return MarkAttendanceRequest(
@@ -613,10 +659,7 @@ class AttendanceViewModel(
             programmeId = programmeId,
             studentLat = _attendanceState.value.studentLocation?.latitude,
             studentLng = _attendanceState.value.studentLocation?.longitude,
-            methodUsed = if (_attendanceState.value.showQRScanner)
-                AttendanceMethod.QR_CODE
-            else
-                AttendanceMethod.MANUAL_CODE
+            methodUsed = method
         )
     }
 
@@ -626,7 +669,7 @@ class AttendanceViewModel(
                 "Network error: ${error.exception.message ?: "Please check your internet connection"}"
             }
             is ApiError.HttpError -> {
-               "Error ${error.statusCode}: ${error.message}"
+                "Error ${error.statusCode}: ${error.message}"
             }
             is ApiError.UnknownError -> {
                 "An unexpected error occurred: ${error.throwable.message ?: "Please try again"}"

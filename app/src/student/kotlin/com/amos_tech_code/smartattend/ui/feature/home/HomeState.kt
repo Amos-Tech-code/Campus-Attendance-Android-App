@@ -17,6 +17,7 @@ data class StudentHomeState(
     val attendedSessions: Int = 0,
     val attendanceRate: Int = 0,
     val currentStreak: Int = 0,
+    val lastStatsUpdate: Long? = null,
     val recentAttendance: List<RecentAttendance> = emptyList(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false
