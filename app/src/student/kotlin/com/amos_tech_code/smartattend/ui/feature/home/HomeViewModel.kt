@@ -30,7 +30,8 @@ class HomeViewModel(
     init {
         fetchUserData()
         observeEnrollment()
-        observeStats() // Primary source of truth
+        observeStats()
+        observeRecentAttendance()
         checkAndRefreshStats() // Check if stats need refresh
     }
 
@@ -63,11 +64,6 @@ class HomeViewModel(
                             isLoading = false
                         )
                     }
-
-                    // If total sessions is zero, trigger a refresh from API
-                    if (statsEntity.totalSessions == 0) {
-                        refreshStatsFromApi()
-                    }
                 } else {
                     // No stats in DAO - show loading and trigger refresh
                     _homeState.update {
@@ -84,7 +80,7 @@ class HomeViewModel(
             // Check if stats are stale (older than 1 hour)
             val currentState = _homeState.value
             val shouldRefresh = currentState.lastStatsUpdate == null ||
-                    System.currentTimeMillis() - (currentState.lastStatsUpdate ?: 0) > 3600000
+                    System.currentTimeMillis() - (currentState.lastStatsUpdate) > 3600000
 
             if (shouldRefresh) {
                 refreshStatsFromApi()
@@ -107,8 +103,6 @@ class HomeViewModel(
                 _homeState.update {
                     it.copy(isLoading = false)
                 }
-                // Also load today's sessions (these come from attendance records, not stats)
-                loadTodaySessions()
             }
             is ApiResult.Failure -> {
                 // API call failed - show error but keep existing stats if any
@@ -123,14 +117,17 @@ class HomeViewModel(
         }
     }
 
-    private suspend fun loadTodaySessions() {
-        // Today's sessions are separate from stats - these come from attendance records
-        val todaySessions = attendanceRepository.getTodaySessions()
-        _homeState.update {
-            it.copy(
-                todaySessions = todaySessions.map { session -> session.toTodaySession() }
-            )
-        }
+    private fun observeRecentAttendance() {
+       viewModelScope.launch {
+           attendanceRepository.observeRecentAttendance(5)
+               .collect { sessions ->
+                   _homeState.update {
+                       it.copy(
+                           recentAttendance = sessions.map { it.toRecentAttendance() }
+                       )
+                   }
+               }
+       }
     }
 
     private fun observeEnrollment() {
@@ -161,7 +158,6 @@ class HomeViewModel(
                 when {
                     statsResult is ApiResult.Success -> {
                         // Stats will be updated via observeStats flow
-                        loadTodaySessions()
                         _homeState.update {
                             it.copy(
                                 isRefreshing = false,

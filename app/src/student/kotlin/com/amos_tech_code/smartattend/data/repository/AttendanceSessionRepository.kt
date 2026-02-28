@@ -180,7 +180,7 @@ class AttendanceSessionRepository (
         }
     }
 
-    suspend fun getTodaySessions(): List<StudentAttendanceRecordEntity> {
+    fun observeTodaySessions(): Flow<List<StudentAttendanceRecordEntity>> {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
@@ -194,9 +194,12 @@ class AttendanceSessionRepository (
         calendar.set(Calendar.MILLISECOND, 999)
         val endOfDay = calendar.timeInMillis
 
-        return attendanceDao.getTodaySessions(startOfDay, endOfDay)
+        return attendanceDao.observeTodaySessions(startOfDay, endOfDay)
     }
 
+    fun observeRecentAttendance(limit: Int): Flow<List<StudentAttendanceRecordEntity>> {
+        return attendanceDao.observeRecentAttendance(limit)
+    }
 
 
 }

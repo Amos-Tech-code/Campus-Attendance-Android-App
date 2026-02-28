@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.ui.components.PullToRefreshIndicator
+import com.amos_tech_code.smartattend.ui.feature.history.getMethodIcon
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
@@ -103,7 +104,7 @@ fun HomeScreen(
                 registrationNo = state.registrationNo,
                 currentSemester = state.currentSemester,
                 date = getCurrentFormattedDate(),
-                scrollBehavior = scrollBehavior
+                //scrollBehavior = scrollBehavior
             )
         },
         bottomBar = { BottomNavigation(navController = navController) },
@@ -130,17 +131,14 @@ fun HomeScreen(
                     )
                 )
                 .padding(paddingValues)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                //.nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
             // Main Content
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                contentPadding = PaddingValues(
-                   horizontal = 16.dp
-                )
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // Quick Stats Cards
                 item {
@@ -228,11 +226,11 @@ private fun HomeScreenTopAppBar(
     registrationNo: String,
     currentSemester: Int,
     date: String,
-    scrollBehavior: TopAppBarScrollBehavior,
+    //scrollBehavior: TopAppBarScrollBehavior,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
-        scrollBehavior = scrollBehavior,
+        //scrollBehavior = scrollBehavior,
         title = {
             Row(
                 modifier = modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp),
@@ -247,14 +245,14 @@ private fun HomeScreenTopAppBar(
                         Text(
                             text = "Hello,",
                             style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
                             text = studentName.split(" ").firstOrNull() ?: "Student",
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                     Text(
@@ -805,6 +803,8 @@ private fun RecentActivitySection(
 private fun RecentActivityItem(
     attendance: RecentAttendance
 ) {
+
+    val icon = remember { getMethodIcon(attendance.method) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -845,10 +845,11 @@ private fun RecentActivityItem(
                 )
             }
         }
-        Chip(
-            label = attendance.method,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
+import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
 import com.amos_tech_code.smartattend.utils.formatDate
 import com.amos_tech_code.smartattend.utils.formatDateTime
@@ -39,7 +40,7 @@ data class RecentAttendance(
     val unitCode: String,
     val date: String,
     val time: String,
-    val method: String
+    val method: AttendanceMethod
 )
 
 // Extension functions for conversion
@@ -62,6 +63,6 @@ fun StudentAttendanceRecordEntity.toRecentAttendance(): RecentAttendance {
         unitCode = unitCode,
         date = attendedAt.formatDate(),
         time = attendedAt.formatDateTime(),
-        method = attendanceMethodUsed.name
+        method = attendanceMethodUsed
     )
 }
