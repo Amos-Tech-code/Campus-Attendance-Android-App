@@ -46,7 +46,7 @@ class RegisterViewModel(
 
     fun register() {
         if (!validateFullName(state.value.fullName) || !validateRegNo(state.value.regNo)) return
-        // ✅ Continue with registration logic
+        // Continue with registration logic
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
@@ -64,6 +64,7 @@ class RegisterViewModel(
                             token = result.data.token,
                             name = result.data.fullName,
                             regNo = result.data.regNumber,
+                            deviceStatus = result.data.deviceStatus,
                             deviceInfo = deviceInfo
                         )
                         _state.update { it.copy(isLoading = false) }

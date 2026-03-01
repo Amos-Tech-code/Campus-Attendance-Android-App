@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend.data.network
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.AttendanceExportRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
+import com.amos_tech_code.smartattend.domain.request.FCMTokenRequest
 import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
@@ -198,4 +199,11 @@ interface ApiService {
     @GET("attendance-manage/record/students/stats")
     suspend fun getStudentAttendanceStats(
     ): Response<AttendanceStatsResponse>
+
+    @PATCH("account/fcm-token/student")
+    suspend fun updateStudentFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
+
+    @PATCH("account/fcm-token/lecturer")
+    suspend fun updateLecturerFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
+
 }

@@ -49,3 +49,29 @@ enum class SeverityLevel {
 enum class StudentEnrollmentSource {
     ATTENDANCE, SELF, MANUAL
 }
+
+/**
+ * Represents device status change request/registration status.
+ */
+enum class DeviceStatus {
+    ACTIVE,           // Registered and approved device
+    PENDING,          // Waiting for approval
+    REJECTED         // Rejected device change
+}
+
+/**
+ * Represents Notification type
+ */
+enum class NotificationType {
+    ATTENDANCE_MARKED,
+    ATTENDANCE_REVOKED,
+    DEVICE_APPROVED,
+    DEVICE_REJECTED,
+    DEVICE_REQUEST,
+    SESSION_STARTED,
+    SESSION_ENDED,
+    SUSPICIOUS_ACTIVITY,
+    SUPPORT_RESPONSE,
+    SYSTEM_ALERT,
+    //ADMIN_ALERT
+}

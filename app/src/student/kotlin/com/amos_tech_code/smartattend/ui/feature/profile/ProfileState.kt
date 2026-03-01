@@ -31,7 +31,7 @@ data class DeviceInfoUiState(
     val deviceId: String = "",
     val deviceModel: String = "",
     val lastLogin: String = "",
-    val isCurrentDevice: Boolean = true,
+    val isRegisteredDevice: Boolean = true,
     val registrationDate: String = ""
 )
 

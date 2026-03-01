@@ -8,6 +8,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.data.repository.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
+import com.amos_tech_code.smartattend.domain.models.DeviceStatus
 import com.amos_tech_code.smartattend.domain.models.StudentEnrollmentSource
 import com.amos_tech_code.smartattend.domain.request.ProgrammeSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
@@ -217,6 +218,7 @@ class ProfileViewModel(
     fun fetchProfileData() {
         val studentName = session.getName()
         val registrationNo = session.getRegNo()
+        val deviceStatus = session.getDeviceStatus()
 
         _profileState.update {
             it.copy(
@@ -227,7 +229,7 @@ class ProfileViewModel(
                 deviceInfo = DeviceInfoUiState(
                     deviceId = session.getDeviceId() ?: "",
                     deviceModel = session.getDeviceModel() ?: "",
-                    isCurrentDevice = true
+                    isRegisteredDevice = deviceStatus == DeviceStatus.ACTIVE
                 )
             )
         }

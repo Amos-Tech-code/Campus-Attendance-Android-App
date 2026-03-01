@@ -58,10 +58,11 @@ class LoginViewModel(
                             token = result.data.token,
                             name = result.data.fullName,
                             regNo = result.data.regNumber,
+                            deviceStatus = result.data.deviceStatus,
                             deviceInfo = deviceInfo
                         )
                         _state.update { it.copy(isLoading = false) }
-                        _event.trySend(LoginEvent.NavigateToHome)
+                        _event.trySend(LoginEvent.NavigateToHome(result.data.message))
                     }
 
                     is ApiResult.Failure -> {

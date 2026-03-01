@@ -825,9 +825,15 @@ private fun DeviceInfoCard(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Registered & Active",
+                        text = if (deviceInfo.isRegisteredDevice)
+                            "✓ Registered & Active"
+                        else
+                            "⚠ Not Registered Device",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (deviceInfo.isRegisteredDevice)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.error
                     )
                 }
             }

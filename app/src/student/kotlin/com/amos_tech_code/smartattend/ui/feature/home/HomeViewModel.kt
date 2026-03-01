@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
 import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
+import com.amos_tech_code.smartattend.domain.models.DeviceStatus
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,11 +39,14 @@ class HomeViewModel(
     private fun fetchUserData() {
         val studentName = session.getName()
         val registrationNo = session.getRegNo()
+        val deviceStatus = session.getDeviceStatus()
 
         _homeState.update {
             it.copy(
                 studentName = studentName ?: "",
-                registrationNo = registrationNo ?: ""
+                registrationNo = registrationNo ?: "",
+                deviceStatus = deviceStatus,
+                showDeviceWarning = deviceStatus != DeviceStatus.ACTIVE
             )
         }
     }

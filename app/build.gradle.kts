@@ -7,6 +7,8 @@ plugins {
     // Kotlin Serialization
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    // Google services
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -128,6 +130,10 @@ dependencies {
     implementation(libs.accompanist.permissions)
     // Google Play Services location
     implementation(libs.play.services.location)
+
+    //Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     //Kotlin Date Time
     implementation(libs.kotlinx.datetime)

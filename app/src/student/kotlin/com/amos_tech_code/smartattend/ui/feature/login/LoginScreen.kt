@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.login
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,7 +63,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = koinViewModel()
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-
+    val context = LocalContext.current
     // Collect state and events
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showErrorDialog by remember { mutableStateOf(false) }
@@ -75,15 +77,17 @@ fun LoginScreen(
                 if (event.type == ErrorMessageType.NETWORK) showNetworkErrorDialog = true else showErrorDialog = true
             }
 
-            LoginEvent.NavigateToHome -> {
+            is LoginEvent.NavigateToHome -> {
                 navController.navigate(HomeRoute) {
                     popUpTo(SignInRoute) { inclusive = true }
                 }
+                Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
             }
 
             LoginEvent.NavigateToRegister -> {
                 navController.navigate(RegisterRoute)
             }
+
         }
     }
 

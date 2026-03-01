@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.home
 import com.amos_tech_code.smartattend.data.local.room.entities.StudentAttendanceRecordEntity
 import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
 import com.amos_tech_code.smartattend.domain.models.AttendanceSessionStatus
+import com.amos_tech_code.smartattend.domain.models.DeviceStatus
 import com.amos_tech_code.smartattend.utils.formatDate
 import com.amos_tech_code.smartattend.utils.formatDateTime
 
@@ -10,6 +11,8 @@ import com.amos_tech_code.smartattend.utils.formatDateTime
 data class StudentHomeState(
     val studentName: String = "",
     val registrationNo: String = "",
+    val deviceStatus: DeviceStatus = DeviceStatus.ACTIVE,
+    val showDeviceWarning: Boolean = false,
     val programme: String = "",
     val currentYear: Int = 0,
     val currentSemester: Int = 0,

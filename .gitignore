@@ -15,3 +15,9 @@
 local.properties
 secret.properties
 .kotlin/errors
+# Prevent all google-services.json files from being committed
+**/google-services.json
+# Firebase config files
+app/src/student/google-services.json
+app/src/lecturer/google-services.json
+
