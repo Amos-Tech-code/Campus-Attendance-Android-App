@@ -7,6 +7,7 @@ import com.amos_tech_code.smartattend.data.local.room_db.ClassTrackProDatabase
 import com.amos_tech_code.smartattend.data.local.room_db.migrations.MIGRATION_1_2
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
+import com.amos_tech_code.smartattend.data.repository.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceRepository
 import com.amos_tech_code.smartattend.data.repository.ExportRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
@@ -44,14 +45,16 @@ val lecturerDataModule  = module {
     single { get<ClassTrackProDatabase>().attendanceExportDao() }
 
     // Provide Repositories
+    single { AccountRepository(get(), get(), get(), get(), get()) }
+
     single { AcademicSetUpRepository(get(), get(), get(), get()) }
 
     single { UniversityRepository(get()) }
 
     single { AttendanceRepository(get(), get()) }
 
-    single { SessionRepository(get(), get()) }
+    single { SessionRepository(get(), get(), get()) }
 
-    single { ExportRepository(get(), get(), get(), get()) }
+    single { ExportRepository(get(), get(), get(), get(), get( )) }
 
 }

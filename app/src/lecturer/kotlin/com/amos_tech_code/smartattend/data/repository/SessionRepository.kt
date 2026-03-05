@@ -7,6 +7,7 @@ import androidx.paging.insertSeparators
 import androidx.paging.map
 import com.amos_tech_code.smartattend.data.local.room_db.dao.AttendanceSessionHistoryDao
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceSessionHistoryEntity
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.mappers.toEntity
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
@@ -37,6 +38,7 @@ import kotlin.time.Instant
 
 class SessionRepository(
     private val apiService: ApiService,
+    private val session: ClassTrackProSession,
     private val sessionHistoryDao: AttendanceSessionHistoryDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
@@ -51,13 +53,13 @@ class SessionRepository(
         val result = safeApiCall { apiService.startAttendanceSession(request) }
 
         if(result is ApiResult.Success) {
-            try {
+            runCatching {
                 withContext(ioDispatcher) {
                     val sessionEntity = result.data.toEntity()
                     sessionHistoryDao.insert(sessionEntity)
                 }
-            } catch (e: Exception) {
-                //Log.e("SessionRepository", "Error inserting session into database", e)
+            }.onFailure {
+                session.setAttendanceSessionHistorySyncStatus(false)
             }
         }
 
@@ -76,7 +78,7 @@ class SessionRepository(
                     sessionHistoryDao.insert(sessionEntity)
                 }
             } catch (e: Exception) {
-                //Log.e("SessionRepository", "Error inserting session into database", e)
+                session.setAttendanceSessionHistorySyncStatus(false)
             }
         }
         return result
@@ -103,7 +105,7 @@ class SessionRepository(
                     )
                 }
             } catch (e : Exception) {
-                //Log.e("SessionRepository", "Error updating session status in database", e)
+                session.setAttendanceSessionHistorySyncStatus(false)
             }
         }
         return result
@@ -244,9 +246,11 @@ class SessionRepository(
                     }
                 }
 
+                session.setAttendanceSessionHistorySyncStatus(true)
                 ApiResult.Success(Unit)
 
             } catch (e: Exception) {
+                session.setAttendanceSessionHistorySyncStatus(false)
                 return@withContext ApiResult.Failure(ApiError.UnknownError(e))
             }
         }

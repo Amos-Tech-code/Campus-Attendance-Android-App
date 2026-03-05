@@ -35,7 +35,6 @@ class HomeViewModel (
             // Check if profile is complete
             if (!session.isProfileComplete()) {
                 _state.value = HomeUiState.NoInstitutionSetup
-                _event.send(HomeEvent.NavigateToSetup)
                 return@launch
             }
 

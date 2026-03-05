@@ -88,4 +88,7 @@ interface AttendanceExportDao {
     """)
     fun pagingSourceWithQuery(universityId: String, query: String): PagingSource<Int, AttendanceExportEntity>
 
+    @Query("DELETE FROM attendance_exports")
+    suspend fun clearAll()
+
 }

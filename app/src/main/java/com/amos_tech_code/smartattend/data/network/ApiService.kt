@@ -130,7 +130,6 @@ interface ApiService {
         @Body request: RemoveAttendanceRecordRequest
     ) : Response<Unit>
 
-
     @POST("attendance-manage/record/export")
     suspend fun exportAttendanceRecords(
         @Body request: AttendanceExportRequest
@@ -147,6 +146,10 @@ interface ApiService {
         @Query("size") size: Int = 10,
         //@Query("sort") sort: String = "desc"
     ) : Response<ExportsListResponseDto>
+
+
+    @PATCH("account/fcm-token/lecturer")
+    suspend fun updateLecturerFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
 
     /**
      *
@@ -202,8 +205,5 @@ interface ApiService {
 
     @PATCH("account/fcm-token/student")
     suspend fun updateStudentFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
-
-    @PATCH("account/fcm-token/lecturer")
-    suspend fun updateLecturerFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
 
 }

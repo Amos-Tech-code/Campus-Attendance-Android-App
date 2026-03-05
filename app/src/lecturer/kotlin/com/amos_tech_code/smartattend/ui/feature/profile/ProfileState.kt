@@ -17,6 +17,7 @@ data class ProfileState(
     val editingNameError: String? = null,
     val bottomSheetErrorMessage: String? = null,
     val isExporting: Boolean = false,
+    val isLoggingOut: Boolean = false,
     val lastSyncTime: String? = null
 )
 

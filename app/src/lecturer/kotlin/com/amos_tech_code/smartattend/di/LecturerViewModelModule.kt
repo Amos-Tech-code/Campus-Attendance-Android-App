@@ -29,7 +29,7 @@ val lecturerViewModelModule = module {
 
     viewModel { StartSessionViewModel(get(), get(), get(), get()) }
 
-    viewModel { SessionHistoryViewModel(get()) }
+    viewModel { SessionHistoryViewModel(get(), get()) }
 
     viewModel { StudentLookupViewModel() }
 

@@ -1,14 +1,14 @@
 package com.amos_tech_code.smartattend.notifications
 
-import android.os.Bundle
-import com.amos_tech_code.smartattend.domain.models.NotificationType
 import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.amos_tech_code.smartattend.MainActivity
 import com.amos_tech_code.smartattend.SmartAttendApplication
+import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 

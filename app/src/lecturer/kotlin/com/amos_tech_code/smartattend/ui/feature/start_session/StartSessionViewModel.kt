@@ -20,6 +20,9 @@ import com.amos_tech_code.smartattend.utils.LocationServiceException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -225,20 +228,29 @@ class StartSessionViewModel(
             showCompleteProfileDialog.value = true
         } else {
             viewModelScope.launch {
-                try {
-                    val university = academicSetUpRepository.getActiveUniversityAcademics()
-                    university?.let {
-                        allProgrammes = it.programmes
-                        _state.update { currentState ->
-                            currentState.copy(
-                                universityId = it.id,
-                                availableUnits = getCommonUnits(emptyList()) // Start with empty selection
-                            )
+                academicSetUpRepository
+                    .observeActiveUniversityAcademics()
+                    .onEach { university ->
+
+                        university?.let {
+
+                            allProgrammes = it.programmes
+
+                            _state.update { current ->
+                                current.copy(
+                                    universityId = it.id,
+                                    availableUnits = getCommonUnits(emptyList())
+                                )
+                            }
                         }
                     }
-                } catch (e: Exception) {
-                    _event.send(StartSessionEvent.ShowErrorMessage("Failed to retrieve academic data."))
-                }
+                    .catch {
+                        _event.send(
+                            StartSessionEvent.ShowErrorMessage(
+                                "Failed to retrieve academic data."
+                            )
+                        )
+                    }
             }
         }
     }

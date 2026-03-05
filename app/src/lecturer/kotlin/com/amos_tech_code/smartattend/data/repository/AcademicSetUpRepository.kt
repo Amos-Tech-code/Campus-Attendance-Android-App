@@ -160,7 +160,7 @@ class AcademicSetUpRepository(
                 saveUniversitySetup(response)
             } catch (e: Exception) {
                 session.setAcademicSyncStatus(false)
-                Log.e("AcademicSetUpRepository", "Failed to save university setup: ${e.message}")
+                //Log.e("AcademicSetUpRepository", "Failed to save university setup: ${e.message}")
             }
         }
     }
@@ -330,7 +330,7 @@ class AcademicSetUpRepository(
 
             is ApiResult.Failure -> {
                 session.setAcademicSyncStatus(false)
-                Log.e("AcademicSetUpRepository", "Sync failed: ${result.error}")
+                //Log.e("AcademicSetUpRepository", "Sync failed: ${result.error}")
             }
         }
     }
@@ -340,22 +340,23 @@ class AcademicSetUpRepository(
      * It triggers a network sync if the data hasn't been synced before.
      * @return A list of [com.amos_tech_code.smartattend.domain.models.University] domain models.
      */
-    suspend fun getAllAcademicsForLecturer(): List<University> {
+    suspend fun observeAllAcademicsForLecturer(): Flow<List<University>> {
         // Sync if not done yet
         if (!session.getAcademicSyncStatus()) {
             try {
                 syncLecturerAcademics(null)
             } catch (e: Exception) {
                 // Handle sync failure
-                Log.e("AcademicSetUpRepository", "Sync failed: ${e.message}")
+                //Log.e("AcademicSetUpRepository", "Sync failed: ${e.message}")
             }
         }
 
-        // Fetch all from Room
-        val dbUniversities = lecturerAcademicsDao.getUniversitiesWithProgrammesAndUnits()
-
-        // Map to domain models
-        return dbUniversities.map { it.toDomain() }
+        // Fetch all from Room & map to domain
+        return lecturerAcademicsDao
+            .observeUniversitiesWithProgrammesAndUnits()
+            .map { dbUniversities ->
+                dbUniversities.map { it.toDomain() }
+            }
     }
 
     /**
@@ -363,11 +364,13 @@ class AcademicSetUpRepository(
      * If no university is explicitly marked as active, it returns the first one in the list.
      * @return The active [University] domain model, or null if no universities are set up.
      */
-    suspend fun getActiveUniversityAcademics(): University? {
-        val allUniversities = getAllAcademicsForLecturer()
-        val activeUniversity = allUniversities.find { it.isActive }
+    suspend fun observeActiveUniversityAcademics(): Flow<University?> {
 
-        return activeUniversity ?: allUniversities.firstOrNull()
+        return observeAllAcademicsForLecturer()
+            .map { universities ->
+                universities.find { it.isActive }
+                    ?: universities.firstOrNull()
+            }
     }
 
     /**

@@ -20,6 +20,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -62,13 +67,22 @@ class InstitutionDetailsViewModel(
     }
 
     private fun loadInstitution(institutionId: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            try {
-                val institution = universityRepository.getUniversitiesWithProgrammesAndUnits()
-                    .find { it.university.id == institutionId }
-                val activeTerm = universityRepository.getActiveAcademicTerm(institutionId)
-                val departments = universityRepository.getDepartmentsForUniversity(institutionId) // Add this
+
+        universityRepository
+            .observeUniversitiesWithProgrammesAndUnits()
+            .map { universities ->
+                universities.find { it.university.id == institutionId }
+            }
+            .onStart {
+                _state.update { it.copy(isLoading = true, error = null) }
+            }
+            .onEach { institution ->
+
+                val activeTerm =
+                    universityRepository.getActiveAcademicTerm(institutionId)
+
+                val departments =
+                    universityRepository.getDepartmentsForUniversity(institutionId)
 
                 _state.update {
                     it.copy(
@@ -79,11 +93,22 @@ class InstitutionDetailsViewModel(
                         expandedSections = setOf("overview", "programmes")
                     )
                 }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = "Failed to load institution") }
-                _events.send(InstitutionDetailsEvent.ShowError("Failed to load institution details"))
             }
-        }
+            .catch {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Failed to load institution"
+                    )
+                }
+
+                _events.send(
+                    InstitutionDetailsEvent.ShowError(
+                        "Failed to load institution details"
+                    )
+                )
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun toggleEditMode(mode: EditMode) {

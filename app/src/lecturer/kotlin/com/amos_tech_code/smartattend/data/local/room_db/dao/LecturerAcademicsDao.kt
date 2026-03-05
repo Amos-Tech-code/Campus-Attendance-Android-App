@@ -23,7 +23,7 @@ interface LecturerAcademicsDao {
     ------------------------*/
     @Transaction
     @Query("SELECT * FROM universities")
-    suspend fun getUniversitiesWithProgrammesAndUnits(): List<UniversityWithProgrammesAndUnits>
+    fun observeUniversitiesWithProgrammesAndUnits(): Flow<List<UniversityWithProgrammesAndUnits>>
 
     @Transaction
     @Query("SELECT * FROM universities WHERE id = :universityId")

@@ -19,9 +19,13 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         private const val KEY_EMAIL = "email"
         private const val KEY_PROFILE_COMPLETE = "profile_complete"
         private const val KEY_PROFILE_CREATED_AT = "profile_created_at"
-        private const val KEY_ACADEMIC_SYNC_STATUS = "academic_sync_status"
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
         private const val TOKEN_VALIDITY_DAYS = 10
+
+        // --- SYNC KEYS ---
+        private const val KEY_ACADEMIC_SYNC_STATUS = "academic_sync_status"
+        private const val KEY_ATTENDANCE_SESSION_HISTORY_SYNC_STATUS = "attendance_session_history_sync_status"
+        private const val KEY_EXPORT_RECORD_SYNC_STATUS = "export_record_sync_status"
 
         // ---  SETTINGS KEYS ---
         private const val KEY_LOCATION_ACCURACY = "setting_location_accuracy"
@@ -51,15 +55,8 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         }
     }
 
-    override fun saveName(name: String) {
+    fun saveName(name: String) {
         prefs.edit { putString(KEY_NAME, name) }
-    }
-
-    override fun saveRegistrationNumber(registrationNo: String) {
-        /**
-         * No saving registrationNumber
-         * Just overriding a method for the interface
-         */
     }
 
     fun setSetupComplete(isSetupComplete: Boolean) {
@@ -78,6 +75,24 @@ class ClassTrackProSession(context: Context) : SessionProvider {
 
     fun getAcademicSyncStatus(): Boolean {
         return prefs.getBoolean(KEY_ACADEMIC_SYNC_STATUS, false)
+    }
+
+    fun setAttendanceSessionHistorySyncStatus(isSynced: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_ATTENDANCE_SESSION_HISTORY_SYNC_STATUS, isSynced)
+            apply()
+        }
+    }
+
+    fun getAttendanceSessionHistorySyncStatus(): Boolean {
+        return prefs.getBoolean(KEY_ATTENDANCE_SESSION_HISTORY_SYNC_STATUS, false)
+    }
+
+    fun setExportRecordSyncStatus(isSynced: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_EXPORT_RECORD_SYNC_STATUS, isSynced)
+            apply()
+        }
     }
 
     override fun getValidToken(): String? {

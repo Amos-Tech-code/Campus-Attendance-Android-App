@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
-import com.amos_tech_code.smartattend.data.repositories.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
+import com.amos_tech_code.smartattend.data.repository.AccountRepository
 import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileRequest
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -262,8 +262,10 @@ class ProfileViewModel(
     }
 
     private fun confirmLogout() {
+        _state.update { it.copy(isLoggingOut = true) }
         viewModelScope.launch {
-            session.clearSession()
+            accountRepository.logOut()
+            _state.update { it.copy(isLoggingOut = false) }
             _event.send(ProfileEvent.LogOut)
         }
     }

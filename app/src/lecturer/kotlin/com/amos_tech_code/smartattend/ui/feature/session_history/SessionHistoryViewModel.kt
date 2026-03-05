@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceSessionHistoryEntity
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiError
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
@@ -17,7 +18,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class SessionHistoryViewModel(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val session: ClassTrackProSession
 ) : ViewModel() {
 
     private val _event = Channel<SessionHistoryEvent>()
@@ -26,6 +28,11 @@ class SessionHistoryViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    init {
+        if (!session.getAttendanceSessionHistorySyncStatus()) {
+            refresh()
+        }
+    }
     val pagedSessions: Flow<PagingData<SessionUiModel>> = sessionRepository
         .getGroupedSessionsPaged()
         .cachedIn(viewModelScope)

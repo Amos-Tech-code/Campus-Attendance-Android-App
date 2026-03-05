@@ -44,8 +44,8 @@ class UniversityRepository(
     suspend fun getActiveAcademicTerm(universityId: String): AcademicTermEntity? =
         lecturerAcademicsDao.getActiveAcademicTermForUniversity(universityId)
 
-    suspend fun getUniversitiesWithProgrammesAndUnits(): List<UniversityWithProgrammesAndUnits> =
-        lecturerAcademicsDao.getUniversitiesWithProgrammesAndUnits()
+    fun observeUniversitiesWithProgrammesAndUnits(): Flow<List<UniversityWithProgrammesAndUnits>> =
+        lecturerAcademicsDao.observeUniversitiesWithProgrammesAndUnits()
 
     suspend fun getProgrammesForUniversity(universityId: String): List<ProgrammeWithUnits> {
         return lecturerAcademicsDao.getUniversityWithProgrammesAndUnits(universityId)?.programmes ?: emptyList()

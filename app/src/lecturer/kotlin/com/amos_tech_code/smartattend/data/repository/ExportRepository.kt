@@ -7,6 +7,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import com.amos_tech_code.smartattend.data.local.room_db.dao.AttendanceExportDao
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceExportEntity
+import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
@@ -28,10 +29,12 @@ import kotlinx.coroutines.withContext
 
 class ExportRepository(
     private val apiService: ApiService,
+    private val session: ClassTrackProSession,
     private val exportDao: AttendanceExportDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val fileDownloadManager: FileDownloadManager
-) {
+)
+{
 
     suspend fun getExportStatus(exportId: String): ApiResult<AttendanceExportRecordDto> {
         return safeApiCall {
@@ -102,7 +105,11 @@ class ExportRepository(
                     val response = result.data
 
                     val entities = response.exports.mapNotNull { dto ->
-                        runCatching { convertDtoToEntity(dto) }.getOrNull()
+                        runCatching { convertDtoToEntity(dto) }
+                            .onFailure {
+                                session.setExportRecordSyncStatus(false)
+                            }
+                            .getOrNull()
                     }
 
                     if (entities.isNotEmpty()) {
@@ -117,24 +124,15 @@ class ExportRepository(
                 }
 
                 is ApiResult.Failure -> {
+                    session.setExportRecordSyncStatus(false)
                     return@withContext ApiResult.Failure(result.error)
                 }
             }
         }
 
+        // FULL SYNC COMPLETED
+        session.setExportRecordSyncStatus(true)
         ApiResult.Success(Unit)
-    }
-
-    private suspend fun syncExportsToDatabase(
-        response: ExportsListResponseDto,
-    ) {
-        val entities = response.exports.map { dto ->
-            convertDtoToEntity(dto)
-        }
-
-        if (entities.isNotEmpty()) {
-            exportDao.insertAllExports(entities)
-        }
     }
 
     // Export attendance records and save to local database
@@ -168,16 +166,20 @@ class ExportRepository(
         if (result is ApiResult.Success) {
             // Save to local database
             withContext(ioDispatcher) {
-                saveExportToDatabase(
-                    response = result.data,
-                    universityId = universityId,
-                    weekRange = weekRange,
-                    yearOfStudy = yearOfStudy,
-                    semester = semester,
-                    programmeName = programmeName,
-                    unitName = unitName,
-                    unitCode = unitCode
-                )
+                runCatching {
+                    saveExportToDatabase(
+                        response = result.data,
+                        universityId = universityId,
+                        weekRange = weekRange,
+                        yearOfStudy = yearOfStudy,
+                        semester = semester,
+                        programmeName = programmeName,
+                        unitName = unitName,
+                        unitCode = unitCode
+                    )
+                }.onFailure {
+                    session.setExportRecordSyncStatus(false)
+                }
             }
         }
 

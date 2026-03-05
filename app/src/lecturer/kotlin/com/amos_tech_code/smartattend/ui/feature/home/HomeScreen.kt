@@ -1228,7 +1228,7 @@ private fun NoInstitutionSetupState(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Welcome to SmartAttend!",
+            text = "Welcome to ClassTrack Pro!",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold
             ),
