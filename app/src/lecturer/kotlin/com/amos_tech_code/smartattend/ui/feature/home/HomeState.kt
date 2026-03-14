@@ -11,7 +11,6 @@ sealed class HomeUiState {
         val allUniversities: List<UniversityWithStats>,
         val activeUniversity: UniversityWithStats?,
         val todaysSessions: List<AttendanceSessionHistoryEntity>,
-        //val recentSessions: List<AttendanceSessionHistoryEntity>,
         val totalNotifications: Int = 0,
     ) : HomeUiState()
     data class Error(val message: String) : HomeUiState()

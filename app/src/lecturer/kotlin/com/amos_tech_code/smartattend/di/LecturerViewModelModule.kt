@@ -21,7 +21,7 @@ val lecturerViewModelModule = module {
 
     viewModel { SetupViewModel(get(), get()) }
 
-    viewModel { HomeViewModel(get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get()) }
 
     viewModel { LiveAttendanceViewModel(get(), get(), get()) }
 

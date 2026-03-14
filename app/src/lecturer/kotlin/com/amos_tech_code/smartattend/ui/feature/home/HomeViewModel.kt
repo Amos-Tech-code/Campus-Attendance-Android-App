@@ -3,6 +3,7 @@ package com.amos_tech_code.smartattend.ui.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
+import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
 import kotlinx.coroutines.channels.Channel
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel (
     private val session: ClassTrackProSession,
     private val universityRepository: UniversityRepository,
+    private val academicSetUpRepository: AcademicSetUpRepository,
     private val sessionHistoryRepository: SessionRepository
 ) : ViewModel() {
 
@@ -32,37 +34,49 @@ class HomeViewModel (
 
     private fun loadHomeData() {
         viewModelScope.launch {
-            // Check if profile is complete
+            // First, check if profile is complete
             if (!session.isProfileComplete()) {
                 _state.value = HomeUiState.NoInstitutionSetup
                 return@launch
             }
 
-            // Combine all flows
+            // Check if academic data needs syncing
+            if (!session.getAcademicSyncStatus()) {
+                _state.value = HomeUiState.Loading
+                try {
+                    academicSetUpRepository.syncLecturerAcademics(null)
+                } catch (e: Exception) {
+                    _state.value = HomeUiState.Error("Failed to sync academic data: ${e.message}")
+                    return@launch
+                }
+            }
+
+            // Now observe the data
             combine(
                 universityRepository.observeAllUniversitiesWithStats(),
                 sessionHistoryRepository.observeTodaysSessions(),
-                //sessionHistoryRepository.observeRecentSessions(5)
             ) { universitiesWithStats, todaysSessions ->
-                val activeUniversity = universitiesWithStats.filter { it.university.isActive }
-                val lecturerName = session.getName() ?: "Lecturer"
-
+                // If still no universities after sync, show empty state
                 if (universitiesWithStats.isEmpty()) {
                     HomeUiState.NoInstitutionSetup
                 } else {
+                    val activeUniversity = universitiesWithStats.find { it.university.isActive }
+                    val lecturerName = session.getName() ?: "Lecturer"
+
                     // Auto-select first active university if none selected
-                    selectedUniversityId = selectedUniversityId ?: universitiesWithStats.firstOrNull()?.university?.id
+                    selectedUniversityId = selectedUniversityId ?: activeUniversity?.university?.id
+                            ?: universitiesWithStats.firstOrNull()?.university?.id
 
                     HomeUiState.SetupComplete(
                         lecturerName = lecturerName,
-                        allUniversities = universitiesWithStats,
-                        activeUniversity = activeUniversity.firstOrNull(),
+                        allUniversities = universitiesWithStats.sortedByDescending { it.university.isActive },
+                        activeUniversity = activeUniversity,
                         todaysSessions = todaysSessions,
                     )
                 }
             }
                 .catch { error ->
-                    HomeUiState.Error("Failed to load data: ${error.message}")
+                    _state.value = HomeUiState.Error("Failed to load data: ${error.message}")
                 }
                 .collect { newState ->
                     _state.value = newState

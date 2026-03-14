@@ -484,7 +484,8 @@ private fun UniversitySelector(
                 UniversityChip(
                     university = uniWithStats.university,
                     isSelected = uniWithStats.university.id == selectedUniversityId,
-                    onClick = { onUniversitySelect(uniWithStats.university.id) }
+                    onClick = { onUniversitySelect(uniWithStats.university.id) },
+                    modifier = Modifier.animateItem()
                 )
             }
         }
@@ -493,11 +494,13 @@ private fun UniversitySelector(
 
 @Composable
 private fun UniversityChip(
+    modifier: Modifier = Modifier,
     university: UniversityEntity,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
+        modifier = modifier,
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
         else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
