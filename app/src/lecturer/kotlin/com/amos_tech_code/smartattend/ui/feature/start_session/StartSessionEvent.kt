@@ -33,5 +33,6 @@ sealed class SessionUiEvent {
     data class AttendanceMethodChanged(val method: AttendanceMethod) : SessionUiEvent() // New
     object ShowProgrammeSelection : SessionUiEvent()
     object ShowUnitSelection : SessionUiEvent()
+    object RetryLoadAcademicSetup : SessionUiEvent()
     object StartSession : SessionUiEvent()
 }

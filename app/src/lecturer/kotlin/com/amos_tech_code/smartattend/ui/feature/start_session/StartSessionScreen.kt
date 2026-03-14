@@ -38,7 +38,9 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
@@ -53,11 +55,14 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -383,7 +388,7 @@ fun StartSessionScreen(
     // Programme Selection Dialog
     if (state.showProgrammeSelection) {
         ProgrammeSelectionDialog(
-            allProgrammes = viewModel.allProgrammes,
+            allProgrammes = state.availableProgrammes,
             selectedProgrammes = state.selectedProgrammes,
             onProgrammeSelectionChanged = { programme, selected ->
                 viewModel.onEvent(SessionUiEvent.ProgrammeSelectionChanged(programme, selected))
@@ -899,61 +904,151 @@ private fun AcademicSelectionCard(
                 )
             }
 
-            // Programme Selection
-            SelectionField(
-                value = if (state.selectedProgrammes.isEmpty()) ""
-                else "${state.selectedProgrammes.size} programme(s) selected",
-                label = "Select Programmes",
-                placeholder = "Choose programmes",
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Group,
-                        "Programmes",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                onClick = { onEvent(SessionUiEvent.ShowProgrammeSelection) },
-                supportingMessage = if (state.selectedProgrammes.isNotEmpty())
-                    "Units will be common across all selected programmes"
-                else "Tap to select one or more programmes"
-            )
-
-            // Unit Selection
-            SelectionField(
-                value = state.selectedUnit?.let { "${it.code} - ${it.name}" } ?: "",
-                label = "Select Unit",
-                placeholder = "Choose a unit",
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Book,
-                        "Unit",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                onClick = {
-                    if (state.selectedProgrammes.isNotEmpty()) {
-                        onEvent(SessionUiEvent.ShowUnitSelection)
+            when {
+                state.isLoadingAcademic -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Loading academic data...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                },
-                supportingMessage = if (state.selectedProgrammes.isEmpty())
-                    "Select programmes first"
-                else if (state.availableUnits.isEmpty())
-                    "No common units available"
-                else "${state.availableUnits.size} common units available"
-            )
+                }
 
-            // Selected Programmes Chips
-            AnimatedVisibility(
-                visible = state.selectedProgrammes.isNotEmpty(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                SelectedProgrammesChips(
-                    programmes = state.selectedProgrammes,
-                    onRemove = { programme ->
-                        onEvent(SessionUiEvent.ProgrammeSelectionChanged(programme, false))
+                state.academicError != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = state.academicError,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            Button(
+                                onClick = { onEvent(SessionUiEvent.RetryLoadAcademicSetup) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Retry")
+                            }
+                        }
                     }
-                )
+                }
+
+                state.availableProgrammes.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = "No Data",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = "No programmes available. Please sync your academic data.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    // Programme Selection
+                    SelectionField(
+                        value = if (state.selectedProgrammes.isEmpty()) ""
+                        else "${state.selectedProgrammes.size} programme(s) selected",
+                        label = "Select Programmes",
+                        placeholder = "Choose programmes",
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Group,
+                                "Programmes",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        onClick = { onEvent(SessionUiEvent.ShowProgrammeSelection) },
+                        supportingMessage = if (state.selectedProgrammes.isNotEmpty())
+                            "Units will be common across all selected programmes"
+                        else "Tap to select one or more programmes"
+                    )
+
+                    // Unit Selection
+                    SelectionField(
+                        value = state.selectedUnit?.let { "${it.code} - ${it.name}" } ?: "",
+                        label = "Select Unit",
+                        placeholder = "Choose a unit",
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Book,
+                                "Unit",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        onClick = {
+                            if (state.selectedProgrammes.isNotEmpty()) {
+                                onEvent(SessionUiEvent.ShowUnitSelection)
+                            }
+                        },
+                        supportingMessage = if (state.selectedProgrammes.isEmpty())
+                            "Select programmes first"
+                        else if (state.availableUnits.isEmpty())
+                            "No common units available"
+                        else "${state.availableUnits.size} common units available"
+                    )
+
+                    // Selected Programmes Chips
+                    AnimatedVisibility(
+                        visible = state.selectedProgrammes.isNotEmpty(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        SelectedProgrammesChips(
+                            programmes = state.selectedProgrammes,
+                            onRemove = { programme ->
+                                onEvent(SessionUiEvent.ProgrammeSelectionChanged(programme, false))
+                            }
+                        )
+                    }
+                }
             }
         }
     }

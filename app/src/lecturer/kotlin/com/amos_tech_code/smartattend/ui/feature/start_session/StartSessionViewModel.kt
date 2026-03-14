@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.ui.feature.start_session
 
 import android.app.Activity
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +32,8 @@ class StartSessionViewModel(
     val locationService: LocationService,
     private val sessionRepository: SessionRepository,
     private val academicSetUpRepository: AcademicSetUpRepository
-) : ViewModel() {
+) : ViewModel()
+{
 
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state
@@ -44,8 +46,6 @@ class StartSessionViewModel(
 
     var showCompleteProfileDialog = mutableStateOf(false)
         private set
-
-    var allProgrammes: List<Programme> = emptyList()
 
     init {
         loadAcademicSetup()
@@ -126,6 +126,9 @@ class StartSessionViewModel(
             }
             SessionUiEvent.ShowUnitSelection -> {
                 _state.update { it.copy(showUnitSelection = true) }
+            }
+            SessionUiEvent.RetryLoadAcademicSetup -> {
+                refreshAcademicData()
             }
             SessionUiEvent.StartSession -> {
                 startSession()
@@ -227,29 +230,53 @@ class StartSessionViewModel(
             showCompleteProfileDialog.value = true
         } else {
             viewModelScope.launch {
-                academicSetUpRepository
-                    .observeActiveUniversityAcademics()
-                    .onEach { university ->
+                // Set academic loading state
+                _state.update { it.copy(isLoadingAcademic = true) }
 
-                        university?.let {
+                try {
+                    // First, check if we need to sync
+                    if (!session.getAcademicSyncStatus()) {
+                        academicSetUpRepository.syncLecturerAcademics(null)
+                    }
 
-                            allProgrammes = it.programmes
-
-                            _state.update { current ->
-                                current.copy(
-                                    universityId = it.id,
-                                    availableUnits = getCommonUnits(emptyList())
-                                )
+                    // Observe active university academics
+                    academicSetUpRepository
+                        .observeActiveUniversityAcademics()
+                        .collect { university ->
+                            Log.i("Academic Selection", university?.programmes.toString())
+                            if (university != null) {
+                                // Update state with university data
+                                _state.update { current ->
+                                    current.copy(
+                                        universityId = university.id,
+                                        availableProgrammes = university.programmes,
+                                        isLoadingAcademic = false,
+                                        academicError = null
+                                    )
+                                }
+                            } else {
+                                // No university found, but profile is complete - show empty state
+                                _state.update {
+                                    it.copy(
+                                        isLoadingAcademic = false,
+                                        academicError = "No academic data found. Please sync your data."
+                                    )
+                                }
                             }
                         }
-                    }
-                    .catch {
-                        _event.send(
-                            StartSessionEvent.ShowErrorMessage(
-                                "Failed to retrieve academic data."
-                            )
+                } catch (e: Exception) {
+                    _state.update {
+                        it.copy(
+                            isLoadingAcademic = false,
+                            academicError = "Failed to load academic data: ${e.message}"
                         )
                     }
+                    _event.send(
+                        StartSessionEvent.ShowErrorMessage(
+                            "Failed to retrieve academic data: ${e.message}"
+                        )
+                    )
+                }
             }
         }
     }
@@ -363,5 +390,26 @@ class StartSessionViewModel(
 
     fun clearSuccessState() {
         _successState.update { SessionSuccessState() }
+    }
+
+    fun refreshAcademicData() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingAcademic = true, academicError = null) }
+            try {
+                // Force sync
+                session.setAcademicSyncStatus(false)
+                academicSetUpRepository.syncLecturerAcademics(null)
+
+                // Reload data
+                loadAcademicSetup()
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingAcademic = false,
+                        academicError = "Failed to refresh: ${e.message}"
+                    )
+                }
+            }
+        }
     }
 }
