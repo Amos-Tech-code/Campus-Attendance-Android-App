@@ -22,9 +22,10 @@ class MainActivity : BaseSmartAttendActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
         installSplashScreen()
 
+        enableEdgeToEdge()
         setContent {
             SmartAttendTheme(darkTheme = false) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
