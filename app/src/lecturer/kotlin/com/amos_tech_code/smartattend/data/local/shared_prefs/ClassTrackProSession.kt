@@ -22,6 +22,8 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         private const val KEY_TOKEN_CREATED_AT = "token_created_at"
         private const val TOKEN_VALIDITY_DAYS = 10
 
+        private const val KEY_FCM_TOKEN = "fcm_token"
+
         // --- SYNC KEYS ---
         private const val KEY_ACADEMIC_SYNC_STATUS = "academic_sync_status"
         private const val KEY_ATTENDANCE_SESSION_HISTORY_SYNC_STATUS = "attendance_session_history_sync_status"
@@ -92,6 +94,12 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         prefs.edit {
             putBoolean(KEY_EXPORT_RECORD_SYNC_STATUS, isSynced)
             apply()
+        }
+    }
+
+    override fun saveFcmToken(token: String) {
+        prefs.edit {
+            putString(KEY_FCM_TOKEN, token)
         }
     }
 

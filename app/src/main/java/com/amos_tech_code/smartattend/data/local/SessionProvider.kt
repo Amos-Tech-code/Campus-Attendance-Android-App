@@ -4,5 +4,6 @@ interface SessionProvider {
 
     fun getValidToken(): String?
 
+    fun saveFcmToken(token: String)
     
 }

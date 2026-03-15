@@ -6,6 +6,7 @@ import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.LiveAttendanceUpdate
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
+import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -25,7 +26,7 @@ class AttendanceRepository(
             .flowOn(Dispatchers.IO)
     }
 
-    suspend fun removeFlaggedStudent(request: RemoveAttendanceRecordRequest) : ApiResult<Unit> {
+    suspend fun removeFlaggedStudent(request: RemoveAttendanceRecordRequest) : ApiResult<GenericResponse> {
         return safeApiCall {
             apiService.removeFlaggedStudent(request)
         }

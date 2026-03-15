@@ -1,7 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.start_session
 
 import android.app.Activity
-import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.compose.runtime.mutableStateOf
@@ -21,8 +20,6 @@ import com.amos_tech_code.smartattend.utils.LocationServiceException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -243,7 +240,6 @@ class StartSessionViewModel(
                     academicSetUpRepository
                         .observeActiveUniversityAcademics()
                         .collect { university ->
-                            Log.i("Academic Selection", university?.programmes.toString())
                             if (university != null) {
                                 // Update state with university data
                                 _state.update { current ->

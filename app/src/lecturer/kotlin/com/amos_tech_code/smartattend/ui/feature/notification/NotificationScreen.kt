@@ -37,7 +37,11 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,11 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.amos_tech_code.smartattend.ui.components.EmptyState
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,15 +74,14 @@ fun NotificationScreen(
             }
             is NotificationEvent.NavigateToStudent -> {
                 // Navigate to student details
-                //navController.navigate()
+                navController.navigate("student_detail/${event.studentId}")
             }
             is NotificationEvent.NavigateToSession -> {
                 // Navigate to session details
-                //navController.navigate()
+                navController.navigate("session_detail/${event.sessionId}")
             }
             is NotificationEvent.DeviceRequestApproved -> {
-                // Handle device request approval success
-                // Could show a confirmation or refresh data
+                Toast.makeText(context, "Device request approved", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -88,7 +91,8 @@ fun NotificationScreen(
         NotificationFilter.ALL -> 0
         NotificationFilter.UNREAD -> 1
         NotificationFilter.DEVICE_REQUESTS -> 2
-        NotificationFilter.SYSTEM -> 3
+        NotificationFilter.ATTENDANCE -> 3
+        NotificationFilter.SYSTEM -> 4
     }
 
     Scaffold(
@@ -99,7 +103,7 @@ fun NotificationScreen(
                         text = "Notifications",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 actions = {
@@ -109,9 +113,20 @@ fun NotificationScreen(
                         enabled = !state.isMarkingAllRead && state.allNotifications.any { !it.isRead }
                     ) {
                         if (state.isMarkingAllRead) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
                         } else {
-                            Icon(Icons.Default.DoneAll, "Mark All as Read")
+                            Icon(
+                                imageVector = Icons.Default.DoneAll,
+                                contentDescription = "Mark All as Read",
+                                tint = if (state.allNotifications.any { !it.isRead }) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                }
+                            )
                         }
                     }
 
@@ -121,15 +136,29 @@ fun NotificationScreen(
                         enabled = !state.isClearingAll && state.allNotifications.isNotEmpty()
                     ) {
                         if (state.isClearingAll) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
                         } else {
-                            Icon(Icons.Default.Delete, "Clear All")
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Clear All",
+                                tint = if (state.allNotifications.isNotEmpty()) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                }
+                            )
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 }
             )
@@ -140,14 +169,15 @@ fun NotificationScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Notification Filter Chips
-            val filters = listOf("All", "Unread", "Device Requests", "System")
+            // Notification Filter Tabs
+            val filters = listOf("All", "Unread", "Device", "Attendance", "System")
 
             ScrollableTabRow(
                 selectedTabIndex = selectedFilterIndex,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
-                edgePadding = 16.dp
+                edgePadding = 16.dp,
+                divider = {}
             ) {
                 filters.forEachIndexed { index, title ->
                     Tab(
@@ -157,7 +187,8 @@ fun NotificationScreen(
                                 0 -> NotificationFilter.ALL
                                 1 -> NotificationFilter.UNREAD
                                 2 -> NotificationFilter.DEVICE_REQUESTS
-                                3 -> NotificationFilter.SYSTEM
+                                3 -> NotificationFilter.ATTENDANCE
+                                4 -> NotificationFilter.SYSTEM
                                 else -> NotificationFilter.ALL
                             }
                             viewModel.onEvent(NotificationUiEvent.FilterChanged(filter))
@@ -165,65 +196,147 @@ fun NotificationScreen(
                         text = {
                             Text(
                                 text = title,
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1
                             )
-                        }
+                        },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }
 
             // Notifications List
-            when {
-                state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator()
-                            Text(
-                                text = "Loading notifications...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading && state.filteredNotifications.isEmpty() -> {
+                        LoadingState()
+                    }
+                    state.filteredNotifications.isEmpty() -> {
+                        EmptyNotificationState(
+                            filter = state.selectedFilter
+                        )
+                    }
+                    else -> {
+                        NotificationsList(
+                            notifications = state.filteredNotifications,
+                            isPerformingAction = state.isPerformingAction,
+                            isLoadingMore = state.isLoadingMore,
+                            onAction = { notificationId, action ->
+                                viewModel.onEvent(NotificationUiEvent.PerformAction(notificationId, action))
+                            },
+                            onDismiss = { notificationId ->
+                                viewModel.onEvent(NotificationUiEvent.DismissNotification(notificationId))
+                            },
+                            onLoadMore = {
+                                viewModel.onEvent(NotificationUiEvent.LoadMore)
+                            }
+                        )
                     }
                 }
-                state.filteredNotifications.isEmpty() -> {
-                    EmptyState(
-                        icon = Icons.Default.Notifications,
-                        title = "No Notifications",
-                        description = when (state.selectedFilter) {
-                            NotificationFilter.UNREAD -> "No unread notifications"
-                            NotificationFilter.DEVICE_REQUESTS -> "No device change requests"
-                            NotificationFilter.SYSTEM -> "No system notifications"
-                            else -> "You're all caught up!"
-                        },
-                        modifier = Modifier.fillMaxSize()
+
+                // Loading overlay for pull-to-refresh
+                if (state.isLoading && state.filteredNotifications.isNotEmpty()) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp)
+                            .size(32.dp),
+                        strokeWidth = 3.dp
                     )
                 }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.filteredNotifications) { notification ->
-                            NotificationItem(
-                                notification = notification,
-                                onAction = { action ->
-                                    viewModel.onEvent(NotificationUiEvent.PerformAction(notification.id, action))
-                                },
-                                onDismiss = {
-                                    viewModel.onEvent(NotificationUiEvent.DismissNotification(notification.id))
-                                },
-                                isLoading = state.isPerformingAction
-                            )
-                        }
-                    }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                strokeWidth = 4.dp
+            )
+            Text(
+                text = "Loading notifications...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyNotificationState(filter: NotificationFilter) {
+    EmptyState(
+        icon = Icons.Default.Notifications,
+        title = "No Notifications",
+        description = when (filter) {
+            NotificationFilter.UNREAD -> "You have no unread notifications"
+            NotificationFilter.DEVICE_REQUESTS -> "No device change requests"
+            NotificationFilter.ATTENDANCE -> "No attendance notifications"
+            NotificationFilter.SYSTEM -> "No system notifications"
+            else -> "You're all caught up!"
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+@Composable
+private fun NotificationsList(
+    notifications: List<UiNotification>,
+    isPerformingAction: Boolean,
+    isLoadingMore: Boolean,
+    onAction: (String, NotificationAction) -> Unit,
+    onDismiss: (String) -> Unit,
+    onLoadMore: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(
+            items = notifications,
+            key = { it.id }
+        ) { notification ->
+            NotificationItem(
+                notification = notification,
+                onAction = { action -> onAction(notification.id, action) },
+                onDismiss = { onDismiss(notification.id) },
+                isActionInProgress = isPerformingAction
+            )
+        }
+
+        // Loading more indicator
+        if (isLoadingMore) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp
+                    )
+                }
+            }
+        }
+
+        // Load more trigger
+        item {
+            LaunchedEffect(notifications.size) {
+                if (notifications.isNotEmpty() && notifications.size % 20 == 0) {
+                    onLoadMore()
                 }
             }
         }
@@ -232,11 +345,13 @@ fun NotificationScreen(
 
 @Composable
 private fun NotificationItem(
-    notification: LecturerNotification,
+    notification: UiNotification,
     onAction: (NotificationAction) -> Unit,
     onDismiss: () -> Unit,
-    isLoading: Boolean = false
+    isActionInProgress: Boolean
 ) {
+    var isExpanded by remember { mutableStateOf(false) }
+
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
@@ -247,10 +362,11 @@ private fun NotificationItem(
             }
         ),
         border = if (!notification.isRead) {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
         } else {
             null
-        }
+        },
+        onClick = { isExpanded = !isExpanded }
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -271,12 +387,7 @@ private fun NotificationItem(
                         modifier = Modifier
                             .size(40.dp)
                             .background(
-                                color = when (notification.type) {
-                                    NotificationType.DEVICE_REQUEST -> MaterialTheme.colorScheme.tertiaryContainer
-                                    NotificationType.SYSTEM_ALERT -> MaterialTheme.colorScheme.errorContainer
-                                    NotificationType.ATTENDANCE_ALERT -> MaterialTheme.colorScheme.secondaryContainer
-                                    NotificationType.INFO -> MaterialTheme.colorScheme.primaryContainer
-                                },
+                                color = getBackgroundColorForType(notification.type),
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -285,12 +396,7 @@ private fun NotificationItem(
                             imageVector = notification.icon,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = when (notification.type) {
-                                NotificationType.DEVICE_REQUEST -> MaterialTheme.colorScheme.onTertiaryContainer
-                                NotificationType.SYSTEM_ALERT -> MaterialTheme.colorScheme.onErrorContainer
-                                NotificationType.ATTENDANCE_ALERT -> MaterialTheme.colorScheme.onSecondaryContainer
-                                NotificationType.INFO -> MaterialTheme.colorScheme.onPrimaryContainer
-                            }
+                            tint = getIconTintForType(notification.type)
                         )
                     }
 
@@ -300,7 +406,7 @@ private fun NotificationItem(
                         Text(
                             text = notification.title,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.SemiBold
                         )
                         Text(
                             text = notification.timestamp,
@@ -314,7 +420,7 @@ private fun NotificationItem(
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier.size(24.dp),
-                    enabled = !isLoading
+                    enabled = !isActionInProgress
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -329,11 +435,12 @@ private fun NotificationItem(
                 text = notification.message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
                 lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
             )
 
             // Actions (if any)
-            if (notification.actions.isNotEmpty() && !isLoading) {
+            if (notification.actions.isNotEmpty() && !isActionInProgress) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -341,41 +448,98 @@ private fun NotificationItem(
                         when (action) {
                             is NotificationAction.ApproveDevice -> {
                                 FilledTonalButton(
-                                    onClick = { onAction(action) },
+                                    onClick = {
+                                        onAction(action.copy(requestId = notification.requestId ?: ""))
+                                    },
                                     colors = ButtonDefaults.filledTonalButtonColors(
                                         containerColor = PresentColor.copy(alpha = 0.2f),
                                         contentColor = PresentColor
-                                    )
+                                    ),
+                                    enabled = notification.requestId != null
                                 ) {
                                     Text("Approve Device")
                                 }
                             }
                             is NotificationAction.ViewStudent -> {
                                 OutlinedButton(
-                                    onClick = { onAction(action) }
+                                    onClick = {
+                                        onAction(action.copy(studentId = notification.studentId ?: ""))
+                                    },
+                                    enabled = notification.studentId != null
                                 ) {
                                     Text("View Student")
                                 }
                             }
                             is NotificationAction.ViewSession -> {
                                 OutlinedButton(
-                                    onClick = { onAction(action) }
+                                    onClick = {
+                                        onAction(action.copy(sessionId = notification.sessionId ?: ""))
+                                    },
+                                    enabled = notification.sessionId != null
                                 ) {
                                     Text("View Session")
+                                }
+                            }
+                            is NotificationAction.ViewDetails -> {
+                                OutlinedButton(
+                                    onClick = { onAction(action) }
+                                ) {
+                                    Text("View Details")
                                 }
                             }
                         }
                     }
                 }
-            } else if (isLoading) {
-                // Show loading indicator when performing actions
+            } else if (isActionInProgress) {
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
             }
         }
+    }
+}
+
+// Helper functions for styling
+@Composable
+private fun getBackgroundColorForType(type: NotificationType): androidx.compose.ui.graphics.Color {
+    return when (type) {
+        NotificationType.DEVICE_REQUEST,
+        NotificationType.DEVICE_APPROVED,
+        NotificationType.DEVICE_REJECTED -> MaterialTheme.colorScheme.tertiaryContainer
+
+        NotificationType.ATTENDANCE_MARKED,
+        NotificationType.ATTENDANCE_REVOKED,
+        NotificationType.SESSION_STARTED,
+        NotificationType.SESSION_ENDED,
+        NotificationType.SUSPICIOUS_ACTIVITY -> MaterialTheme.colorScheme.secondaryContainer
+
+        NotificationType.SYSTEM_ALERT,
+        NotificationType.SUPPORT_RESPONSE -> MaterialTheme.colorScheme.errorContainer
+    }
+}
+
+@Composable
+private fun getIconTintForType(type: NotificationType): androidx.compose.ui.graphics.Color {
+    return when (type) {
+        NotificationType.DEVICE_REQUEST,
+        NotificationType.DEVICE_APPROVED,
+        NotificationType.DEVICE_REJECTED -> MaterialTheme.colorScheme.onTertiaryContainer
+
+        NotificationType.ATTENDANCE_MARKED,
+        NotificationType.ATTENDANCE_REVOKED,
+        NotificationType.SESSION_STARTED,
+        NotificationType.SESSION_ENDED,
+        NotificationType.SUSPICIOUS_ACTIVITY -> MaterialTheme.colorScheme.onSecondaryContainer
+
+        NotificationType.SYSTEM_ALERT,
+        NotificationType.SUPPORT_RESPONSE -> MaterialTheme.colorScheme.onErrorContainer
     }
 }

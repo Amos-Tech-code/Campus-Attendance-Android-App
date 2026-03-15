@@ -21,7 +21,7 @@ val lecturerViewModelModule = module {
 
     viewModel { SetupViewModel(get(), get()) }
 
-    viewModel { HomeViewModel(get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
 
     viewModel { LiveAttendanceViewModel(get(), get(), get()) }
 
@@ -33,7 +33,7 @@ val lecturerViewModelModule = module {
 
     viewModel { StudentLookupViewModel() }
 
-    viewModel { NotificationViewModel() }
+    viewModel { NotificationViewModel(get()) }
 
     viewModel { SettingsViewModel(get()) }
 

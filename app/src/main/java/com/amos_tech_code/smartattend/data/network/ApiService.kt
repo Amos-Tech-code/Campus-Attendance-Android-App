@@ -28,6 +28,9 @@ import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAuthResponse
 import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
+import com.amos_tech_code.smartattend.domain.response.NotificationCountsDto
+import com.amos_tech_code.smartattend.domain.response.NotificationDto
+import com.amos_tech_code.smartattend.domain.response.PaginatedNotificationsDto
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 import com.amos_tech_code.smartattend.domain.response.StudentAttendanceHistoryResponse
@@ -128,7 +131,7 @@ interface ApiService {
     @HTTP(method = "DELETE", path = "attendance-manage/record", hasBody = true)
     suspend fun removeFlaggedStudent(
         @Body request: RemoveAttendanceRecordRequest
-    ) : Response<Unit>
+    ) : Response<GenericResponse>
 
     @POST("attendance-manage/record/export")
     suspend fun exportAttendanceRecords(
@@ -150,6 +153,8 @@ interface ApiService {
 
     @PATCH("account/fcm-token/lecturer")
     suspend fun updateLecturerFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
+
+
 
     /**
      *
@@ -205,5 +210,68 @@ interface ApiService {
 
     @PATCH("account/fcm-token/student")
     suspend fun updateStudentFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
+
+
+    // =========== NOTIFICATION ENDPOINTS ===========
+
+    /**
+     * Get unread notifications for the current user
+     * Returns List<NotificationDto> directly
+     */
+    @GET("notifications/unread")
+    suspend fun getUnreadNotifications(
+        @Query("limit") limit: Int = 50
+    ): Response<List<NotificationDto>>
+
+    /**
+     * Get paginated notification history
+     * Returns PaginatedNotificationsDto directly
+     */
+    @GET("notifications/history")
+    suspend fun getNotificationHistory(
+        @Query("page") page: Int = 0,
+        @Query("pageSize") pageSize: Int = 20
+    ): Response<PaginatedNotificationsDto>
+
+    /**
+     * Get a specific notification by ID
+     * Returns NotificationDto directly
+     */
+    @GET("notifications/{id}")
+    suspend fun getNotificationById(
+        @Path("id") notificationId: String
+    ): Response<NotificationDto>
+
+    /**
+     * Mark a specific notification as read
+     * Returns Unit for success responses
+     */
+    @PATCH("notifications/{id}/read")
+    suspend fun markNotificationAsRead(
+        @Path("id") notificationId: String
+    ): Response<Unit>
+
+    /**
+     * Mark all notifications as read for the current user
+     * Returns Unit for success responses
+     */
+    @PATCH("notifications/read-all")
+    suspend fun markAllNotificationsAsRead(): Response<GenericResponse>
+
+    /**
+     * Delete a specific notification
+     * Returns Unit for success responses
+     */
+    @DELETE("notifications/{id}")
+    suspend fun deleteNotification(
+        @Path("id") notificationId: String
+    ): Response<GenericResponse>
+
+    /**
+     * Get notification counts (total and unread)
+     * Returns NotificationCountsDto directly
+     */
+    @GET("notifications/count")
+    suspend fun getNotificationCounts(): Response<NotificationCountsDto>
 
 }

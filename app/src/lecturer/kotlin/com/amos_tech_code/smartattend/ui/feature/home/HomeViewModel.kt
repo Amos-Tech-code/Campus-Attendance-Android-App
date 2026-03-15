@@ -3,6 +3,8 @@ package com.amos_tech_code.smartattend.ui.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
+import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.data.repositories.NotificationRepository
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
@@ -11,14 +13,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel (
     private val session: ClassTrackProSession,
     private val universityRepository: UniversityRepository,
     private val academicSetUpRepository: AcademicSetUpRepository,
-    private val sessionHistoryRepository: SessionRepository
+    private val sessionHistoryRepository: SessionRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -51,11 +56,20 @@ class HomeViewModel (
                 }
             }
 
+            val notificationCountsFlow = flow<Int> {
+                when (val result = notificationRepository.getNotificationCounts()) {
+                    is ApiResult.Success -> emit(result.data.unread)
+                    is ApiResult.Failure -> emit(0)
+                }
+            }
+
+
             // Now observe the data
             combine(
                 universityRepository.observeAllUniversitiesWithStats(),
                 sessionHistoryRepository.observeTodaysSessions(),
-            ) { universitiesWithStats, todaysSessions ->
+                notificationCountsFlow
+            ) { universitiesWithStats, todaySessions, unreadNotifications ->
                 // If still no universities after sync, show empty state
                 if (universitiesWithStats.isEmpty()) {
                     HomeUiState.NoInstitutionSetup
@@ -71,7 +85,8 @@ class HomeViewModel (
                         lecturerName = lecturerName,
                         allUniversities = universitiesWithStats.sortedByDescending { it.university.isActive },
                         activeUniversity = activeUniversity,
-                        todaysSessions = todaysSessions,
+                        todaysSessions = todaySessions,
+                        totalNotifications = unreadNotifications
                     )
                 }
             }

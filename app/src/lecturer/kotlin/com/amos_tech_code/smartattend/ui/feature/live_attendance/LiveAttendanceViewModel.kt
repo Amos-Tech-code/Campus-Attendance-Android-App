@@ -163,6 +163,12 @@ class LiveAttendanceViewModel(
                 )
                 when (val result = attendanceRepository.removeFlaggedStudent(request)) {
                     is ApiResult.Success -> {
+                        // Update local state immediately by removing the student from allStudents list
+                        _state.update { state ->
+                            state.copy(
+                                allStudents = state.allStudents.filterNot { it.student.id == studentId }
+                            )
+                        }
                         _event.send(LiveAttendanceEvent.ShowSuccessMessage("Student $studentName removed successfully"))
                     }
                     is ApiResult.Failure -> {
