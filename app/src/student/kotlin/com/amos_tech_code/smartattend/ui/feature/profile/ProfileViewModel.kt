@@ -14,6 +14,7 @@ import com.amos_tech_code.smartattend.domain.request.ProgrammeSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
 import com.amos_tech_code.smartattend.domain.request.UniversitySuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,7 @@ class ProfileViewModel(
         setupProgrammeSearchDebounce()
     }
 
+    @OptIn(FlowPreview::class)
     private fun setupUniversitySearchDebounce() {
         viewModelScope.launch {
             universitySearchDebounce
@@ -63,6 +65,7 @@ class ProfileViewModel(
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun setupProgrammeSearchDebounce() {
         viewModelScope.launch {
             programmeSearchDebounce

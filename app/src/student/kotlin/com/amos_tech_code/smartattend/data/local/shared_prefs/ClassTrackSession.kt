@@ -26,6 +26,8 @@ class ClassTrackSession(context: Context) : SessionProvider {
         private const val KEY_DEVICE_MODEL = "device_model"
         private const val KEY_DEVICE_OS = "device_os"
 
+        private const val KEY_FCM_TOKEN = "fcm_token"
+
         // SYNC STATUS
         private const val KEY_ATTENDANCE_SYNC_STATUS = "attendance_sync_status"
         private const val KEY_ENROLLMENT_SYNC_STATUS = "enrollment_sync_status"
@@ -63,6 +65,12 @@ class ClassTrackSession(context: Context) : SessionProvider {
             token
         } else {
             null // expired
+        }
+    }
+
+    override fun saveFcmToken(token: String) {
+        prefs.edit {
+            putString(KEY_FCM_TOKEN, token)
         }
     }
 
