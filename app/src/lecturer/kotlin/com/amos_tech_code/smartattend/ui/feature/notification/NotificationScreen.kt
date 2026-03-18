@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.models.NotificationType
+import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
 import com.amos_tech_code.smartattend.ui.components.EmptyState
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
@@ -63,6 +64,9 @@ fun NotificationScreen(
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Dialog states
+    var showMarkAllReadDialog by remember { mutableStateOf(false) }
+    var showClearAllDialog by remember { mutableStateOf(false) }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
@@ -109,7 +113,11 @@ fun NotificationScreen(
                 actions = {
                     // Mark All as Read Button
                     IconButton(
-                        onClick = { viewModel.onEvent(NotificationUiEvent.MarkAllAsRead) },
+                        onClick = {
+                            if (state.allNotifications.any { !it.isRead }) {
+                                showMarkAllReadDialog = true
+                            }
+                        },
                         enabled = !state.isMarkingAllRead && state.allNotifications.any { !it.isRead }
                     ) {
                         if (state.isMarkingAllRead) {
@@ -132,7 +140,11 @@ fun NotificationScreen(
 
                     // Clear All Button
                     IconButton(
-                        onClick = { viewModel.onEvent(NotificationUiEvent.ClearAll) },
+                        onClick = {
+                            if (state.allNotifications.isNotEmpty()) {
+                                showClearAllDialog = true
+                            }
+                        },
                         enabled = !state.isClearingAll && state.allNotifications.isNotEmpty()
                     ) {
                         if (state.isClearingAll) {
@@ -248,45 +260,41 @@ fun NotificationScreen(
             }
         }
     }
-}
 
-@Composable
-private fun LoadingState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                strokeWidth = 4.dp
-            )
-            Text(
-                text = "Loading notifications...",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+
+    // Mark All as Read Confirmation Dialog
+    if (showMarkAllReadDialog) {
+        val unreadCount = state.allNotifications.count { !it.isRead }
+        ConfirmActionDialog(
+            title = "Mark All as Read",
+            message = "Are you sure you want to mark all $unreadCount unread notifications as read?",
+            onDismiss = { showMarkAllReadDialog = false },
+            onConfirm = {
+                showMarkAllReadDialog = false
+                viewModel.onEvent(NotificationUiEvent.MarkAllAsRead)
+            },
+            confirmText = "Mark as Read",
+            dismissText = "Cancel"
+        )
     }
-}
 
-@Composable
-private fun EmptyNotificationState(filter: NotificationFilter) {
-    EmptyState(
-        icon = Icons.Default.Notifications,
-        title = "No Notifications",
-        description = when (filter) {
-            NotificationFilter.UNREAD -> "You have no unread notifications"
-            NotificationFilter.DEVICE_REQUESTS -> "No device change requests"
-            NotificationFilter.ATTENDANCE -> "No attendance notifications"
-            NotificationFilter.SYSTEM -> "No system notifications"
-            else -> "You're all caught up!"
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+    // Clear All Confirmation Dialog
+    if (showClearAllDialog) {
+        val totalCount = state.allNotifications.size
+        ConfirmActionDialog(
+            title = "Clear All Notifications",
+            message = "Are you sure you want to delete all $totalCount notifications? This action cannot be undone.",
+            onDismiss = { showClearAllDialog = false },
+            onConfirm = {
+                showClearAllDialog = false
+                viewModel.onEvent(NotificationUiEvent.ClearAll)
+            },
+            confirmText = "Delete All",
+            dismissText = "Cancel",
+            isDestructive = true
+        )
+    }
+
 }
 
 @Composable
@@ -506,6 +514,47 @@ private fun NotificationItem(
         }
     }
 }
+
+
+@Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                strokeWidth = 4.dp
+            )
+            Text(
+                text = "Loading notifications...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyNotificationState(filter: NotificationFilter) {
+    EmptyState(
+        icon = Icons.Default.Notifications,
+        title = "No Notifications",
+        description = when (filter) {
+            NotificationFilter.UNREAD -> "You have no unread notifications"
+            NotificationFilter.DEVICE_REQUESTS -> "No device change requests"
+            NotificationFilter.ATTENDANCE -> "No attendance notifications"
+            NotificationFilter.SYSTEM -> "No system notifications"
+            else -> "You're all caught up!"
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
 
 // Helper functions for styling
 @Composable
