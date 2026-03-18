@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.School
@@ -67,6 +68,7 @@ import com.amos_tech_code.smartattend.ui.feature.history.getMethodIcon
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
+import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -185,8 +187,8 @@ fun HomeScreen(
                         onManualCodeClick = {
                             navController.navigate(AttendanceRoute("CodeEntry"))
                         },
-                        onHistoryClick = {
-                            navController.navigate(AttendanceHistoryRoute)
+                        onNotificationClick = {
+                            navController.navigate(NotificationsRoute)
                         },
                         modifier = Modifier.animateItem()
                     )
@@ -642,7 +644,7 @@ private fun EmptyScheduleState() {
 private fun QuickActionsGrid(
     onQRScanClick: () -> Unit,
     onManualCodeClick: () -> Unit,
-    onHistoryClick: () -> Unit,
+    onNotificationClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -688,16 +690,16 @@ private fun QuickActionsGrid(
                 modifier = Modifier.weight(1f)
             )
 
-            // History Action
+            // Notification Action
             QuickActionCard(
-                title = "History",
-                subtitle = "View records",
-                icon = Icons.Default.History,
+                title = "Notification",
+                subtitle = "View notifications",
+                icon = Icons.Default.Notifications,
                 gradient = listOf(
                     Color(0xFF8E2DE2),
                     Color(0xFF4A00E0)
                 ),
-                onClick = onHistoryClick,
+                onClick = onNotificationClick,
                 modifier = Modifier.weight(1f)
             )
         }

@@ -4,6 +4,7 @@ import com.amos_tech_code.smartattend.ui.feature.attendance.AttendanceViewModel
 import com.amos_tech_code.smartattend.ui.feature.history.HistoryViewModel
 import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.login.LoginViewModel
+import com.amos_tech_code.smartattend.ui.feature.notification.StudentNotificationViewModel
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileViewModel
 import com.amos_tech_code.smartattend.ui.feature.register.RegisterViewModel
 import org.koin.android.ext.koin.androidContext
@@ -24,5 +25,6 @@ val studentViewModelModule = module {
     )}
     viewModel { HistoryViewModel(get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get()) }
+    viewModel { StudentNotificationViewModel(get()) }
 
 }

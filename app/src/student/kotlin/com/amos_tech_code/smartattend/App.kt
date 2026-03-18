@@ -8,12 +8,14 @@ import com.amos_tech_code.smartattend.ui.feature.attendance.AttendanceScreen
 import com.amos_tech_code.smartattend.ui.feature.history.HistoryScreen
 import com.amos_tech_code.smartattend.ui.feature.home.HomeScreen
 import com.amos_tech_code.smartattend.ui.feature.login.LoginScreen
+import com.amos_tech_code.smartattend.ui.feature.notification.StudentNotificationScreen
 import com.amos_tech_code.smartattend.ui.feature.profile.ProfileScreen
 import com.amos_tech_code.smartattend.ui.feature.register.RegisterScreen
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
 import com.amos_tech_code.smartattend.ui.navigation.NavRoutes
+import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
 import com.amos_tech_code.smartattend.ui.navigation.ProfileRoute
 import com.amos_tech_code.smartattend.ui.navigation.RegisterRoute
 import com.amos_tech_code.smartattend.ui.navigation.SignInRoute
@@ -52,6 +54,10 @@ fun App(
 
         composable<ProfileRoute> {
             ProfileScreen(navController)
+        }
+
+        composable<NotificationsRoute> {
+            StudentNotificationScreen(navController)
         }
     }
 
