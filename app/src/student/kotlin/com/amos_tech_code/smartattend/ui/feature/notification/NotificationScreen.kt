@@ -21,6 +21,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -51,6 +54,7 @@ import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
 import com.amos_tech_code.smartattend.ui.components.EmptyState
+import com.amos_tech_code.smartattend.ui.components.ErrorDialog
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
@@ -75,9 +79,6 @@ fun StudentNotificationScreen(
             is StudentNotificationEvent.ShowSuccessMessage -> {
                 Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
             }
-            is StudentNotificationEvent.NavigateToSession -> {
-                navController.navigate("session_details/${event.sessionId}")
-            }
         }
     }
 
@@ -96,9 +97,10 @@ fun StudentNotificationScreen(
                 title = {
                     Text(
                         text = "Notifications",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 actions = {
@@ -197,11 +199,25 @@ fun StudentNotificationScreen(
                             viewModel.onEvent(StudentNotificationUiEvent.FilterChanged(filter))
                         },
                         text = {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1
-                            )
+                            BadgedBox(
+                                badge = {
+                                    // Only show badge for the "Unread" tab (index 1) and if count > 0
+                                    if (index == 1 && state.unreadCount > 0) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ) {
+                                            Text(state.unreadCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                            }
                         },
                         selectedContentColor = MaterialTheme.colorScheme.primary,
                         unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -249,6 +265,20 @@ fun StudentNotificationScreen(
                     )
                 }
             }
+        }
+
+        state.error?.let {
+            ErrorDialog(
+                title = "Error",
+                message = state.error!!,
+                positiveButtonText = "Retry",
+                onPositiveButtonClick = {
+                    viewModel.onEvent(StudentNotificationUiEvent.Retry)
+                },
+                onDismiss = {
+                    navController.navigateUp()
+                }
+            )
         }
     }
 
@@ -347,7 +377,6 @@ private fun StudentNotificationsList(
                 notification = notification,
                 onAction = { action -> onAction(notification.id, action) },
                 onDismiss = { onDismiss(notification.id) },
-                isActionInProgress = isPerformingAction
             )
         }
 
@@ -384,9 +413,7 @@ private fun StudentNotificationItem(
     notification: StudentNotification,
     onAction: (StudentNotificationAction) -> Unit,
     onDismiss: () -> Unit,
-    isActionInProgress: Boolean
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
 
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -402,7 +429,6 @@ private fun StudentNotificationItem(
         } else {
             null
         },
-        onClick = { isExpanded = !isExpanded }
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -456,7 +482,7 @@ private fun StudentNotificationItem(
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier.size(24.dp),
-                    enabled = !isActionInProgress
+                    enabled = !notification.isPerformingAction
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -471,38 +497,19 @@ private fun StudentNotificationItem(
                 text = notification.message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
                 lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
             )
 
-            // Actions (if any)
-            if (notification.actions.isNotEmpty() && !isActionInProgress) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Actions
+            if (!notification.isRead && !notification.isPerformingAction) {
+                OutlinedButton(
+                    onClick = {
+                        onAction(StudentNotificationAction.MarkAsRead(notification.id))
+                    },
                 ) {
-                    notification.actions.forEach { action ->
-                        when (action) {
-                            is StudentNotificationAction.ViewSession -> {
-                                OutlinedButton(
-                                    onClick = {
-                                        onAction(action.copy(sessionId = notification.sessionId ?: ""))
-                                    },
-                                    enabled = notification.sessionId != null
-                                ) {
-                                    Text("View Session")
-                                }
-                            }
-                            is StudentNotificationAction.ViewDetails -> {
-                                TextButton(
-                                    onClick = { onAction(action) }
-                                ) {
-                                    Text("View Details")
-                                }
-                            }
-                        }
-                    }
+                    Text("Mark as read")
                 }
-            } else if (isActionInProgress) {
+            } else if (notification.isPerformingAction) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

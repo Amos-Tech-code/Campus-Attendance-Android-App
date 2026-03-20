@@ -13,6 +13,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.amos_tech_code.smartattend.domain.response.NotificationDto
+import com.amos_tech_code.smartattend.utils.toAmPmTime
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
@@ -68,6 +69,10 @@ class StudentNotificationViewModel(
             StudentNotificationUiEvent.LoadMore -> {
                 loadMoreNotifications()
             }
+            StudentNotificationUiEvent.Retry -> {
+                _state.update { it.copy(error = null) }
+                refreshNotifications()
+            }
         }
     }
 
@@ -87,8 +92,8 @@ class StudentNotificationViewModel(
                     }
                 }
                 is ApiResult.Failure -> {
-                    _state.update { it.copy(isLoading = false) }
                     val errorMessage = result.error.extractApiErrorMessage()
+                    _state.update { it.copy(isLoading = false, error = errorMessage) }
                     _event.send(StudentNotificationEvent.ShowErrorMessage(errorMessage))
                 }
             }
@@ -105,7 +110,7 @@ class StudentNotificationViewModel(
                     )}
                 }
                 is ApiResult.Failure -> {
-                    // Silently fail for counts
+                    _event.send(StudentNotificationEvent.ShowErrorMessage("Failed to load notification counts"))
                 }
             }
         }
@@ -275,15 +280,12 @@ class StudentNotificationViewModel(
 
     private fun performAction(notificationId: String, action: StudentNotificationAction) {
         viewModelScope.launch {
-            _state.update { it.copy(isPerformingAction = true) }
-
             when (action) {
                 is StudentNotificationAction.ViewDetails -> {
                     // Mark as read and maybe show details
                     markNotificationAsRead(notificationId)
                 }
-                is StudentNotificationAction.ViewSession -> {
-                    _event.send(StudentNotificationEvent.NavigateToSession(action.sessionId))
+                is StudentNotificationAction.MarkAsRead -> {
                     markNotificationAsRead(notificationId)
                 }
             }
@@ -293,21 +295,48 @@ class StudentNotificationViewModel(
     }
 
     private suspend fun markNotificationAsRead(notificationId: String) {
-        when (val result = notificationRepository.markNotificationAsRead(notificationId)) {
-            is ApiResult.Success -> {
-                _state.update { state ->
-                    val updatedNotifications = state.allNotifications.map {
-                        if (it.id == notificationId) it.copy(isRead = true) else it
+        _state.update { state ->
+            val updatedNotifications = state.allNotifications.map {
+                if (it.id == notificationId) it.copy(isPerformingAction = true) else it
+            }
+            state.copy(
+                allNotifications = updatedNotifications,
+                filteredNotifications = filterNotificationsByType(updatedNotifications, state.selectedFilter),
+            )
+        }
+
+        try {
+            val result = notificationRepository.markNotificationAsRead(notificationId)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    _state.update { state ->
+                        val updatedNotifications = state.allNotifications.map {
+                            if (it.id == notificationId) it.copy(isRead = true) else it
+                        }
+                        state.copy(
+                            allNotifications = updatedNotifications,
+                            filteredNotifications = filterNotificationsByType(updatedNotifications, state.selectedFilter),
+                            unreadCount = maxOf(0, state.unreadCount - 1)
+                        )
                     }
-                    state.copy(
-                        allNotifications = updatedNotifications,
-                        filteredNotifications = filterNotificationsByType(updatedNotifications, state.selectedFilter),
-                        unreadCount = maxOf(0, state.unreadCount - 1)
-                    )
+                }
+                is ApiResult.Failure -> {
+                    // Silently fail for read status
+                    _event.send(StudentNotificationEvent.ShowErrorMessage("Failed to mark notification as read"))
                 }
             }
-            is ApiResult.Failure -> {
-                // Silently fail for read status
+        } catch (e: Exception) {
+            _event.send(StudentNotificationEvent.ShowErrorMessage("Failed to mark notification as read"))
+        } finally {
+            _state.update { state ->
+                val updatedNotifications = state.allNotifications.map {
+                    if (it.id == notificationId) it.copy(isPerformingAction = false) else it
+                }
+                state.copy(
+                    allNotifications = updatedNotifications,
+                    filteredNotifications = filterNotificationsByType(updatedNotifications, state.selectedFilter)
+                )
             }
         }
     }
@@ -319,26 +348,12 @@ class StudentNotificationViewModel(
             type = type,
             title = title,
             message = message,
-            timestamp = formatTimestamp(createdAt),
+            timestamp = createdAt.toAmPmTime(),
             isRead = isRead,
             icon = getIconForType(type),
-            actions = getActionsForType(type),
+            isPerformingAction = false,
             sessionId = extractSessionId(message, type)
         )
-    }
-
-    private fun formatTimestamp(isoDate: String): String {
-        return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-            inputFormat.timeZone = TimeZone.getTimeZone("UTC")
-            val date = inputFormat.parse(isoDate) ?: Date()
-
-            val outputFormat = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault())
-            outputFormat.timeZone = TimeZone.getDefault()
-            outputFormat.format(date)
-        } catch (e: Exception) {
-            "Just now"
-        }
     }
 
     private fun getIconForType(type: NotificationType): ImageVector {
@@ -353,15 +368,6 @@ class StudentNotificationViewModel(
         }
     }
 
-    private fun getActionsForType(type: NotificationType): List<StudentNotificationAction> {
-        return when (type) {
-            NotificationType.ATTENDANCE_MARKED,
-            NotificationType.ATTENDANCE_REVOKED ->
-                listOf(StudentNotificationAction.ViewSession(""))
-            else -> emptyList()
-        }
-    }
-
     private fun extractSessionId(message: String, type: NotificationType): String? {
         return when (type) {
             NotificationType.ATTENDANCE_MARKED,
@@ -372,61 +378,4 @@ class StudentNotificationViewModel(
             else -> null
         }
     }
-}
-
-// State and Event Classes for Student
-data class StudentNotificationState(
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val isMarkingAllRead: Boolean = false,
-    val isClearingAll: Boolean = false,
-    val isPerformingAction: Boolean = false,
-    val allNotifications: List<StudentNotification> = emptyList(),
-    val filteredNotifications: List<StudentNotification> = emptyList(),
-    val selectedFilter: StudentNotificationFilter = StudentNotificationFilter.ALL,
-    val totalCount: Int = 0,
-    val unreadCount: Int = 0,
-    val error: String? = null
-)
-
-enum class StudentNotificationFilter {
-    ALL,
-    UNREAD,
-    ATTENDANCE,
-    DEVICE,
-    SYSTEM
-}
-
-sealed class StudentNotificationUiEvent {
-    data class FilterChanged(val filter: StudentNotificationFilter) : StudentNotificationUiEvent()
-    object MarkAllAsRead : StudentNotificationUiEvent()
-    object ClearAll : StudentNotificationUiEvent()
-    data class DismissNotification(val notificationId: String) : StudentNotificationUiEvent()
-    data class PerformAction(val notificationId: String, val action: StudentNotificationAction) : StudentNotificationUiEvent()
-    object Refresh : StudentNotificationUiEvent()
-    object LoadMore : StudentNotificationUiEvent()
-}
-
-sealed class StudentNotificationEvent {
-    data class ShowErrorMessage(val message: String) : StudentNotificationEvent()
-    data class ShowSuccessMessage(val message: String) : StudentNotificationEvent()
-    data class NavigateToSession(val sessionId: String) : StudentNotificationEvent()
-}
-
-// UI Model for Student Notifications
-data class StudentNotification(
-    val id: String,
-    val type: NotificationType,
-    val title: String,
-    val message: String,
-    val timestamp: String,
-    val isRead: Boolean,
-    val icon: ImageVector,
-    val actions: List<StudentNotificationAction>,
-    val sessionId: String? = null
-)
-
-sealed class StudentNotificationAction {
-    data class ViewSession(val sessionId: String) : StudentNotificationAction()
-    object ViewDetails : StudentNotificationAction()
 }
