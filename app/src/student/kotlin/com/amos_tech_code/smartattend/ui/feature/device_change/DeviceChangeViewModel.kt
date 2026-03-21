@@ -72,7 +72,7 @@ class DeviceChangeViewModel(
                     deviceId = deviceInfo.deviceId,
                     model = deviceInfo.model,
                     os = deviceInfo.os,
-                    fcmToken = deviceInfo.fcmToken
+                    fcmToken = classTrackSession.getFCMToken()
                 ),
                 reason = reason
             )
@@ -117,10 +117,10 @@ class DeviceChangeViewModel(
 
     fun isCurrentDeviceActive() {
         viewModelScope.launch {
-            classTrackSession.observeDeviceStatus().collect {
-                val isCurrentDeviceActive = it == DeviceStatus.ACTIVE
-                _uiState.update {
-                    it.copy(isCurrentDeviceActive = isCurrentDeviceActive)
+            classTrackSession.observeDeviceStatus().collect { newStatus ->
+                val isCurrentDeviceActive = newStatus == DeviceStatus.ACTIVE
+                _uiState.update { state ->
+                    state.copy(isCurrentDeviceActive = isCurrentDeviceActive)
                 }
             }
         }

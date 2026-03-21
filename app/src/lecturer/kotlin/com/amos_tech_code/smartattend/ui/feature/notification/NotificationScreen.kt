@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,9 +54,15 @@ import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.amos_tech_code.smartattend.ui.components.ConfirmActionDialog
 import com.amos_tech_code.smartattend.ui.components.EmptyState
+import com.amos_tech_code.smartattend.ui.components.ErrorDialog
+import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
+import com.amos_tech_code.smartattend.ui.navigation.DeviceChangeRoute
+import com.amos_tech_code.smartattend.ui.navigation.StudentLookupRoute
 import com.amos_tech_code.smartattend.ui.theme.PresentColor
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
+import kotlin.compareTo
+import kotlin.toString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,14 +86,14 @@ fun NotificationScreen(
             }
             is NotificationEvent.NavigateToStudent -> {
                 // Navigate to student details
-                navController.navigate("student_detail/${event.studentId}")
+                navController.navigate(StudentLookupRoute)
             }
             is NotificationEvent.NavigateToSession -> {
                 // Navigate to session details
-                navController.navigate("session_detail/${event.sessionId}")
+                navController.navigate(AttendanceHistoryRoute)
             }
-            is NotificationEvent.DeviceRequestApproved -> {
-                Toast.makeText(context, "Device request approved", Toast.LENGTH_SHORT).show()
+            is NotificationEvent.NavigateToDeviceApproval -> {
+                navController.navigate(DeviceChangeRoute)
             }
         }
     }
@@ -107,7 +115,7 @@ fun NotificationScreen(
                         text = "Notifications",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 actions = {
@@ -206,11 +214,25 @@ fun NotificationScreen(
                             viewModel.onEvent(NotificationUiEvent.FilterChanged(filter))
                         },
                         text = {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1
-                            )
+                            BadgedBox(
+                                badge = {
+                                    // Only show badge for the "Unread" tab (index 1) and if count > 0
+                                    if (index == 1 && state.unreadCount > 0) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ) {
+                                            Text(state.unreadCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                            }
                         },
                         selectedContentColor = MaterialTheme.colorScheme.primary,
                         unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -261,6 +283,19 @@ fun NotificationScreen(
         }
     }
 
+    state.error?.let {
+        ErrorDialog(
+            title = "Error",
+            message = state.error!!,
+            positiveButtonText = "Retry",
+            onPositiveButtonClick = {
+                viewModel.onEvent(NotificationUiEvent.Retry)
+            },
+            onDismiss = {
+                navController.navigateUp()
+            }
+        )
+    }
 
     // Mark All as Read Confirmation Dialog
     if (showMarkAllReadDialog) {
@@ -463,7 +498,6 @@ private fun NotificationItem(
                                         containerColor = PresentColor.copy(alpha = 0.2f),
                                         contentColor = PresentColor
                                     ),
-                                    enabled = notification.requestId != null
                                 ) {
                                     Text("Approve Device")
                                 }
@@ -473,7 +507,6 @@ private fun NotificationItem(
                                     onClick = {
                                         onAction(action.copy(studentId = notification.studentId ?: ""))
                                     },
-                                    enabled = notification.studentId != null
                                 ) {
                                     Text("View Student")
                                 }
@@ -483,7 +516,6 @@ private fun NotificationItem(
                                     onClick = {
                                         onAction(action.copy(sessionId = notification.sessionId ?: ""))
                                     },
-                                    enabled = notification.sessionId != null
                                 ) {
                                     Text("View Session")
                                 }

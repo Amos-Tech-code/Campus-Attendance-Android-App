@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.amos_tech_code.smartattend.data.local.SessionProvider
+import com.amos_tech_code.smartattend.domain.models.DeviceStatus
 import com.amos_tech_code.smartattend.ui.feature.settings.SettingsState
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +24,8 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         private const val TOKEN_VALIDITY_DAYS = 10
 
         private const val KEY_FCM_TOKEN = "fcm_token"
+
+        private const val KEY_FCM_TOKEN_UPDATED = "fcm_token_updated"
 
         // --- SYNC KEYS ---
         private const val KEY_ACADEMIC_SYNC_STATUS = "academic_sync_status"
@@ -101,6 +104,26 @@ class ClassTrackProSession(context: Context) : SessionProvider {
         prefs.edit {
             putString(KEY_FCM_TOKEN, token)
         }
+    }
+
+    override fun getFCMToken(): String? {
+        return prefs.getString(KEY_FCM_TOKEN, null)
+    }
+
+    override fun hasFCMTokenBeenUpdated(): Boolean {
+        return prefs.getBoolean(KEY_FCM_TOKEN_UPDATED, false)
+    }
+
+    override fun setFCMUpdated(status: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_FCM_TOKEN_UPDATED, status)
+        }
+    }
+
+    override fun updateDeviceStatus(deviceStatus: DeviceStatus) {
+        /**
+         * This applies to student session only
+         */
     }
 
     override fun getValidToken(): String? {

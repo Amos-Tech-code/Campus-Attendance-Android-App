@@ -4,22 +4,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amos_tech_code.smartattend.data.repositories.NotificationRepository
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
+import com.amos_tech_code.smartattend.data.repositories.NotificationRepository
 import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.amos_tech_code.smartattend.domain.response.NotificationDto
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -72,6 +70,10 @@ class NotificationViewModel(
             NotificationUiEvent.LoadMore -> {
                 loadMoreNotifications()
             }
+            NotificationUiEvent.Retry -> {
+                _state.update { it.copy(error = null) }
+                refreshNotifications()
+            }
         }
     }
 
@@ -91,8 +93,8 @@ class NotificationViewModel(
                     }
                 }
                 is ApiResult.Failure -> {
-                    _state.update { it.copy(isLoading = false) }
                     val errorMessage = result.error.extractApiErrorMessage()
+                    _state.update { it.copy(isLoading = false, error = errorMessage) }
                     _event.send(NotificationEvent.ShowErrorMessage(errorMessage))
                 }
             }
@@ -275,7 +277,7 @@ class NotificationViewModel(
                         _event.send(NotificationEvent.ShowErrorMessage(errorMessage))
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _event.send(NotificationEvent.ShowErrorMessage("Failed to dismiss notification"))
             }
         }
@@ -287,7 +289,7 @@ class NotificationViewModel(
 
             when (action) {
                 is NotificationAction.ApproveDevice -> {
-                    handleDeviceApproval(notificationId, action.requestId)
+                    handleDeviceApproval()
                 }
                 is NotificationAction.ViewStudent -> {
                     _event.send(NotificationEvent.NavigateToStudent(action.studentId))
@@ -307,13 +309,8 @@ class NotificationViewModel(
         }
     }
 
-    private suspend fun handleDeviceApproval(notificationId: String, requestId: String) {
-        // This would call your device approval API
-        delay(800) // Simulate API call
-
-        dismissNotification(notificationId)
-        _event.send(NotificationEvent.DeviceRequestApproved(requestId))
-        _event.send(NotificationEvent.ShowSuccessMessage("Device request approved"))
+    private fun handleDeviceApproval() {
+        _event.trySend(NotificationEvent.NavigateToDeviceApproval)
     }
 
     private suspend fun markNotificationAsRead(notificationId: String) {
@@ -363,7 +360,7 @@ class NotificationViewModel(
             outputFormat.timeZone = TimeZone.getDefault()
             outputFormat.format(date)
         } catch (e: Exception) {
-            "Just now"
+            isoDate.removeSuffix("Z")
         }
     }
 

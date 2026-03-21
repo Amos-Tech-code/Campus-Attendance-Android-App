@@ -48,7 +48,9 @@ class LoginViewModel(
                 val result = authRepository.studentLogin(
                     request = StudentLoginRequest(
                         registrationNumber = state.value.regNo,
-                        deviceInfo = deviceInfo
+                        deviceInfo = deviceInfo.copy(
+                            fcmToken = session.getFCMToken()
+                        )
                     )
                 )
 

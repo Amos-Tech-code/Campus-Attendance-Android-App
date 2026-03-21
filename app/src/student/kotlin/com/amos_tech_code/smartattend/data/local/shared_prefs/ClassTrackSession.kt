@@ -28,6 +28,8 @@ class ClassTrackSession(context: Context) : SessionProvider {
 
         private const val KEY_FCM_TOKEN = "fcm_token"
 
+        private const val KEY_FCM_TOKEN_UPDATED = "fcm_token_updated"
+
         // SYNC STATUS
         private const val KEY_ATTENDANCE_SYNC_STATUS = "attendance_sync_status"
         private const val KEY_ENROLLMENT_SYNC_STATUS = "enrollment_sync_status"
@@ -76,6 +78,16 @@ class ClassTrackSession(context: Context) : SessionProvider {
 
     override fun getFCMToken(): String? {
         return prefs.getString(KEY_FCM_TOKEN, null)
+    }
+
+    override fun hasFCMTokenBeenUpdated(): Boolean {
+        return prefs.getBoolean(KEY_FCM_TOKEN_UPDATED, false)
+    }
+
+    override fun setFCMUpdated(status: Boolean) {
+        prefs.edit {
+            putBoolean(KEY_FCM_TOKEN_UPDATED, status)
+        }
     }
 
     fun saveName(name: String) {

@@ -17,7 +17,7 @@ val studentViewModelModule = module {
     viewModel { RegisterViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get(), get(), get()) }
 
-    viewModel { HomeViewModel(get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get()) }
     // Provide ContentResolver
     single { androidContext().contentResolver }
 

@@ -55,7 +55,9 @@ class RegisterViewModel(
                     StudentRegisterRequest(
                         fullName = state.value.fullName.trim(),
                         registrationNumber = state.value.regNo,
-                        deviceInfo = deviceInfo
+                        deviceInfo = deviceInfo.copy(
+                            fcmToken = session.getFCMToken()
+                        )
                     )
                 )
                 when (result) {

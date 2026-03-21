@@ -37,11 +37,14 @@ class SmartAttendMessagingService : FirebaseMessagingService() {
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override fun onMessageReceived(message: RemoteMessage) {
-        Log.d("FCMService", "Message received: ${message.messageId}")
+        //Log.d("FCMService", "Message received: ${message.messageId}")
+        //Log.d("FCM_DEBUG", "Notification payload: ${message.data}")
 
         // Extract notification data
-        val title = message.notification?.title ?: message.data["title"] ?: "Smart Attend"
-        val messageText = message.notification?.body ?: message.data["body"] ?: ""
+//        val title = message.notification?.title ?: message.data["title"] ?: "Smart Attend"
+//        val messageText = message.notification?.body ?: message.data["body"] ?: ""
+        val title = message.data["title"] ?: "Smart Attend"
+        val messageText = message.data["body"] ?: ""
         val data = message.data
 
         // Determine notification type from data
@@ -82,6 +85,7 @@ class SmartAttendMessagingService : FirebaseMessagingService() {
         if (notificationType == NotificationType.DEVICE_APPROVED) {
             notificationManager.updateDeviceStatus(DeviceStatus.ACTIVE)
         }
+
         if (notificationType == NotificationType.DEVICE_REJECTED) {
             notificationManager.updateDeviceStatus(DeviceStatus.REJECTED)
         }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.amos_tech_code.smartattend.ui.feature.device_change.LecturerDeviceChangeScreen
 import com.amos_tech_code.smartattend.ui.feature.export.ExportScreen
 import com.amos_tech_code.smartattend.ui.feature.export.allexports.AllExportsScreen
 import com.amos_tech_code.smartattend.ui.feature.home.HomeScreen
@@ -19,6 +20,7 @@ import com.amos_tech_code.smartattend.ui.feature.start_session.StartSessionScree
 import com.amos_tech_code.smartattend.ui.feature.student_lookup.StudentLookupScreen
 import com.amos_tech_code.smartattend.ui.navigation.AllExportsRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
+import com.amos_tech_code.smartattend.ui.navigation.DeviceChangeRoute
 import com.amos_tech_code.smartattend.ui.navigation.ExportRoute
 import com.amos_tech_code.smartattend.ui.navigation.HomeRoute
 import com.amos_tech_code.smartattend.ui.navigation.InstitutionDetailsRoute
@@ -94,6 +96,10 @@ fun App(
         composable<InstitutionDetailsRoute> { backStackEntry ->
             val institutionId = backStackEntry.toRoute<InstitutionDetailsRoute>().institutionId
             InstitutionDetailsScreen(navController, institutionId)
+        }
+
+        composable<DeviceChangeRoute> {
+            LecturerDeviceChangeScreen(navController)
         }
 
     }

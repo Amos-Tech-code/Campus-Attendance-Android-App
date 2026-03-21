@@ -10,5 +10,10 @@ interface SessionProvider {
 
     fun getFCMToken(): String?
 
+    fun hasFCMTokenBeenUpdated(): Boolean
+
+    fun setFCMUpdated(status: Boolean)
+
     fun updateDeviceStatus(deviceStatus: DeviceStatus)
+
 }

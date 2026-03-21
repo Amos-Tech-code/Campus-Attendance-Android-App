@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackProSession
@@ -8,6 +9,9 @@ import com.amos_tech_code.smartattend.data.repositories.NotificationRepository
 import com.amos_tech_code.smartattend.data.repository.AcademicSetUpRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +39,7 @@ class HomeViewModel (
 
     init {
         loadHomeData()
+        updateFCMTokenIfNecessary()
     }
 
     private fun loadHomeData() {
@@ -164,6 +169,28 @@ class HomeViewModel (
     fun onStudentLookupClick() {
         viewModelScope.launch {
             _event.send(HomeEvent.NavigateToStudentLookup)
+        }
+    }
+
+    fun updateFCMTokenIfNecessary() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (session.hasFCMTokenBeenUpdated()) return@launch
+
+            val token = session.getFCMToken() ?: return@launch
+
+            try {
+                val result = notificationRepository.updateFCMToken(true, token)
+
+                if (result is ApiResult.Success) {
+                    session.setFCMUpdated(true)
+                } else {
+                    session.setFCMUpdated(false)
+                }
+
+            } catch (e: Exception) {
+                session.setFCMUpdated(false)
+                Log.e("HomeViewModel", "Error updating FCM token", e)
+            }
         }
     }
 }

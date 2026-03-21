@@ -84,9 +84,11 @@ class SmartAttendNotificationManager(
 
             when (response) {
                 is ApiResult.Success -> {
+                    session.setFCMUpdated(true)
                     Log.d("FCM_REQUEST", "Token updated successfully: ${response.data.message}")
                 }
                 is ApiResult.Failure -> {
+                    session.setFCMUpdated(false)
                     Log.e("FCM_REQUEST", "Failed to update token: ${response.error.extractApiErrorMessage()}")
                 }
             }
@@ -94,9 +96,7 @@ class SmartAttendNotificationManager(
     }
 
     fun updateDeviceStatus(deviceStatus: DeviceStatus) {
-        job.launch {
-            session.updateDeviceStatus(deviceStatus)
-        }
+        session.updateDeviceStatus(deviceStatus)
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)

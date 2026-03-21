@@ -9,6 +9,7 @@ sealed class NotificationUiEvent {
     data class PerformAction(val notificationId: String, val action: NotificationAction) : NotificationUiEvent()
     object Refresh : NotificationUiEvent()
     object LoadMore : NotificationUiEvent()
+    object Retry : NotificationUiEvent()
 }
 
 sealed class NotificationEvent {
@@ -16,7 +17,7 @@ sealed class NotificationEvent {
     data class ShowSuccessMessage(val message: String) : NotificationEvent()
     data class NavigateToStudent(val studentId: String) : NotificationEvent()
     data class NavigateToSession(val sessionId: String) : NotificationEvent()
-    data class DeviceRequestApproved(val requestId: String) : NotificationEvent()
+    object NavigateToDeviceApproval: NotificationEvent()
 }
 
 sealed class NotificationAction {

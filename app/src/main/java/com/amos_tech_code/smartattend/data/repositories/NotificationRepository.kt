@@ -4,6 +4,7 @@ import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.domain.request.FCMTokenRequest
 import com.amos_tech_code.smartattend.domain.response.NotificationCountsDto
 import com.amos_tech_code.smartattend.domain.response.NotificationDto
 import com.amos_tech_code.smartattend.domain.response.PaginatedNotificationsDto
@@ -51,6 +52,17 @@ class NotificationRepository(
     suspend fun getNotificationCounts(): ApiResult<NotificationCountsDto> {
         return safeApiCall {
             apiService.getNotificationCounts()
+        }
+    }
+
+    suspend fun updateFCMToken(isFromLecturerFlavor: Boolean = true, token: String) : ApiResult<GenericResponse> {
+        val tokenRequest = FCMTokenRequest(token)
+        return safeApiCall {
+            if (isFromLecturerFlavor) {
+                apiService.updateLecturerFCMToken(tokenRequest)
+            } else {
+                apiService.updateStudentFCMToken(tokenRequest)
+            }
         }
     }
 }

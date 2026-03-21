@@ -1,5 +1,6 @@
 package com.amos_tech_code.smartattend.di
 
+import com.amos_tech_code.smartattend.ui.feature.device_change.LecturerDeviceChangeViewModel
 import com.amos_tech_code.smartattend.ui.feature.export.ExportViewModel
 import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.institution_details.InstitutionDetailsViewModel
@@ -41,4 +42,5 @@ val lecturerViewModelModule = module {
 
     viewModel { InstitutionDetailsViewModel(get(), get()) }
 
+    viewModel { LecturerDeviceChangeViewModel(get()) }
 }

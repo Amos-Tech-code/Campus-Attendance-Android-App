@@ -1,13 +1,16 @@
 package com.amos_tech_code.smartattend.ui.feature.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.local.shared_prefs.ClassTrackSession
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
+import com.amos_tech_code.smartattend.data.repositories.NotificationRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceSessionRepository
 import com.amos_tech_code.smartattend.data.repository.EnrollmentRepository
 import com.amos_tech_code.smartattend.domain.models.DeviceStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +22,8 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val session: ClassTrackSession,
     private val attendanceRepository: AttendanceSessionRepository,
-    private val enrollmentRepository: EnrollmentRepository
+    private val enrollmentRepository: EnrollmentRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _homeState = MutableStateFlow(StudentHomeState())
@@ -35,6 +39,7 @@ class HomeViewModel(
         observeRecentAttendance()
         checkAndRefreshStats() // Check if stats need refresh
         observeIsCurrentDeviceActive()
+        updateFCMTokenIfNecessary()
     }
 
     private fun fetchUserData() {
@@ -82,11 +87,11 @@ class HomeViewModel(
 
     private fun observeIsCurrentDeviceActive() {
         viewModelScope.launch {
-            session.observeDeviceStatus().collect {
-                _homeState.update {
-                    it.copy(
-                        deviceStatus = it.deviceStatus,
-                        showDeviceWarning = it.deviceStatus != DeviceStatus.ACTIVE
+            session.observeDeviceStatus().collect { newStatus ->
+                _homeState.update { state ->
+                    state.copy(
+                        deviceStatus = newStatus,
+                        showDeviceWarning = newStatus != DeviceStatus.ACTIVE
                     )
                 }
             }
@@ -205,4 +210,26 @@ class HomeViewModel(
         _event.trySend(HomeEvent.NavigateToDeviceChange)
     }
 
+
+    fun updateFCMTokenIfNecessary() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (session.hasFCMTokenBeenUpdated()) return@launch
+
+            val token = session.getFCMToken() ?: return@launch
+
+            try {
+                val result = notificationRepository.updateFCMToken(true, token)
+
+                if (result is ApiResult.Success) {
+                    session.setFCMUpdated(true)
+                } else {
+                    session.setFCMUpdated(false)
+                }
+
+            } catch (e: Exception) {
+                session.setFCMUpdated(false)
+                Log.e("HomeViewModel", "Error updating FCM token", e)
+            }
+        }
+    }
 }
