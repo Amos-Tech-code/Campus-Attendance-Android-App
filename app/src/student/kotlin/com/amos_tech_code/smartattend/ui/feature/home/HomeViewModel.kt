@@ -187,6 +187,8 @@ class HomeViewModel(
         }
     }
 
+    fun onDeviceChangeClicked() {
+        _event.trySend(HomeEvent.NavigateToDeviceChange)
+    }
 
 }
-

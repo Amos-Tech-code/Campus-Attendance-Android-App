@@ -58,7 +58,12 @@ enum class DeviceStatus {
     PENDING,          // Waiting for approval
     REJECTED         // Rejected device change
 }
-
+enum class DeviceChangeStatus {
+    PENDING,
+    APPROVED,
+    REJECTED,
+    CANCELLED
+}
 /**
  * Represents Notification type
  */

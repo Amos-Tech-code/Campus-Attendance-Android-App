@@ -13,6 +13,7 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.amos_tech_code.smartattend.domain.response.NotificationDto
+import com.amos_tech_code.smartattend.utils.formatDateTime
 import com.amos_tech_code.smartattend.utils.toAmPmTime
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -348,7 +349,7 @@ class StudentNotificationViewModel(
             type = type,
             title = title,
             message = message,
-            timestamp = createdAt.toAmPmTime(),
+            timestamp = createdAt.formatDateTime(),
             isRead = isRead,
             icon = getIconForType(type),
             isPerformingAction = false,

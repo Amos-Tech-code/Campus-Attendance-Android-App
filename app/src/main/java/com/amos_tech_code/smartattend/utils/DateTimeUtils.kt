@@ -50,6 +50,16 @@ fun String.toAmPmTime(): String {
 }
 
 /**
+ * Formats an ISO-8601 string into a user-friendly date-time string.
+ * Example:
+ * "2026-03-01T09:00:42Z" -> "Mar 01, 2026 at 12:00 PM"
+ */
+fun String.formatDateTime(): String {
+    val millis = this.toEpochMillisOrNull() ?: return this
+    return millis.formatDateTime()
+}
+
+/**
  * Converts ISO-8601 date-time string to epoch millis.
  *
  * Supports:

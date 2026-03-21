@@ -2,12 +2,14 @@ package com.amos_tech_code.smartattend.data.network
 
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
 import com.amos_tech_code.smartattend.domain.request.AttendanceExportRequest
+import com.amos_tech_code.smartattend.domain.request.DeviceChangeApprovalRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.FCMTokenRequest
 import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
+import com.amos_tech_code.smartattend.domain.request.StudentDeviceChangeRequest
 import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
@@ -23,6 +25,8 @@ import com.amos_tech_code.smartattend.domain.response.AttendanceExportResponseDt
 import com.amos_tech_code.smartattend.domain.response.AttendanceSessionHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.AttendanceStatsResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
+import com.amos_tech_code.smartattend.domain.response.DeviceChangeHistoryDto
+import com.amos_tech_code.smartattend.domain.response.DeviceChangeRequestResponse
 import com.amos_tech_code.smartattend.domain.response.ExportsListResponseDto
 import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
@@ -31,6 +35,7 @@ import com.amos_tech_code.smartattend.domain.response.MarkAttendanceResponse
 import com.amos_tech_code.smartattend.domain.response.NotificationCountsDto
 import com.amos_tech_code.smartattend.domain.response.NotificationDto
 import com.amos_tech_code.smartattend.domain.response.PaginatedNotificationsDto
+import com.amos_tech_code.smartattend.domain.response.PendingDeviceChangeDto
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResponse
 import com.amos_tech_code.smartattend.domain.response.StudentAttendanceHistoryResponse
@@ -154,6 +159,13 @@ interface ApiService {
     @PATCH("account/fcm-token/lecturer")
     suspend fun updateLecturerFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
 
+    @GET("device-change/lecturer/pending")
+    suspend fun getPendingRequests() : Response<List<PendingDeviceChangeDto>>
+
+    @POST("device-change/lecturer/review")
+    suspend fun reviewDeviceChange(
+        @Body request: DeviceChangeApprovalRequest
+    ) : Response<DeviceChangeRequestResponse>
 
 
     /**
@@ -210,6 +222,15 @@ interface ApiService {
 
     @PATCH("account/fcm-token/student")
     suspend fun updateStudentFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>
+
+    @POST("device-change/student/change-request")
+    suspend fun requestDeviceChange(@Body request: StudentDeviceChangeRequest) : Response<DeviceChangeRequestResponse>
+
+    @GET("device-change/student/history")
+    suspend fun getDeviceChangeHistory() : Response<List<DeviceChangeHistoryDto>>
+
+    @PATCH("device-change/student/cancel-request/{requestId}")
+    suspend fun cancelDeviceChangeRequest(@Path("requestId") requestId: String) : Response<GenericResponse>
 
 
     // =========== NOTIFICATION ENDPOINTS ===========

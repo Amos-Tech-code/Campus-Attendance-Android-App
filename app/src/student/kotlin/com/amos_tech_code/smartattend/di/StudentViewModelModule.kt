@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend.di
 
 import com.amos_tech_code.smartattend.ui.feature.attendance.AttendanceViewModel
+import com.amos_tech_code.smartattend.ui.feature.device_change.DeviceChangeViewModel
 import com.amos_tech_code.smartattend.ui.feature.history.HistoryViewModel
 import com.amos_tech_code.smartattend.ui.feature.home.HomeViewModel
 import com.amos_tech_code.smartattend.ui.feature.login.LoginViewModel
@@ -26,5 +27,6 @@ val studentViewModelModule = module {
     viewModel { HistoryViewModel(get(), get()) }
     viewModel { ProfileViewModel(get(), get(), get()) }
     viewModel { StudentNotificationViewModel(get()) }
+    viewModel { DeviceChangeViewModel(get(), get(), get()) }
 
 }

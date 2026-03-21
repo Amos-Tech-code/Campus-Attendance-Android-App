@@ -31,8 +31,11 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,6 +71,7 @@ import com.amos_tech_code.smartattend.ui.feature.history.getMethodIcon
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceHistoryRoute
 import com.amos_tech_code.smartattend.ui.navigation.AttendanceRoute
 import com.amos_tech_code.smartattend.ui.navigation.BottomNavigation
+import com.amos_tech_code.smartattend.ui.navigation.DeviceChangeRoute
 import com.amos_tech_code.smartattend.ui.navigation.NotificationsRoute
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
 import kotlinx.coroutines.launch
@@ -83,7 +87,6 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel()
 ) {
     val state by viewModel.homeState.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // Pull to refresh state
@@ -97,6 +100,10 @@ fun HomeScreen(
 
             is HomeEvent.ShowSuccessMessage -> {
                 scope.launch { snackbarHostState.showSnackbar(event.message) }
+            }
+
+            is HomeEvent.NavigateToDeviceChange -> {
+                navController.navigate(DeviceChangeRoute)
             }
         }
     }
@@ -168,10 +175,8 @@ fun HomeScreen(
                     item {
                         DeviceWarningCard(
                             deviceStatus = state.deviceStatus,
-                            onRequestChange = {
-                                // Navigate to device change request screen
-                                // Or show a dialog
-                                // viewModel.showDeviceChangeDialog()
+                            onClick = {
+                                viewModel.onDeviceChangeClicked()
                             },
                             modifier = Modifier.animateItem()
                         )
@@ -874,7 +879,7 @@ private fun RecentActivityItem(
 @Composable
 fun DeviceWarningCard(
     deviceStatus: DeviceStatus,
-    onRequestChange: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val config = when (deviceStatus) {
@@ -882,7 +887,7 @@ fun DeviceWarningCard(
             backgroundColor = MaterialTheme.colorScheme.primaryContainer,
             icon = Icons.Default.HourglassEmpty,
             title = "Device Change Pending",
-            message = "Your device change request is waiting for approval from admin."
+            message = "Your device change request is waiting for approval from your lecturer or admin."
         )
         DeviceStatus.REJECTED -> WarningCardConfig(
             backgroundColor = MaterialTheme.colorScheme.errorContainer,
@@ -905,12 +910,12 @@ fun DeviceWarningCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 //modifier = Modifier.weight(1f),
@@ -940,26 +945,17 @@ fun DeviceWarningCard(
                 }
             }
 
-            /*if (deviceStatus != DeviceStatus.PENDING) {
-                Button(
-                    onClick = onRequestChange,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Request Change")
-                }
-            } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(text =  if (deviceStatus == DeviceStatus.PENDING) "View Device Status" else "Request Change")
             }
 
-             */
         }
     }
 }

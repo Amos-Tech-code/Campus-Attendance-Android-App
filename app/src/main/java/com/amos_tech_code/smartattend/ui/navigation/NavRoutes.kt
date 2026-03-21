@@ -52,3 +52,6 @@ object AllExportsRoute: NavRoutes
 
 @Serializable
 data class InstitutionDetailsRoute(val institutionId: String) : NavRoutes
+
+@Serializable
+object DeviceChangeRoute: NavRoutes
