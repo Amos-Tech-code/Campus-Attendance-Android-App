@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,7 +39,9 @@ fun DeviceChangeScreen(
         viewModel.event.collectLatest { event ->
             when (event) {
                 is DeviceChangeEvent.ShowError -> {
-                    snackbarHostState.showSnackbar(event.message)
+                    snackbarHostState.showSnackbar(
+                        event.message, withDismissAction = true, duration = SnackbarDuration.Indefinite
+                    )
                 }
                 is DeviceChangeEvent.ShowSuccess -> {
                     snackbarHostState.showSnackbar(event.message)
@@ -104,7 +105,7 @@ fun DeviceChangeScreen(
                 ) {
                     // Current Device Info Section
                     item {
-                        CurrentDeviceCard(viewModel.isCurrentDeviceActive())
+                        CurrentDeviceCard(isCurrentDeviceActive = uiState.isCurrentDeviceActive)
                     }
 
                     // Active Pending Request Section

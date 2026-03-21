@@ -1,6 +1,7 @@
 package com.amos_tech_code.smartattend
 
 import android.app.Application
+import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.di.dataModule
 import com.amos_tech_code.smartattend.di.flavorPresentationModule
@@ -29,8 +30,13 @@ class SmartAttendApplication : Application() {
             )
 
             val apiService: ApiService by inject()
+            val session: SessionProvider by inject()
             // Initialize Notification Manager
-            notificationManager = SmartAttendNotificationManager(apiService, this@SmartAttendApplication)
+            notificationManager = SmartAttendNotificationManager(
+                apiService = apiService,
+                session = session,
+                context = this@SmartAttendApplication
+            )
             notificationManager.createChannels()
             notificationManager.getAndStoreToken()
         }

@@ -10,9 +10,12 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.amos_tech_code.smartattend.BuildConfig
 import com.amos_tech_code.smartattend.R
+import com.amos_tech_code.smartattend.data.local.SessionProvider
 import com.amos_tech_code.smartattend.data.network.ApiService
 import com.amos_tech_code.smartattend.data.network.safeApiCall
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
+import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
+import com.amos_tech_code.smartattend.domain.models.DeviceStatus
 import com.amos_tech_code.smartattend.domain.request.FCMTokenRequest
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 
 class SmartAttendNotificationManager(
     private val apiService: ApiService,
+    private val session: SessionProvider,
     private val context: Context
 ) {
 
@@ -54,6 +58,7 @@ class SmartAttendNotificationManager(
             if (task.isSuccessful) {
                 val token = task.result
                 //Log.d("FCM_TOKEN", "Token retrieved: $token")
+                session.saveFcmToken(token)
                 updateFCMToken(token)
             } else {
                 //Log.e("FCM_TOKEN", "Failed to get token", task.exception)
@@ -79,12 +84,18 @@ class SmartAttendNotificationManager(
 
             when (response) {
                 is ApiResult.Success -> {
-                    //Log.d("FCM_REQUEST", "Token updated successfully: ${response.data.message}")
+                    Log.d("FCM_REQUEST", "Token updated successfully: ${response.data.message}")
                 }
                 is ApiResult.Failure -> {
-                    //Log.e("FCM_REQUEST", "Failed to update token: ${response.error.extractApiErrorMessage()}")
+                    Log.e("FCM_REQUEST", "Failed to update token: ${response.error.extractApiErrorMessage()}")
                 }
             }
+        }
+    }
+
+    fun updateDeviceStatus(deviceStatus: DeviceStatus) {
+        job.launch {
+            session.updateDeviceStatus(deviceStatus)
         }
     }
 

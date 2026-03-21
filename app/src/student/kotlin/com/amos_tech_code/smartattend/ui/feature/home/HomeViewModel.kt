@@ -34,6 +34,7 @@ class HomeViewModel(
         observeStats()
         observeRecentAttendance()
         checkAndRefreshStats() // Check if stats need refresh
+        observeIsCurrentDeviceActive()
     }
 
     private fun fetchUserData() {
@@ -74,6 +75,19 @@ class HomeViewModel(
                         it.copy(isLoading = true)
                     }
                     refreshStatsFromApi()
+                }
+            }
+        }
+    }
+
+    private fun observeIsCurrentDeviceActive() {
+        viewModelScope.launch {
+            session.observeDeviceStatus().collect {
+                _homeState.update {
+                    it.copy(
+                        deviceStatus = it.deviceStatus,
+                        showDeviceWarning = it.deviceStatus != DeviceStatus.ACTIVE
+                    )
                 }
             }
         }

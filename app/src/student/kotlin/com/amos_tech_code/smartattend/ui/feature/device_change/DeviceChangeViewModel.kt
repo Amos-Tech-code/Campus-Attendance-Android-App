@@ -35,6 +35,7 @@ class DeviceChangeViewModel(
 
     init {
         loadDeviceChangeHistory()
+        isCurrentDeviceActive()
     }
 
     fun loadDeviceChangeHistory() {
@@ -102,6 +103,7 @@ class DeviceChangeViewModel(
             when (val result = repository.cancelDeviceChangeRequest(requestId)) {
                 is ApiResult.Success -> {
                     _uiState.update { it.copy(isCancelling = false) }
+                    classTrackSession.updateDeviceStatus(DeviceStatus.REJECTED)
                     loadDeviceChangeHistory() // Refresh history
                     _event.emit(DeviceChangeEvent.ShowSuccess("Request cancelled successfully"))
                 }
@@ -113,8 +115,15 @@ class DeviceChangeViewModel(
         }
     }
 
-    fun isCurrentDeviceActive(): Boolean {
-        return classTrackSession.getDeviceStatus() == DeviceStatus.ACTIVE
+    fun isCurrentDeviceActive() {
+        viewModelScope.launch {
+            classTrackSession.observeDeviceStatus().collect {
+                val isCurrentDeviceActive = it == DeviceStatus.ACTIVE
+                _uiState.update {
+                    it.copy(isCurrentDeviceActive = isCurrentDeviceActive)
+                }
+            }
+        }
     }
 
     fun setShowRequestDialog(show: Boolean) {
@@ -129,6 +138,7 @@ class DeviceChangeViewModel(
 data class DeviceChangeUiState(
     val history: List<DeviceChangeHistoryDto> = emptyList(),
     val isLoading: Boolean = false,
+    val isCurrentDeviceActive: Boolean = false,
     val isSubmitting: Boolean = false,
     val isCancelling: Boolean = false,
     val hasPendingRequest: Boolean = false,

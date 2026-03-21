@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.amos_tech_code.smartattend.MainActivity
 import com.amos_tech_code.smartattend.SmartAttendApplication
+import com.amos_tech_code.smartattend.domain.models.DeviceStatus
 import com.amos_tech_code.smartattend.domain.models.NotificationType
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -76,6 +77,14 @@ class SmartAttendMessagingService : FirebaseMessagingService() {
             pendingIntent = pendingIntent,
             channelType = channelType
         )
+
+        // For student on device approval or rejection
+        if (notificationType == NotificationType.DEVICE_APPROVED) {
+            notificationManager.updateDeviceStatus(DeviceStatus.ACTIVE)
+        }
+        if (notificationType == NotificationType.DEVICE_REJECTED) {
+            notificationManager.updateDeviceStatus(DeviceStatus.REJECTED)
+        }
     }
 
     private fun generateNotificationId(notificationType: NotificationType): Int {

@@ -74,6 +74,10 @@ class ClassTrackSession(context: Context) : SessionProvider {
         }
     }
 
+    override fun getFCMToken(): String? {
+        return prefs.getString(KEY_FCM_TOKEN, null)
+    }
+
     fun saveName(name: String) {
         prefs.edit {
             putString(KEY_NAME, name)
@@ -83,6 +87,12 @@ class ClassTrackSession(context: Context) : SessionProvider {
     fun saveRegistrationNumber(registrationNo: String) {
         prefs.edit {
             putString(KEY_REG_NO, registrationNo)
+        }
+    }
+
+    override fun updateDeviceStatus(deviceStatus: DeviceStatus) {
+        prefs.edit {
+            putString(KEY_DEVICE_STATUS, deviceStatus.name)
         }
     }
 
@@ -124,12 +134,21 @@ class ClassTrackSession(context: Context) : SessionProvider {
             else -> DeviceStatus.ACTIVE
         }
     }
+    fun observeDeviceStatus() : Flow<DeviceStatus> = callbackFlow {
+        trySend(getDeviceStatus())
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+            if (key == KEY_DEVICE_STATUS) {
+                trySend(getDeviceStatus())
+            }
+        }
 
-    fun getStudentDeviceInfo() : DeviceInfo = DeviceInfo(
-        deviceId = getDeviceId() ?: "",
-        model = getDeviceModel() ?: "",
-        os = getDeviceOs() ?: ""
-    )
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+
+        awaitClose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+
+    }
 
     // Check if user is logged in (token exists & not expired)
     fun isLoggedIn(): Boolean = getValidToken() != null
