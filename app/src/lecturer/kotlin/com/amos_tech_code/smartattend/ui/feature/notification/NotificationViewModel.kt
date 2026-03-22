@@ -289,7 +289,8 @@ class NotificationViewModel(
 
             when (action) {
                 is NotificationAction.ApproveDevice -> {
-                    handleDeviceApproval()
+                    _event.trySend(NotificationEvent.NavigateToDeviceApproval)
+                    markNotificationAsRead(notificationId)
                 }
                 is NotificationAction.ViewStudent -> {
                     _event.send(NotificationEvent.NavigateToStudent(action.studentId))
@@ -307,10 +308,6 @@ class NotificationViewModel(
 
             _state.update { it.copy(isPerformingAction = false) }
         }
-    }
-
-    private fun handleDeviceApproval() {
-        _event.trySend(NotificationEvent.NavigateToDeviceApproval)
     }
 
     private suspend fun markNotificationAsRead(notificationId: String) {

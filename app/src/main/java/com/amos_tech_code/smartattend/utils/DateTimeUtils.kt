@@ -31,6 +31,16 @@ fun Long.formatDate(): String {
 }
 
 /**
+ * Formats an ISO-8601 string into a user-friendly date string.
+ * Example:
+ * "2026-03-01T09:00:42Z" -> "Mar 01, 2026"
+ */
+fun String.formatDate(): String {
+    val millis = this.toEpochMillisOrNull() ?: return this
+    return millis.formatDate()
+}
+
+/**
  *
  * @return A formatted AM/PM time string.
  */

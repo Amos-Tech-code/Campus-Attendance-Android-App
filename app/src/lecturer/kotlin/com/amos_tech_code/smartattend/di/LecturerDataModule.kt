@@ -11,6 +11,7 @@ import com.amos_tech_code.smartattend.data.repository.AccountRepository
 import com.amos_tech_code.smartattend.data.repository.AttendanceRepository
 import com.amos_tech_code.smartattend.data.repository.ExportRepository
 import com.amos_tech_code.smartattend.data.repository.SessionRepository
+import com.amos_tech_code.smartattend.data.repository.StudentLookupRepository
 import com.amos_tech_code.smartattend.data.repository.UniversityRepository
 import com.amos_tech_code.smartattend.services.FileDownloadManager
 import org.koin.dsl.module
@@ -56,5 +57,7 @@ val lecturerDataModule  = module {
     single { SessionRepository(get(), get(), get()) }
 
     single { ExportRepository(get(), get(), get(), get(), get( )) }
+
+    single { StudentLookupRepository(get()) }
 
 }

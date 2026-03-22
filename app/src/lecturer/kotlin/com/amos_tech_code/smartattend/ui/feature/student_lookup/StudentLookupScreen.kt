@@ -1,74 +1,89 @@
 package com.amos_tech_code.smartattend.ui.feature.student_lookup
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocationOff
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Pending
-import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Pin
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.amos_tech_code.smartattend.domain.models.AttendanceMethod
-import com.amos_tech_code.smartattend.ui.components.EmptyState
-import com.amos_tech_code.smartattend.ui.components.SmartAttendButton
-import com.amos_tech_code.smartattend.ui.components.SmartAttendButtonStyle
-import com.amos_tech_code.smartattend.ui.components.SmartAttendHeightSpacer
-import com.amos_tech_code.smartattend.ui.components.SmartAttendPrimaryButton
-import com.amos_tech_code.smartattend.ui.components.SmartAttendSecondaryButton
-import com.amos_tech_code.smartattend.ui.components.SmartAttendTextField
-import com.amos_tech_code.smartattend.ui.theme.AbsentColor
-import com.amos_tech_code.smartattend.ui.theme.PendingColor
-import com.amos_tech_code.smartattend.ui.theme.PresentColor
+import com.amos_tech_code.smartattend.domain.models.ActivityType
+import com.amos_tech_code.smartattend.domain.response.AttendanceSummary
+import com.amos_tech_code.smartattend.domain.response.DeviceLookupInfo
+import com.amos_tech_code.smartattend.domain.response.EnrollmentInfo
+import com.amos_tech_code.smartattend.domain.response.PendingDeviceChangeInfo
+import com.amos_tech_code.smartattend.domain.response.RecentActivityInfo
+import com.amos_tech_code.smartattend.domain.response.StudentBasicInfo
+import com.amos_tech_code.smartattend.domain.response.StudentLookupUnitInfo
+import com.amos_tech_code.smartattend.ui.navigation.DeviceChangeRoute
+import com.amos_tech_code.smartattend.ui.theme.Warning40
 import com.amos_tech_code.smartattend.utils.ObserveAsEvents
+import com.amos_tech_code.smartattend.utils.formatDate
+import com.amos_tech_code.smartattend.utils.formatDateTime
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,159 +91,167 @@ fun StudentLookupScreen(
     navController: NavController,
     viewModel: StudentLookupViewModel = koinViewModel()
 ) {
+    val state by viewModel.state.collectAsState()
     val focusManager = LocalFocusManager.current
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
-            is StudentLookupEvent.ShowErrorMessage -> {
-                Toast.makeText(navController.context, event.message, Toast.LENGTH_LONG).show()
+            is StudentLookupEvent.ShowError -> {
+                scope.launch { snackbarHostState.showSnackbar(event.message) }
             }
-            is StudentLookupEvent.DeviceRequestUpdated -> {
-                val actionText = when (event.action) {
-                    "approved" -> "approved"
-                    "rejected" -> "rejected"
-                    else -> "updated"
-                }
-                Toast.makeText(navController.context, "Device request $actionText", Toast.LENGTH_SHORT).show()
+            is StudentLookupEvent.ShowSuccess -> {
+                scope.launch { snackbarHostState.showSnackbar(event.message) }
+            }
+            is StudentLookupEvent.ClearData -> {
+                focusManager.clearFocus()
+            }
+            is StudentLookupEvent.NavigateToDeviceApproval -> {
+                navController.navigate(DeviceChangeRoute)
             }
         }
     }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
-                        text = "Student Lookup",
+                        "Student Lookup",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                            MaterialTheme.colorScheme.background
+                        ),
+                        startY = 0f,
+                        endY = 400f
+                    )
+                )
         ) {
-            // Search Section
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Find Student",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    // Search Input
-                    SmartAttendTextField(
-                        value = state.searchQuery,
-                        onValueChange = { },
-                        label = "Registration Number or Name",
-                        placeholder = "Enter student registration number or name",
-                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                        trailingIcon = {
-                            if (state.searchQuery.isNotEmpty()) {
-                                IconButton(onClick = {  }) {
-                                    Icon(Icons.Default.Clear, "Clear")
-                                }
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                focusManager.clearFocus()
-                                viewModel.onEvent(StudentLookupUiEvent.SearchStudent)
-                            }
-                        )
-                    )
-
-                    // Search Button
-                    SmartAttendPrimaryButton(
-                        text = "Search Student",
-                        onClick = {
+                // Search Input Section
+                item {
+                    SearchInputCard(
+                        registrationNumber = state.registrationNumber,
+                        onValueChange = { viewModel.updateRegistrationNumber(it) },
+                        onClear = { viewModel.clearSearch() },
+                        onSearch = {
                             focusManager.clearFocus()
-                            viewModel.onEvent(StudentLookupUiEvent.SearchStudent)
+                            viewModel.searchStudent()
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        isLoading = state.isSearching
+                        isEnabled = state.isSearchEnabled,
+                        isLoading = state.isLoading
                     )
                 }
-            }
 
-            // Results Section
-            when {
-                state.isSearching -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                // Loading State
+                if (state.isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
-                state.searchedStudent != null -> {
-                    StudentDetailsSection(
-                        student = state.searchedStudent!!,
-                        attendanceRecords = state.attendanceRecords,
-                        deviceRequests = state.pendingDeviceRequests,
-                        onApproveDevice = { requestId ->
-                            viewModel.onEvent(StudentLookupUiEvent.ApproveDeviceRequest(requestId))
-                        },
-                        onRejectDevice = { requestId ->
-                            viewModel.onEvent(StudentLookupUiEvent.RejectDeviceRequest(requestId))
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f)
-                    )
-                }
-                state.searchPerformed && state.searchQuery.isNotEmpty() -> {
-                    EmptyState(
-                        icon = Icons.Default.PersonOff,
-                        title = "Student Not Found",
-                        description = "No student found with the provided registration number or name",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                else -> {
-                    // Pending Device Requests
-                    if (state.pendingDeviceRequests.isNotEmpty()) {
-                        PendingDeviceRequestsSection(
-                            requests = state.pendingDeviceRequests,
-                            onApprove = { requestId ->
-                                viewModel.onEvent(StudentLookupUiEvent.ApproveDeviceRequest(requestId))
-                            },
-                            onReject = { requestId ->
-                                viewModel.onEvent(StudentLookupUiEvent.RejectDeviceRequest(requestId))
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .weight(1f)
-                                .padding(16.dp)
+
+                // Error State
+                if (state.error != null && state.studentData == null) {
+                    item {
+                        ErrorCard(
+                            message = state.error ?: "An error occurred",
+                            onRetry = { viewModel.searchStudent() }
                         )
-                    } else {
-                        EmptyState(
-                            icon = Icons.Default.Search,
-                            title = "Search for Students",
-                            description = "Enter a student's registration number or name to view their details and manage device requests",
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    }
+                }
+
+                // Student Data Display
+                state.studentData?.let { data ->
+                    // Student Basic Info
+                    item {
+                        StudentInfoCard(studentInfo = data.studentInfo)
+                    }
+
+                    // Device Info
+                    item {
+                        DeviceInfoCard(deviceInfo = data.deviceInfo)
+                    }
+
+                    // Pending Device Change Warning
+                    data.pendingDeviceChange?.let { pending ->
+                        item {
+                            PendingDeviceChangeCard(
+                                pendingRequest = pending,
+                                onApproveClick = { viewModel.onApproveDeviceClicked() }
+                            )
+                        }
+                    }
+
+                    // Attendance Summary
+                    item {
+                        AttendanceSummaryCard(summary = data.attendanceSummary)
+                    }
+
+                    // Enrollment Information
+                    if (data.enrollmentInfo.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Academic Information",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        items(data.enrollmentInfo) { enrollment ->
+                            EnrollmentCard(enrollment = enrollment)
+                        }
+                    }
+
+                    // Recent Activity
+                    if (data.recentActivity.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Recent Activity",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        items(data.recentActivity) { activity ->
+                            ActivityItemCard(activity = activity)
+                        }
                     }
                 }
             }
@@ -237,146 +260,171 @@ fun StudentLookupScreen(
 }
 
 @Composable
-private fun StudentDetailsSection(
-    student: StudentWithDetails,
-    attendanceRecords: List<AttendanceRecord>,
-    deviceRequests: List<DeviceChangeRequest>,
-    onApproveDevice: (String) -> Unit,
-    onRejectDevice: (String) -> Unit,
-    modifier: Modifier = Modifier
+fun SearchInputCard(
+    registrationNumber: String,
+    onValueChange: (String) -> Unit,
+    onClear: () -> Unit,
+    onSearch: () -> Unit,
+    isEnabled: Boolean,
+    isLoading: Boolean
 ) {
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState())
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        // Student Info Card
-        Card(
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Search Student",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Text(
+                text = "Enter the student's registration number to view their details",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            OutlinedTextField(
+                value = registrationNumber,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("e.g., SC211/0483/2022") },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    if (registrationNumber.isNotEmpty()) {
+                        IconButton(onClick = onClear) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = { onSearch() }
+                ),
+                shape = RoundedCornerShape(12.dp),
+                isError = registrationNumber.isNotEmpty() && registrationNumber.length < 8
+            )
+
+            if (registrationNumber.isNotEmpty() && registrationNumber.length < 8) {
+                Text(
+                    text = "Registration number seems too short. Please check the format.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Button(
+                onClick = onSearch,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isEnabled && !isLoading,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Searching...")
+                } else {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Lookup Student")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StudentInfoCard(studentInfo: StudentBasicInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = student.name.take(2).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = student.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = student.registrationNo,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${student.department} • ${student.semester}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                Text(
+                    text = studentInfo.fullName.take(2).uppercase(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
-                // Device Status
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Device Status",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = if (student.deviceVerified) "Verified" else "Pending Verification",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = if (student.deviceVerified) PresentColor else PendingColor
-                        )
-                    }
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = studentInfo.fullName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = studentInfo.registrationNumber,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                studentInfo.lastLoginAt?.let {
                     Text(
-                        text = "Last login: ${student.lastLogin}",
+                        text = "Last login: ${it.formatDate()}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-        }
 
-        // Pending Device Requests for this student
-        val studentRequests = deviceRequests.filter { it.studentId == student.id }
-        if (studentRequests.isNotEmpty()) {
-            DeviceRequestsSection(
-                requests = studentRequests,
-                onApprove = onApproveDevice,
-                onReject = onRejectDevice,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        // Attendance History
-        AttendanceHistorySection(
-            records = attendanceRecords,
-            modifier = Modifier.padding(16.dp)
-        )
-
-        // Manual Actions
-        ManualActionsSection(
-            student = student,
-            modifier = Modifier.padding(16.dp)
-        )
-    }
-}
-
-@Composable
-private fun PendingDeviceRequestsSection(
-    requests: List<DeviceChangeRequest>,
-    onApprove: (String) -> Unit,
-    onReject: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Pending Device Requests",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        SmartAttendHeightSpacer(12.dp)
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            requests.forEach { request ->
-                DeviceRequestItem(
-                    request = request,
-                    onApprove = { onApprove(request.id) },
-                    onReject = { onReject(request.id) }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (studentInfo.isActive)
+                    Color(0xFF4CAF50).copy(alpha = 0.2f)
+                else
+                    Color(0xFFF44336).copy(alpha = 0.2f)
+            ) {
+                Text(
+                    text = if (studentInfo.isActive) "Active" else "Inactive",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = if (studentInfo.isActive) Color(0xFF4CAF50) else Color(0xFFF44336)
                 )
             }
         }
@@ -384,447 +432,460 @@ private fun PendingDeviceRequestsSection(
 }
 
 @Composable
-private fun DeviceRequestItem(
-    request: DeviceChangeRequest,
-    onApprove: () -> Unit,
-    onReject: () -> Unit
+fun DeviceInfoCard(deviceInfo: DeviceLookupInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.PhoneAndroid,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Device Information",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = deviceInfo.deviceModel ?: "No device registered",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                deviceInfo.deviceStatus?.let {
+                    Text(
+                        text = "Status: $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (it) {
+                            "ACTIVE" -> Color(0xFF4CAF50)
+                            "PENDING" -> Color(0xFFFF9800)
+                            else -> Color(0xFFF44336)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PendingDeviceChangeCard(
+    pendingRequest: PendingDeviceChangeInfo,
+    onApproveClick: () -> Unit
 ) {
     Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+            containerColor = Warning40
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Pending Device Change Request",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "New device: ${pendingRequest.newDeviceModel} (${pendingRequest.newDeviceOS})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Requested: ${pendingRequest.requestedAt.formatDate()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = onApproveClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Review & Approve Request",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AttendanceSummaryCard(summary: AttendanceSummary) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Student Info
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
+                Text(
+                    text = "Attendance Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "${summary.sessionsAttended}/${summary.totalSessions}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (summary.overallAttendance >= 80)
+                        Color(0xFF4CAF50)
+                    else if (summary.overallAttendance >= 60)
+                        Color(0xFFFF9800)
+                    else
+                        Color(0xFFF44336)
+                )
+            }
+
+            LinearProgressIndicator(
+                progress = (summary.overallAttendance / 100).toFloat(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = if (summary.overallAttendance >= 80)
+                    Color(0xFF4CAF50)
+                else if (summary.overallAttendance >= 60)
+                    Color(0xFFFF9800)
+                else
+                    Color(0xFFF44336)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Overall Attendance: ${String.format("%.1f", summary.overallAttendance)}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Suspicious Activities: ${summary.suspiciousActivities}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (summary.suspiciousActivities > 0)
+                        Color(0xFFF44336)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            summary.lastAttendanceDate?.let {
+                Text(
+                    text = "Last attendance: ${it.formatDate()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EnrollmentCard(enrollment: EnrollmentInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
                     Text(
-                        text = request.studentName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
+                        text = enrollment.programmeName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = request.studentRegNo,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Year ${enrollment.yearOfStudy}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 Text(
-                    text = request.requestDate,
+                    text = enrollment.academicTerm,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // Request Details
+            Divider()
+
+            Text(
+                text = "Units",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium
+            )
+
+            enrollment.units.forEach { unit ->
+                UnitProgressRow(unit = unit)
+            }
+        }
+    }
+}
+
+@Composable
+fun UnitProgressRow(unit: StudentLookupUnitInfo) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (unit.isTeaching) {
+                    Icon(
+                        Icons.Default.School,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    text = "${unit.unitCode} - ${unit.unitName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = if (unit.isTeaching) FontWeight.Medium else FontWeight.Normal
+                )
+            }
+            Text(
+                text = "${unit.sessionsAttended}/${unit.totalSessions}",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+
+        LinearProgressIndicator(
+            progress = (unit.attendancePercentage / 100).toFloat(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = when {
+                unit.attendancePercentage >= 80 -> Color(0xFF4CAF50)
+                unit.attendancePercentage >= 60 -> Color(0xFFFF9800)
+                else -> Color(0xFFF44336)
+            }
+        )
+    }
+}
+
+@Composable
+fun ActivityItemCard(activity: RecentActivityInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        color = activity.activityType.getColor().copy(alpha = 0.1f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = activity.activityType.getIcon(),
+                    contentDescription = null,
+                    tint = activity.activityType.getColor(),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "Device Change Request",
+                    text = activity.description,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Student requests to use a new device for attendance",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = activity.timestamp.formatDateTime(),
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (request.newDeviceInfo.isNotEmpty()) {
+            }
+
+            if (activity.activityType == ActivityType.SUSPICIOUS_ACTIVITY_DETECTED) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = Color(0xFFF44336).copy(alpha = 0.2f)
+                ) {
                     Text(
-                        text = "New device: ${request.newDeviceInfo}",
+                        text = "Alert",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFFF44336)
                     )
                 }
             }
-
-            // Action Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SmartAttendButton(
-                    onClick = onReject,
-                    modifier = Modifier.weight(1f),
-                    buttonStyle = SmartAttendButtonStyle.Error
-                ) {
-                    Text("Reject")
-                }
-//                SmartAttendSecondaryButton(
-//                    text = "Reject",
-//                    onClick = onReject,
-//                    modifier = Modifier.weight(1f),
-//                )
-                SmartAttendPrimaryButton(
-                    text = "Approve",
-                    onClick = onApprove,
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
     }
 }
 
 @Composable
-private fun DeviceRequestsSection(
-    requests: List<DeviceChangeRequest>,
-    onApprove: (String) -> Unit,
-    onReject: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Device Change Requests",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        SmartAttendHeightSpacer(8.dp)
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(requests) { request ->
-                DeviceRequestItem(
-                    request = request,
-                    onApprove = { onApprove(request.id) },
-                    onReject = { onReject(request.id) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AttendanceHistorySection(
-    records: List<AttendanceRecord>,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Recent Attendance",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        SmartAttendHeightSpacer(8.dp)
-
-        if (records.isEmpty()) {
-            EmptyState(
-                icon = Icons.Default.History,
-                title = "No Attendance Records",
-                description = "No attendance records found for this student",
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                records.take(5).forEach { record ->
-                    AttendanceRecordItem(record = record)
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-fun AttendanceRecordItem(
-    record: AttendanceRecord,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
+fun ErrorCard(message: String, onRetry: () -> Unit) {
     Card(
-        onClick = onClick ?: {},
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.errorContainer
         ),
-        enabled = onClick != null
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                // Course Info
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = record.courseName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = record.courseCode,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Status Badge
-                StatusBadge(record = record)
-            }
-
-            // Details Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Date and Time
-                IconText(
-                    icon = Icons.Default.Schedule,
-                    text = record.displayDateTime,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // Method
-                IconText(
-                    icon = when (record.method) {
-                        AttendanceMethod.QR_CODE -> Icons.Default.QrCode
-                        AttendanceMethod.MANUAL_CODE -> Icons.Default.Pin
-                        AttendanceMethod.ANY -> Icons.Default.AllInclusive
-                        //AttendanceMethod.LECTURER_MANUAL -> Icons.Default.Person
-                    },
-                    text = record.method.name,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Verification and Location Info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Verification Status
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (record.verified) {
-                        Icon(
-                            imageVector = Icons.Default.Verified,
-                            contentDescription = "Verified",
-                            tint = PresentColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Verified",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = PresentColor,
-                            fontWeight = FontWeight.Medium
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Pending,
-                            contentDescription = "Pending",
-                            tint = PendingColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Pending Review",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = PendingColor,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                // Location and Distance
-                if (record.location != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Location",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = record.location,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        record.distance?.let { distance ->
-                            Text(
-                                text = "(${distance}m)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = when {
-                                    distance <= 50 -> PresentColor
-                                    distance <= 100 -> PendingColor
-                                    else -> AbsentColor
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Security Indicators (if any issues)
-            if (!record.deviceVerified || !record.locationVerified) {
-                SecurityIssuesRow(record = record)
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusBadge(record: AttendanceRecord) {
-    Box(
-        modifier = Modifier
-            .background(
-                color = record.statusColor.copy(alpha = 0.1f),
-                shape = MaterialTheme.shapes.small
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
             Icon(
-                imageVector = record.statusIcon,
+                Icons.Default.Error,
                 contentDescription = null,
-                tint = record.statusColor,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onErrorContainer
             )
             Text(
-                text = record.status.name,
-                style = MaterialTheme.typography.labelSmall,
-                color = record.statusColor,
-                fontWeight = FontWeight.Medium
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Try Again")
+            }
         }
     }
 }
 
-@Composable
-private fun IconText(
-    icon: ImageVector,
-    text: String,
-    color: Color
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = color
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = color
-        )
+// Extension functions for ActivityType
+fun ActivityType.getIcon(): androidx.compose.ui.graphics.vector.ImageVector {
+    return when (this) {
+        ActivityType.ATTENDANCE_MARKED -> Icons.Default.CheckCircle
+        ActivityType.ATTENDANCE_REVOKED -> Icons.Default.Cancel
+        ActivityType.DEVICE_CHANGE_REQUESTED -> Icons.Default.Pending
+        ActivityType.DEVICE_CHANGE_APPROVED -> Icons.Default.Verified
+        ActivityType.DEVICE_CHANGE_REJECTED -> Icons.Default.Error
+        ActivityType.DEVICE_CHANGE_CANCELLED -> Icons.Default.Cancel
+        ActivityType.SESSION_STARTED -> Icons.Default.PlayArrow
+        ActivityType.SESSION_ENDED -> Icons.Default.Stop
+        ActivityType.PROFILE_UPDATED -> Icons.Default.Person
+        ActivityType.SUSPICIOUS_ACTIVITY_DETECTED -> Icons.Default.Warning
     }
 }
 
-@Composable
-private fun SecurityIssuesRow(record: AttendanceRecord) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (!record.deviceVerified) {
-            SecurityIssueItem(
-                icon = Icons.Default.PhoneAndroid,
-                text = "Device Not Verified",
-                color = MaterialTheme.colorScheme.error
-            )
-        }
-
-        if (!record.locationVerified) {
-            SecurityIssueItem(
-                icon = Icons.Default.LocationOff,
-                text = "Location Issue",
-                color = MaterialTheme.colorScheme.error
-            )
-        }
-    }
-}
-
-@Composable
-private fun SecurityIssueItem(
-    icon: ImageVector,
-    text: String,
-    color: Color
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            modifier = Modifier.size(14.dp),
-            tint = color
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun ManualActionsSection(
-    student: StudentWithDetails,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Manual Actions",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        SmartAttendHeightSpacer(8.dp)
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SmartAttendSecondaryButton(
-                text = "Mark Present",
-                onClick = { /* Handle manual present */ },
-                modifier = Modifier.weight(1f)
-            )
-            SmartAttendSecondaryButton(
-                text = "Reset Device",
-                onClick = { /* Handle device reset */ },
-                modifier = Modifier.weight(1f)
-            )
-        }
+fun ActivityType.getColor(): Color {
+    return when (this) {
+        ActivityType.ATTENDANCE_MARKED -> Color(0xFF4CAF50)
+        ActivityType.ATTENDANCE_REVOKED -> Color(0xFFF44336)
+        ActivityType.DEVICE_CHANGE_APPROVED -> Color(0xFF4CAF50)
+        ActivityType.DEVICE_CHANGE_REJECTED -> Color(0xFFF44336)
+        ActivityType.DEVICE_CHANGE_REQUESTED -> Color(0xFFFF9800)
+        ActivityType.DEVICE_CHANGE_CANCELLED -> Color(0xFF9E9E9E)
+        ActivityType.SESSION_STARTED -> Color(0xFF2196F3)
+        ActivityType.SESSION_ENDED -> Color(0xFF9E9E9E)
+        ActivityType.PROFILE_UPDATED -> Color(0xFF9C27B0)
+        ActivityType.SUSPICIOUS_ACTIVITY_DETECTED -> Color(0xFFF44336)
     }
 }

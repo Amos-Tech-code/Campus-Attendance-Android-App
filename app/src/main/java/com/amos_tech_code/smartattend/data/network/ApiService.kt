@@ -12,6 +12,7 @@ import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
 import com.amos_tech_code.smartattend.domain.request.StudentDeviceChangeRequest
 import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
+import com.amos_tech_code.smartattend.domain.request.StudentLookupRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileRequest
@@ -41,6 +42,7 @@ import com.amos_tech_code.smartattend.domain.response.StartAttendanceSessionResp
 import com.amos_tech_code.smartattend.domain.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.smartattend.domain.response.StudentAuthResponse
 import com.amos_tech_code.smartattend.domain.response.StudentEnrollmentResponse
+import com.amos_tech_code.smartattend.domain.response.StudentLookupResponse
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
 import com.amos_tech_code.smartattend.domain.response.UniversitySuggestion
 import com.amos_tech_code.smartattend.domain.response.VerifyAttendanceResponse
@@ -166,6 +168,11 @@ interface ApiService {
     suspend fun reviewDeviceChange(
         @Body request: DeviceChangeApprovalRequest
     ) : Response<DeviceChangeRequestResponse>
+
+    @POST("lecturer/student/lookup")
+    suspend fun lookupStudent(
+        @Body request: StudentLookupRequest
+    ) : Response<StudentLookupResponse>
 
 
     /**
