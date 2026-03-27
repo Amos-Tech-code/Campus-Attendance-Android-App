@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.network.utils.extractApiErrorMessage
 import com.amos_tech_code.smartattend.data.repository.StudentLookupRepository
+import com.amos_tech_code.smartattend.domain.request.LecturerMarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLookupRequest
 import com.amos_tech_code.smartattend.domain.response.StudentLookupResponse
 import kotlinx.coroutines.channels.Channel
@@ -84,4 +85,80 @@ class StudentLookupViewModel(
     fun onApproveDeviceClicked() {
         _event.trySend(StudentLookupEvent.NavigateToDeviceApproval)
     }
+
+    fun showSignAttendanceSheet() {
+        _state.update { it.copy(showSignAttendanceSheet = true) }
+    }
+
+    fun hideSignAttendanceSheet() {
+        _state.update { it.copy(showSignAttendanceSheet = false) }
+    }
+
+    fun updateSignAttendanceData(sessionCode: String, unitCode: String) {
+        _state.update {
+            it.copy(
+                signAttendanceSessionCode = sessionCode,
+                signAttendanceUnitCode = unitCode
+            )
+        }
+    }
+
+    fun signAttendanceForStudent() {
+        val state = _state.value
+        val sessionCode = state.signAttendanceSessionCode
+        val unitCode = state.signAttendanceUnitCode
+        val studentRegNo = state.studentData?.studentInfo?.registrationNumber
+
+        if (sessionCode.isBlank()) {
+            viewModelScope.launch {
+                _event.send(StudentLookupEvent.ShowError("Session code is required"))
+            }
+            return
+        }
+
+        if (unitCode.isBlank()) {
+            viewModelScope.launch {
+                _event.send(StudentLookupEvent.ShowError("Unit code is required"))
+            }
+            return
+        }
+
+        if (studentRegNo == null) {
+            viewModelScope.launch {
+                _event.send(StudentLookupEvent.ShowError("No student selected"))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmittingAttendance = true) }
+
+            val request = LecturerMarkAttendanceRequest(
+                sessionCode = sessionCode,
+                unitCode = unitCode,
+                studentRegNo = studentRegNo
+            )
+
+            val result = studentLookupRepository.signAttendanceForStudent(request)
+
+            when (result) {
+                is ApiResult.Success -> {
+                    _state.update {
+                        it.copy(
+                            isSubmittingAttendance = false,
+                            showSignAttendanceSheet = false,
+                            signAttendanceSessionCode = "",
+                            signAttendanceUnitCode = ""
+                        )
+                    }
+                    _event.send(StudentLookupEvent.ShowSuccess("Attendance marked successfully for $studentRegNo"))
+                }
+                is ApiResult.Failure -> {
+                    _state.update { it.copy(isSubmittingAttendance = false) }
+                    _event.send(StudentLookupEvent.ShowError(result.error.extractApiErrorMessage()))
+                }
+            }
+        }
+    }
+
 }

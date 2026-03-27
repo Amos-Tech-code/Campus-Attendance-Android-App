@@ -6,6 +6,7 @@ import com.amos_tech_code.smartattend.domain.request.DeviceChangeApprovalRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
 import com.amos_tech_code.smartattend.domain.request.FCMTokenRequest
 import com.amos_tech_code.smartattend.domain.request.GoogleSignInRequest
+import com.amos_tech_code.smartattend.domain.request.LecturerMarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.MarkAttendanceRequest
 import com.amos_tech_code.smartattend.domain.request.RemoveAttendanceRecordRequest
 import com.amos_tech_code.smartattend.domain.request.StartSessionRequest
@@ -134,6 +135,11 @@ interface ApiService {
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 10,
     ) : Response<AttendanceSessionHistoryResponse>
+
+    @POST("attendance/lecturer-mark")
+    suspend fun signAttendanceForStudent(
+        @Body request: LecturerMarkAttendanceRequest
+    ) : Response<GenericResponse>
 
     @HTTP(method = "DELETE", path = "attendance-manage/record", hasBody = true)
     suspend fun removeFlaggedStudent(

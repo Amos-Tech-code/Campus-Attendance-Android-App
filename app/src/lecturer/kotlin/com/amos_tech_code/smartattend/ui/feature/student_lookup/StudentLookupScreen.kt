@@ -207,6 +207,15 @@ fun StudentLookupScreen(
                         DeviceInfoCard(deviceInfo = data.deviceInfo)
                     }
 
+                    // Sign Attendance Button (Only for successful search)
+                    item {
+                        SignAttendanceButton(
+                            studentName = data.studentInfo.fullName,
+                            onClick = { viewModel.showSignAttendanceSheet() },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     // Pending Device Change Warning
                     data.pendingDeviceChange?.let { pending ->
                         item {
@@ -254,6 +263,21 @@ fun StudentLookupScreen(
                         }
                     }
                 }
+            }
+
+            // Sign Attendance Bottom Sheet
+            if (state.showSignAttendanceSheet && state.studentData != null) {
+                SignAttendanceBottomSheet(
+                    studentName = state.studentData!!.studentInfo.fullName,
+                    studentRegNo = state.studentData!!.studentInfo.registrationNumber,
+                    sessionCode = state.signAttendanceSessionCode,
+                    unitCode = state.signAttendanceUnitCode,
+                    onSessionCodeChange = { viewModel.updateSignAttendanceData(it, state.signAttendanceUnitCode) },
+                    onUnitCodeChange = { viewModel.updateSignAttendanceData(state.signAttendanceSessionCode, it) },
+                    onSubmit = { viewModel.signAttendanceForStudent() },
+                    onDismiss = { viewModel.hideSignAttendanceSheet() },
+                    isSubmitting = state.isSubmittingAttendance
+                )
             }
         }
     }
@@ -491,6 +515,45 @@ fun DeviceInfoCard(deviceInfo: DeviceLookupInfo) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SignAttendanceButton(
+    studentName: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Sign Attendance for ${studentName.take(15)}${if (studentName.length > 15) "..." else ""}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
