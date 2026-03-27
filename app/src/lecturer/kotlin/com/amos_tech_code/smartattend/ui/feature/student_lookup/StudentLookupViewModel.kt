@@ -85,18 +85,3 @@ class StudentLookupViewModel(
         _event.trySend(StudentLookupEvent.NavigateToDeviceApproval)
     }
 }
-
-data class StudentLookupState(
-    val registrationNumber: String = "",
-    val isLoading: Boolean = false,
-    val studentData: StudentLookupResponse? = null,
-    val error: String? = null,
-    val isSearchEnabled: Boolean = false
-)
-
-sealed class StudentLookupEvent {
-    data class ShowError(val message: String) : StudentLookupEvent()
-    data class ShowSuccess(val message: String) : StudentLookupEvent()
-    object ClearData : StudentLookupEvent()
-    object NavigateToDeviceApproval : StudentLookupEvent()
-}
