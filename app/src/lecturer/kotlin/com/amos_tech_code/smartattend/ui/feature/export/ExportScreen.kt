@@ -80,6 +80,7 @@ import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
 import com.amos_tech_code.smartattend.domain.models.ExportFormat
 import com.amos_tech_code.smartattend.domain.response.AttendanceExportResponseDto
 import com.amos_tech_code.smartattend.services.FileDownloadManager
+import com.amos_tech_code.smartattend.ui.components.ErrorDialog
 import com.amos_tech_code.smartattend.ui.feature.export.components.CsvViewerScreen
 import com.amos_tech_code.smartattend.ui.feature.export.components.ExportBottomSheet
 import com.amos_tech_code.smartattend.ui.feature.export.components.ExportDetailsDialog
@@ -437,6 +438,18 @@ fun ExportScreen(
             },
             onShare = {
                 viewModel.shareExport(selectedExport!!)
+            }
+        )
+    }
+
+    if (uiState.error != null) {
+        ErrorDialog(
+            title = "Error",
+            message = uiState.error!!,
+            positiveButtonText = "Ok",
+            onDismiss = { viewModel.clearErrorMessage() },
+            onPositiveButtonClick = {
+                viewModel.clearErrorMessage()
             }
         )
     }

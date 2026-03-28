@@ -223,7 +223,7 @@ class ExportViewModel(
                 }
                 is ApiResult.Failure -> {
                     val errorMessage = result.error.extractApiErrorMessage()
-                    _uiState.update { it.copy(isExporting = false) }
+                    _uiState.update { it.copy(isExporting = false, error = errorMessage) }
                     _event.send(ExportEvent.ShowSnackbar("Export failed: $errorMessage"))
                 }
             }
@@ -447,6 +447,9 @@ class ExportViewModel(
         }
     }
 
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(error = null) }
+    }
     /**
      * Refresh exports history function
      */

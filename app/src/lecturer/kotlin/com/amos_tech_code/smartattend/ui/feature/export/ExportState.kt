@@ -9,6 +9,7 @@ data class ExportUiState(
     val isLoading: Boolean = false,
     val isExporting: Boolean = false,
     val showExportSheet: Boolean = false,
+    val error: String? = null,
     val universityId: String = "",
     val universityName: String = "",
     val programmes: List<ProgrammeEntity> = emptyList(),
