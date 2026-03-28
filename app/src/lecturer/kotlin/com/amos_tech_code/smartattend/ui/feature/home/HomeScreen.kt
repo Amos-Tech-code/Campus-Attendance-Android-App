@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -71,7 +70,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.times
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AttendanceSessionHistoryEntity
@@ -604,6 +602,16 @@ private fun UniversityStatsDashboard(
     universityWithStats: UniversityWithStats,
     modifier: Modifier = Modifier
 ) {
+    val stats = listOf(
+        Triple("Units", universityWithStats.statistics.totalUnits.toString(), Icons.Default.Book to MaterialTheme.colorScheme.primary),
+        Triple("Students", universityWithStats.statistics.totalExpectedStudents.toString(), Icons.Default.Person to MaterialTheme.colorScheme.secondary),
+        Triple("Programmes", universityWithStats.statistics.totalProgrammes.toString(), Icons.Default.Groups to MaterialTheme.colorScheme.tertiary),
+        Triple("Departments", universityWithStats.statistics.totalDepartments.toString(), Icons.Default.AccountBalance to MaterialTheme.colorScheme.error)
+    )
+
+    val chunkedStats = stats.chunked(2)
+    val spacing = 12.dp
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -630,44 +638,29 @@ private fun UniversityStatsDashboard(
             )
         }
 
-        // Stats Grid
-        FlowRow(
-            modifier = modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-                StatCard(
-                    title = "Units",
-                    value = universityWithStats.statistics.totalUnits.toString(),
-                    icon = Icons.Default.Book,
-                    color = MaterialTheme.colorScheme.primary,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-
-                StatCard(
-                    title = "Students",
-                    value = universityWithStats.statistics.totalExpectedStudents.toString(),
-                    icon = Icons.Default.Person,
-                    color = MaterialTheme.colorScheme.secondary,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
-
-                StatCard(
-                    title = "Programmes",
-                    value = universityWithStats.statistics.totalProgrammes.toString(),
-                    icon = Icons.Default.Groups,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-
-                StatCard(
-                    title = "Departments",
-                    value = universityWithStats.statistics.totalDepartments.toString(),
-                    icon = Icons.Default.AccountBalance,
-                    color = MaterialTheme.colorScheme.error,
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-
+        // Stats Grid using Chunked Rows for alignment
+        Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+            chunkedStats.forEach { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing)
+                ) {
+                    rowItems.forEach { (title, value, pair) ->
+                        StatCard(
+                            title = title,
+                            value = value,
+                            icon = pair.first,
+                            color = pair.second,
+                            containerColor = pair.second.copy(alpha = 0.1f),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Add empty spacers if the row is not full
+                    if (rowItems.size < 2) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
@@ -681,6 +674,16 @@ private fun QuickActionsSection(
     onStudentLookup: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val actions = listOf(
+        Triple("Session History", "View past sessions", Icons.Default.History to MaterialTheme.colorScheme.secondary),
+        Triple("Export Data", "Export records", Icons.Default.Download to MaterialTheme.colorScheme.tertiary),
+        Triple("Student Lookup", "Search for students", Icons.Default.Search to MaterialTheme.colorScheme.surfaceVariant),
+        Triple("Institution", "Add Institution", Icons.Default.AddCircle to MaterialTheme.colorScheme.primary)
+    )
+
+    val chunkedActions = actions.chunked(2)
+    val spacing = 12.dp
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -694,46 +697,33 @@ private fun QuickActionsSection(
             modifier = Modifier.padding(start = 4.dp)
         )
 
-        FlowRow(
-            modifier = modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            QuickActionCard(
-                title = "Session History",
-                subtitle = "View past sessions",
-                icon = Icons.Default.History,
-                iconBackground = MaterialTheme.colorScheme.secondaryContainer,
-                iconTint = MaterialTheme.colorScheme.secondary,
-                onClick = onViewHistory
-            )
-
-            QuickActionCard(
-                title = "Export Data",
-                subtitle = "Export records",
-                icon = Icons.Default.Download,
-                iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
-                iconTint = MaterialTheme.colorScheme.tertiary,
-                onClick = onExport
-            )
-
-            QuickActionCard(
-                title = "Student Lookup",
-                subtitle = "Search for students",
-                icon = Icons.Default.Search,
-                iconBackground = MaterialTheme.colorScheme.surfaceVariant,
-                iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-                onClick = onStudentLookup
-            )
-
-            QuickActionCard(
-                title = "Institution",
-                subtitle = "Add Institution",
-                icon = Icons.Default.AddCircle,
-                iconBackground = MaterialTheme.colorScheme.primaryContainer,
-                iconTint = MaterialTheme.colorScheme.primary,
-                onClick = onAddClick
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+            chunkedActions.forEach { rowActions ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing)
+                ) {
+                    rowActions.forEach { (title, subtitle, pair) ->
+                        QuickActionCard(
+                            title = title,
+                            subtitle = subtitle,
+                            icon = pair.first,
+                            iconBackground = if(title == "Student Lookup") pair.second else pair.second.copy(alpha = 0.2f),
+                            iconTint = if(title == "Student Lookup") MaterialTheme.colorScheme.onSurfaceVariant else pair.second,
+                            onClick = when(title) {
+                                "Session History" -> onViewHistory
+                                "Export Data" -> onExport
+                                "Student Lookup" -> onStudentLookup
+                                else -> onAddClick
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (rowActions.size < 2) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
@@ -748,16 +738,12 @@ private fun StatCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.sizeIn(
-            minWidth = 120.dp, minHeight = 100.dp,
-            maxWidth = 140.dp, maxHeight = 120.dp
-        ),
+        modifier = modifier.height(110.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = color
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
@@ -786,7 +772,7 @@ private fun StatCard(
 
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.headlineMedium.copy(
+                    style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold
                     ),
                     color = color
@@ -799,7 +785,7 @@ private fun StatCard(
                     fontWeight = FontWeight.Medium
                 ),
                 color = color.copy(alpha = 0.8f),
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -817,10 +803,7 @@ private fun QuickActionCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.sizeIn(
-                minWidth = 120.dp, minHeight = 140.dp,
-                maxWidth = 140.dp, maxHeight = 140.dp
-            ),
+        modifier = modifier.height(150.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -832,20 +815,20 @@ private fun QuickActionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(iconBackground, RoundedCornerShape(16.dp)),
+                    .size(40.dp)
+                    .background(iconBackground, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     tint = iconTint,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
@@ -920,7 +903,7 @@ private fun TodaySessionsSection(
         if (sessions.isEmpty()) {
             EmptyTodaySessionsCard(onStartSession = onStartSession)
         } else {
-            val listHeight = (sessions.size * 170.dp) + ((sessions.size - 1) * 12.dp)
+            val listHeight = (170.dp * sessions.size) + (12.dp * (sessions.size - 1).coerceAtLeast(0))
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
