@@ -1,6 +1,9 @@
 package com.amos_tech_code.smartattend.data.network
 
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
+import com.amos_tech_code.smartattend.domain.request.AddAcademicTermRequest
+import com.amos_tech_code.smartattend.domain.request.AddProgrammeWithUnitsRequest
+import com.amos_tech_code.smartattend.domain.request.AddUnitToProgrammeRequest
 import com.amos_tech_code.smartattend.domain.request.AttendanceExportRequest
 import com.amos_tech_code.smartattend.domain.request.DeviceChangeApprovalRequest
 import com.amos_tech_code.smartattend.domain.request.EndSessionRequest
@@ -15,8 +18,8 @@ import com.amos_tech_code.smartattend.domain.request.StudentEnrollmentRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLoginRequest
 import com.amos_tech_code.smartattend.domain.request.StudentLookupRequest
 import com.amos_tech_code.smartattend.domain.request.StudentRegisterRequest
-import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateLecturerProfileRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateProgrammeDetailsRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateSessionRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateStudentProfileRequest
 import com.amos_tech_code.smartattend.domain.request.UpdateYearRequest
@@ -54,14 +57,13 @@ import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
-import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
 
     @GET("health/status")
-    suspend fun checkApiStatus() : Response<Unit>
+    suspend fun checkApiStatus() : Response<GenericResponse>
 
     /**
      * Lecturer Flavor Api Service Implementation
@@ -107,13 +109,50 @@ interface ApiService {
     @POST("lecturer/academic-setup")
     suspend fun uploadAcademicSetup(@Body request: AcademicSetUpRequest): Response<AcademicSetupResponse>
 
-    @PUT("lecturer/academic-setup")
-    suspend fun updateAcademicSetup(@Body request: UpdateAcademicSetupRequest): Response<AcademicSetupResponse>
-
     @GET("lecturer/academic-setup")
     suspend fun fetchLecturerAcademicSetUp(
         @Query("universityId") universityId: String?
     ): Response<LecturerAcademicSetupResponse>
+
+    @DELETE("lecturer/academic-setup/universities/{universityId}/deactivate")
+    suspend fun deactivateUniversity(
+        @Path("universityId") universityId: String
+    ): Response<GenericResponse>
+
+    @POST("lecturer/academic-setup/universities/{universityId}/terms")
+    suspend fun addAcademicTerm(
+        @Path("universityId") universityId: String,
+        @Body request: AddAcademicTermRequest
+    ): Response<GenericResponse>
+
+    @POST("lecturer/academic-setup/universities/{universityId}/programmes")
+    suspend fun addProgrammeWithUnits(
+        @Path("universityId") universityId: String,
+        @Body request: AddProgrammeWithUnitsRequest
+    ): Response<GenericResponse>
+
+    @PATCH("lecturer/academic-setup/programmes/{programmeId}")
+    suspend fun updateProgrammeDetails(
+        @Path("programmeId") programmeId: String,
+        @Body request: UpdateProgrammeDetailsRequest
+    ): Response<GenericResponse>
+
+    @DELETE("lecturer/academic-setup/programmes/{programmeId}")
+    suspend fun deactivateProgramme(
+        @Path("programmeId") programmeId: String
+    ): Response<GenericResponse>
+
+    @POST("lecturer/academic-setup/programmes/{programmeId}/units")
+    suspend fun addUnitToProgramme(
+        @Path("programmeId") programmeId: String,
+        @Body request: AddUnitToProgrammeRequest
+    ): Response<GenericResponse>
+
+    @DELETE("lecturer/academic-setup/programmes/{programmeId}/units/{unitId}")
+    suspend fun removeUnitFromProgramme(
+        @Path("programmeId") programmeId: String,
+        @Path("unitId") unitId: String
+    ): Response<GenericResponse>
 
     @POST("session/start")
     suspend fun startAttendanceSession(@Body request: StartSessionRequest) : Response<StartAttendanceSessionResponse>
@@ -162,7 +201,6 @@ interface ApiService {
         @Query("size") size: Int = 10,
         //@Query("sort") sort: String = "desc"
     ) : Response<ExportsListResponseDto>
-
 
     @PATCH("account/fcm-token/lecturer")
     suspend fun updateLecturerFCMToken(@Body request: FCMTokenRequest) : Response<GenericResponse>

@@ -35,6 +35,7 @@
         android:required="false" />
 
     <application
+        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:name=".SmartAttendApplication"
         android:dataExtractionRules="@xml/data_extraction_rules"

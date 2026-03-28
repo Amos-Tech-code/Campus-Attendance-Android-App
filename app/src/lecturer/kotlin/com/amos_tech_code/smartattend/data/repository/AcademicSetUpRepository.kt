@@ -1,6 +1,5 @@
 package com.amos_tech_code.smartattend.data.repository
 
-import android.util.Log
 import com.amos_tech_code.smartattend.data.local.room_db.dao.LecturerAcademicsDao
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.DepartmentEntity
@@ -16,13 +15,17 @@ import com.amos_tech_code.smartattend.data.network.utils.ApiResult
 import com.amos_tech_code.smartattend.data.repositories.UniversitySuggestionsRepository
 import com.amos_tech_code.smartattend.domain.models.University
 import com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest
+import com.amos_tech_code.smartattend.domain.request.AddAcademicTermRequest
+import com.amos_tech_code.smartattend.domain.request.AddProgrammeWithUnitsRequest
+import com.amos_tech_code.smartattend.domain.request.AddUnitToProgrammeRequest
 import com.amos_tech_code.smartattend.domain.request.DepartmentSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.ProgrammeSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.UnitSuggestionRequest
 import com.amos_tech_code.smartattend.domain.request.UniversitySuggestionRequest
-import com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest
+import com.amos_tech_code.smartattend.domain.request.UpdateProgrammeDetailsRequest
 import com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion
+import com.amos_tech_code.smartattend.domain.response.GenericResponse
 import com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse
 import com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion
 import com.amos_tech_code.smartattend.domain.response.UnitSuggestion
@@ -41,11 +44,7 @@ class AcademicSetUpRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val lecturerAcademicsDao: LecturerAcademicsDao
 ) : UniversitySuggestionsRepository {
-    /**
-     * Fetches a list of university suggestions from the network based on a search query.
-     * @param request The request containing the search query and limit.
-     * @return An [com.amos_tech_code.smartattend.data.network.utils.ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.UniversitySuggestion] on success, or an error on failure.
-     */
+
     override suspend fun fetchMatchingUniversities(request: UniversitySuggestionRequest): ApiResult<List<UniversitySuggestion>> {
         return safeApiCall {
             apiService.fetchMatchingUniversities(
@@ -55,11 +54,6 @@ class AcademicSetUpRepository(
         }
     }
 
-    /**
-     * Fetches a list of department suggestions from the network for a given university.
-     * @param request The request containing the university ID, search query, and limit.
-     * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.DepartmentSuggestion] on success, or an error on failure.
-     */
     suspend fun fetchMatchingDepartments(request: DepartmentSuggestionRequest): ApiResult<List<DepartmentSuggestion>> {
         return safeApiCall {
             apiService.fetchMatchingDepartments(
@@ -70,11 +64,6 @@ class AcademicSetUpRepository(
         }
     }
 
-    /**
-     * Fetches a list of programme suggestions from the network for a given university and department.
-     * @param request The request containing university ID, optional department ID, search query, and limit.
-     * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.ProgrammeSuggestion] on success, or an error on failure.
-     */
     override suspend fun fetchMatchingProgrammes(request: ProgrammeSuggestionRequest): ApiResult<List<ProgrammeSuggestion>> {
         return safeApiCall {
             apiService.fetchMatchingProgrammes(
@@ -86,11 +75,6 @@ class AcademicSetUpRepository(
         }
     }
 
-    /**
-     * Fetches a list of unit suggestions from the network for a given context (university, department, programme).
-     * @param request The request containing university, optional department/programme IDs, search query, and limit.
-     * @return An [ApiResult] containing a list of [com.amos_tech_code.smartattend.domain.response.UnitSuggestion] on success, or an error on failure.
-     */
     suspend fun fetchMatchingUnits(request: UnitSuggestionRequest): ApiResult<List<UnitSuggestion>> {
         return safeApiCall {
             apiService.fetchMatchingUnits(
@@ -102,13 +86,6 @@ class AcademicSetUpRepository(
             )
         }
     }
-
-    /**
-     * Uploads a new academic setup for the lecturer to the remote server.
-     * On success, it asynchronously saves the new setup to the local database.
-     * @param request The [com.amos_tech_code.smartattend.domain.request.AcademicSetUpRequest] containing the full academic hierarchy to upload.
-     * @return An [ApiResult] with [com.amos_tech_code.smartattend.domain.response.AcademicSetupResponse] on success, or an error on failure.
-     */
     suspend fun uploadAcademicSetUp(request: AcademicSetUpRequest): ApiResult<AcademicSetupResponse> {
 
         val result = safeApiCall { apiService.uploadAcademicSetup(request) }
@@ -120,38 +97,72 @@ class AcademicSetUpRepository(
 
     }
 
-    /**
-     * Updates an existing academic setup for a specific university on the remote server.
-     * On success, it asynchronously updates the setup in the local database.
-     * @param request The [com.amos_tech_code.smartattend.domain.request.UpdateAcademicSetupRequest] containing the updated academic details.
-     * @return An [ApiResult] with [AcademicSetupResponse] on success, or an error on failure.
-     */
-    suspend fun updateAcademicSetUp(request: UpdateAcademicSetupRequest): ApiResult<AcademicSetupResponse> {
-
-        val result = safeApiCall { apiService.updateAcademicSetup(request) }
-
-        if (result is ApiResult.Success) {
-            updateUniversitySetupAsync(request.universityId, result.data)
-        }
-        return result
-
-    }
-
-    /**
-     * Fetches the complete academic setup for the lecturer from the remote server.
-     * Can fetch for a specific university or all universities if [universityId] is null.
-     * @param universityId The optional ID of the university to fetch. If null, fetches all setups.
-     * @return An [ApiResult] with [com.amos_tech_code.smartattend.domain.response.LecturerAcademicSetupResponse] on success, or an error on failure.
-     */
     suspend fun fetchLecturerAcademicSetUp(universityId: String?): ApiResult<LecturerAcademicSetupResponse> {
 
         return safeApiCall { apiService.fetchLecturerAcademicSetUp(universityId) }
 
     }
 
+    // ==================== UPDATE ===================
+    suspend fun deactivateUniversity(universityId: String): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.deactivateUniversity(universityId) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(universityId)
+        }
+        return result
+    }
+
+    suspend fun addAcademicTerm(universityId: String, request: AddAcademicTermRequest): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.addAcademicTerm(universityId, request) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(universityId)
+        }
+        return result
+    }
+
+    suspend fun addProgrammeWithUnits(universityId: String, request: AddProgrammeWithUnitsRequest): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.addProgrammeWithUnits(universityId, request) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(universityId)
+        }
+        return result
+    }
+
+    suspend fun updateProgrammeDetails(programmeId: String, request: UpdateProgrammeDetailsRequest): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.updateProgrammeDetails(programmeId, request) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(null)
+        }
+        return result
+    }
+
+    suspend fun deactivateProgramme(programmeId: String): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.deactivateProgramme(programmeId) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(null)
+        }
+        return result
+    }
+
+    suspend fun addUnitToProgramme(programmeId: String, request: AddUnitToProgrammeRequest): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.addUnitToProgramme(programmeId, request) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(null)
+        }
+        return result
+    }
+
+    suspend fun removeUnitFromProgramme(programmeId: String, unitId: String): ApiResult<GenericResponse> {
+        val result = safeApiCall { apiService.removeUnitFromProgramme(programmeId, unitId) }
+        if (result is ApiResult.Success) {
+            syncLecturerAcademics(null)
+        }
+        return result
+    }
+
     /**
      * Local Data source Operations
-     * Save a single university setup after upload/update
+     * Save a single university setup after upload
      */
     private fun saveUniversitySetupAsync(response: AcademicSetupResponse) {
         // Launch a coroutine in the IO dispatcher that's independent of the calling scope
@@ -161,36 +172,6 @@ class AcademicSetUpRepository(
             } catch (e: Exception) {
                 session.setAcademicSyncStatus(false)
                 //Log.e("AcademicSetUpRepository", "Failed to save university setup: ${e.message}")
-            }
-        }
-    }
-
-    /**
-     * Update a single university setup
-     */
-    private fun updateUniversitySetupAsync(universityId: String, response: AcademicSetupResponse) {
-        CoroutineScope(ioDispatcher + SupervisorJob()).launch {
-            try {
-                // Get the current active university before deletion
-                val currentActive = lecturerAcademicsDao.getActiveUniversity()
-                val wasActive = currentActive?.id == universityId
-
-                // First delete existing setup for this university
-                lecturerAcademicsDao.deleteUniversitySetup(universityId)
-
-                // Save the updated setup
-                saveUniversitySetup(response, universityId)
-
-                // If this was the active university, make sure it stays active
-                if (wasActive) {
-                    handleActiveUniversity(universityId)
-                }
-            } catch (e: Exception) {
-                session.setAcademicSyncStatus(false)
-                Log.e(
-                    "AcademicSetUpRepository",
-                    "Failed to save updated university setup: ${e.message}"
-                )
             }
         }
     }

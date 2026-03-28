@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -36,7 +37,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,23 +68,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.amos_tech_code.smartattend.data.local.room_db.entities.AcademicTermEntity
+import com.amos_tech_code.smartattend.data.local.room_db.entities.DepartmentEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.ProgrammeEntity
 import com.amos_tech_code.smartattend.data.local.room_db.entities.UnitEntity
-import com.amos_tech_code.smartattend.domain.request.NewAcademicTermDraft
+import com.amos_tech_code.smartattend.domain.request.AddUnitToProgrammeRequest
 import kotlinx.coroutines.launch
 
 // ==================== PROGRAMME BOTTOM SHEET ====================
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgrammeEditBottomSheet(
     programme: ProgrammeEntity?,
     units: List<UnitEntity>,
+    availableDepartments: List<DepartmentEntity> = emptyList(),
     initialDepartmentName: String,
     onDismiss: () -> Unit,
-    onSave: (ProgrammeEdit, List<UnitEdit>) -> Unit,
+    onSave: (ProgrammeEdit) -> Unit,
     onDelete: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(
@@ -104,29 +111,13 @@ fun ProgrammeEditBottomSheet(
             }
         }
     ) {
+        var selectedDepartmentId by remember { mutableStateOf(programme?.departmentId ?: "") }
+        var selectedDepartmentName by remember { mutableStateOf(initialDepartmentName) }
         var programmeName by remember { mutableStateOf(programme?.name ?: "") }
-        var departmentName by remember { mutableStateOf(initialDepartmentName) }
         var yearOfStudy by remember { mutableStateOf(programme?.yearOfStudy?.toString() ?: "1") }
         var expectedStudents by remember { mutableStateOf(programme?.expectedStudentCount?.toString() ?: "0") }
         var isActive by remember { mutableStateOf(programme != null) }
         var showDeleteDialog by remember { mutableStateOf(false) }
-
-        // Unit edits
-        val unitEdits = remember(units) {
-            units.map { unit ->
-                UnitEdit(
-                    id = unit.id,
-                    code = unit.code,
-                    name = unit.name,
-                    semester = unit.semester,
-                    lectureDay = unit.lectureDay,
-                    lectureTime = unit.lectureTime,
-                    lectureVenue = unit.lectureVenue,
-                    isActive = true
-                )
-            }
-        }
-        var updatedUnits by remember { mutableStateOf(unitEdits) }
 
         LazyColumn(
             modifier = Modifier
@@ -178,22 +169,64 @@ fun ProgrammeEditBottomSheet(
 
             // Department
             item {
-                OutlinedTextField(
-                    value = departmentName,
-                    onValueChange = { departmentName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Department Name *") },
-                    placeholder = { Text("e.g., IT Department") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Business,
-                            contentDescription = null
+                if (availableDepartments.isNotEmpty()) {
+                    var expanded by remember { mutableStateOf(false) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedDepartmentName,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            label = { Text("Department *") },
+                            placeholder = { Text("Select department") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            shape = RoundedCornerShape(16.dp)
                         )
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    isError = departmentName.isBlank()
-                )
+
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            availableDepartments.forEach { dept ->
+                                DropdownMenuItem(
+                                    text = { Text(dept.name) },
+                                    onClick = {
+                                        selectedDepartmentName = dept.name
+                                        selectedDepartmentId = dept.id
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = selectedDepartmentName,
+                        onValueChange = {
+                            selectedDepartmentName = it
+                            selectedDepartmentId = "" // Clear ID when typing manually
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Department Name *") },
+                        placeholder = { Text("e.g., IT Department") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Business,
+                                contentDescription = null
+                            )
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        isError = selectedDepartmentName.isBlank()
+                    )
+                }
             }
 
             // Year of Study
@@ -268,7 +301,7 @@ fun ProgrammeEditBottomSheet(
                 }
             }
 
-            // Units Section
+            // Units Section (display only - not editable)
             if (units.isNotEmpty()) {
                 item {
                     Text(
@@ -280,14 +313,7 @@ fun ProgrammeEditBottomSheet(
                 }
 
                 items(units) { unit ->
-                    UnitEditItem(
-                        unit = unit,
-                        onUpdate = { updatedUnit ->
-                            updatedUnits = updatedUnits.map {
-                                if (it.id == unit.id) updatedUnit else it
-                            }
-                        }
-                    )
+                    UnitDisplayItem(unit = unit)
                 }
             }
 
@@ -322,18 +348,21 @@ fun ProgrammeEditBottomSheet(
                         val programmeEdit = ProgrammeEdit(
                             id = programme?.id ?: "",
                             name = programmeName,
-                            departmentName = departmentName,
+                            departmentId = if (availableDepartments.isNotEmpty()) selectedDepartmentId else null,
+                            departmentName = selectedDepartmentName,
                             yearOfStudy = yearOfStudy.toIntOrNull() ?: 1,
                             expectedStudentCount = expectedStudents.toIntOrNull() ?: 0,
                             isActive = isActive
                         )
-                        onSave(programmeEdit, updatedUnits)
+                        onSave(programmeEdit)
                         scope.launch { sheetState.hide() }.invokeOnCompletion {
                             if (!sheetState.isVisible) onDismiss()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = programmeName.isNotBlank() && yearOfStudy.isNotBlank(),
+                    enabled = programmeName.isNotBlank() &&
+                            yearOfStudy.isNotBlank() &&
+                            selectedDepartmentName.isNotBlank(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text("Save Changes")
@@ -370,6 +399,523 @@ fun ProgrammeEditBottomSheet(
     }
 }
 
+
+// ProgrammeAddBottomSheet.kt - New component for adding programme with units
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProgrammeAddBottomSheet(
+    availableDepartments: List<DepartmentEntity>,
+    onDismiss: () -> Unit,
+    onSave: (ProgrammeEdit, List<AddUnitToProgrammeRequest>) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+    val scope = rememberCoroutineScope()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = {
+            Surface(
+                modifier = Modifier.padding(16.dp),
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            ) {
+                Spacer(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp))
+            }
+        }
+    ) {
+        var selectedDepartmentId by remember { mutableStateOf("") }
+        var selectedDepartmentName by remember { mutableStateOf("") }
+        var programmeName by remember { mutableStateOf("") }
+        var yearOfStudy by remember { mutableStateOf("1") }
+        var expectedStudents by remember { mutableStateOf("0") }
+
+        // Units list
+        var units by remember { mutableStateOf<List<AddUnitToProgrammeRequest>>(emptyList()) }
+        var showAddUnitDialog by remember { mutableStateOf(false) }
+        var editingUnitIndex by remember { mutableStateOf<Int?>(null) }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Add Programme",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close"
+                        )
+                    }
+                }
+                Text(
+                    text = "Add a new programme with its units",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Programme Name
+            item {
+                OutlinedTextField(
+                    value = programmeName,
+                    onValueChange = { programmeName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Programme Name *") },
+                    placeholder = { Text("e.g., Bachelor of Computer Science") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    isError = programmeName.isBlank()
+                )
+            }
+
+            // Department
+            item {
+                if (availableDepartments.isNotEmpty()) {
+                    var expanded by remember { mutableStateOf(false) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedDepartmentName,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            label = { Text("Department *") },
+                            placeholder = { Text("Select department") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            availableDepartments.forEach { dept ->
+                                DropdownMenuItem(
+                                    text = { Text(dept.name) },
+                                    onClick = {
+                                        selectedDepartmentName = dept.name
+                                        selectedDepartmentId = dept.id
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = selectedDepartmentName,
+                        onValueChange = {
+                            selectedDepartmentName = it
+                            selectedDepartmentId = ""
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Department Name *") },
+                        placeholder = { Text("e.g., IT Department") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Business,
+                                contentDescription = null
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        isError = selectedDepartmentName.isBlank()
+                    )
+                }
+            }
+
+            // Year of Study
+            item {
+                OutlinedTextField(
+                    value = yearOfStudy,
+                    onValueChange = { if (it.all { char -> char.isDigit() }) yearOfStudy = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Year of Study *") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+
+            // Expected Students
+            item {
+                OutlinedTextField(
+                    value = expectedStudents,
+                    onValueChange = { if (it.all { char -> char.isDigit() }) expectedStudents = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Expected Students") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.People,
+                            contentDescription = null
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+
+            // Units Section Header
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Units",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    TextButton(
+                        onClick = { showAddUnitDialog = true },
+                        enabled = selectedDepartmentId.isNotBlank() || selectedDepartmentName.isNotBlank()
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add Unit",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Add Unit")
+                    }
+                }
+                Text(
+                    text = "At least one unit is required",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (units.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Units List
+            if (units.isNotEmpty()) {
+                items(units) { unit ->
+                    UnitAddItem(
+                        unit = unit,
+                        onRemove = {
+                            units = units.filterNot { it == unit }
+                        },
+                        onEdit = {
+                            val index = units.indexOf(unit)
+                            editingUnitIndex = index
+                            showAddUnitDialog = true
+                        }
+                    )
+                }
+            }
+
+            // Save Button
+            item {
+                Button(
+                    onClick = {
+                        val programmeEdit = ProgrammeEdit(
+                            id = "",
+                            name = programmeName,
+                            departmentId = selectedDepartmentId.takeIf { it.isNotBlank() },
+                            departmentName = selectedDepartmentName,
+                            yearOfStudy = yearOfStudy.toIntOrNull() ?: 1,
+                            expectedStudentCount = expectedStudents.toIntOrNull() ?: 0,
+                            isActive = true
+                        )
+                        onSave(programmeEdit, units)
+                        scope.launch { sheetState.hide() }.invokeOnCompletion {
+                            if (!sheetState.isVisible) onDismiss()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = programmeName.isNotBlank() &&
+                            yearOfStudy.isNotBlank() &&
+                            selectedDepartmentName.isNotBlank() &&
+                            units.isNotEmpty(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Add Programme with ${units.size} Unit(s)")
+                }
+            }
+        }
+
+        // Add/Edit Unit Dialog
+        if (showAddUnitDialog) {
+            AddUnitDialog(
+                initialUnit = editingUnitIndex?.let { units[it] },
+                departmentId = selectedDepartmentId,
+                onDismiss = {
+                    showAddUnitDialog = false
+                    editingUnitIndex = null
+                },
+                onSave = { unit ->
+                    if (editingUnitIndex != null) {
+                        units = units.toMutableList().apply {
+                            set(editingUnitIndex!!, unit)
+                        }
+                        editingUnitIndex = null
+                    } else {
+                        units = units + unit
+                    }
+                    showAddUnitDialog = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddUnitDialog(
+    initialUnit: AddUnitToProgrammeRequest?,
+    departmentId: String,
+    onDismiss: () -> Unit,
+    onSave: (AddUnitToProgrammeRequest) -> Unit
+) {
+    var unitCode by remember { mutableStateOf(initialUnit?.code ?: "") }
+    var unitName by remember { mutableStateOf(initialUnit?.name ?: "") }
+    var semester by remember { mutableStateOf(initialUnit?.semester?.toString() ?: "1") }
+    var lectureDay by remember { mutableStateOf(initialUnit?.lectureDay ?: "") }
+    var lectureTime by remember { mutableStateOf(initialUnit?.lectureTime ?: "") }
+    var lectureVenue by remember { mutableStateOf(initialUnit?.lectureVenue ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initialUnit == null) "Add Unit" else "Edit Unit") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = unitCode,
+                    onValueChange = { unitCode = it.uppercase() },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Unit Code *") },
+                    placeholder = { Text("e.g., CS401") },
+                    singleLine = true,
+                    isError = unitCode.isBlank()
+                )
+
+                OutlinedTextField(
+                    value = unitName,
+                    onValueChange = { unitName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Unit Name *") },
+                    placeholder = { Text("e.g., Mobile Application Development") },
+                    singleLine = true,
+                    isError = unitName.isBlank()
+                )
+
+                OutlinedTextField(
+                    value = semester,
+                    onValueChange = { if (it.all { char -> char.isDigit() }) semester = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Semester *") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = semester.toIntOrNull() == null
+                )
+
+                OutlinedTextField(
+                    value = lectureDay,
+                    onValueChange = { lectureDay = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Lecture Day (Optional)") },
+                    placeholder = { Text("e.g., Monday") },
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = lectureTime,
+                    onValueChange = { lectureTime = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Lecture Time (Optional)") },
+                    placeholder = { Text("e.g., 9:00 AM - 11:00 AM") },
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = lectureVenue,
+                    onValueChange = { lectureVenue = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Venue (Optional)") },
+                    placeholder = { Text("e.g., Room 101") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val unit = AddUnitToProgrammeRequest(
+                        code = unitCode,
+                        name = unitName,
+                        semester = semester.toIntOrNull() ?: 1,
+                        departmentId = departmentId,
+                        lectureDay = lectureDay.takeIf { it.isNotBlank() },
+                        lectureTime = lectureTime.takeIf { it.isNotBlank() },
+                        lectureVenue = lectureVenue.takeIf { it.isNotBlank() }
+                    )
+                    onSave(unit)
+                },
+                enabled = unitCode.isNotBlank() && unitName.isNotBlank() && semester.toIntOrNull() != null
+            ) {
+                Text(if (initialUnit == null) "Add" else "Update")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun UnitAddItem(
+    unit: AddUnitToProgrammeRequest,
+    onRemove: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "${unit.code} - ${unit.name}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Semester ${unit.semester}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Remove",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnitDisplayItem(unit: UnitEntity) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.Book,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "${unit.code} - ${unit.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Semester ${unit.semester}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (unit.lectureDay != null || unit.lectureTime != null) {
+                Icon(
+                    Icons.Default.Schedule,
+                    contentDescription = "Has schedule",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
 // ==================== UNIT BOTTOM SHEET ====================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -378,7 +924,7 @@ fun UnitEditBottomSheet(
     unit: UnitEntity?,
     programmes: List<ProgrammeEntity>,
     onDismiss: () -> Unit,
-    onSave: (UnitEdit, String) -> Unit,
+    onSave: (NewUnitDraft, String) -> Unit,
     onDelete: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(
@@ -397,12 +943,10 @@ fun UnitEditBottomSheet(
         var unitName by remember { mutableStateOf(unit?.name ?: "") }
         var semester by remember { mutableStateOf(unit?.semester?.toString() ?: "1") }
 
-        // Only for existing units - lecture details
         var lectureDay by remember { mutableStateOf(unit?.lectureDay ?: "") }
         var lectureTime by remember { mutableStateOf(unit?.lectureTime ?: "") }
         var lectureVenue by remember { mutableStateOf(unit?.lectureVenue ?: "") }
 
-        var isActive by remember { mutableStateOf(unit != null) }
         var selectedProgrammeId by remember { mutableStateOf(programmes.firstOrNull()?.id ?: "") }
         var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -461,7 +1005,7 @@ fun UnitEditBottomSheet(
                     value = unitCode,
                     onValueChange = { unitCode = it.uppercase() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (isNewUnit) "Unit Code *" else "Unit Code") },
+                    label = { Text("Unit Code *") },
                     placeholder = { Text("e.g., CS401") },
                     leadingIcon = {
                         Icon(
@@ -471,7 +1015,7 @@ fun UnitEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    isError = isNewUnit && unitCode.isBlank(),
+                    isError = unitCode.isBlank(),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters
                     )
@@ -484,7 +1028,7 @@ fun UnitEditBottomSheet(
                     value = unitName,
                     onValueChange = { unitName = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (isNewUnit) "Unit Name *" else "Unit Name") },
+                    label = { Text("Unit Name *") },
                     placeholder = { Text("e.g., Mobile Application Development") },
                     leadingIcon = {
                         Icon(
@@ -494,7 +1038,7 @@ fun UnitEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    isError = isNewUnit && unitName.isBlank()
+                    isError = unitName.isBlank()
                 )
             }
 
@@ -504,7 +1048,7 @@ fun UnitEditBottomSheet(
                     value = semester,
                     onValueChange = { if (it.all { char -> char.isDigit() }) semester = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (isNewUnit) "Semester *" else "Semester") },
+                    label = { Text("Semester *") },
                     leadingIcon = {
                         Icon(
                             Icons.Default.DateRange,
@@ -513,110 +1057,77 @@ fun UnitEditBottomSheet(
                     },
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    isError = isNewUnit && semester.toIntOrNull() == null,
+                    isError = semester.toIntOrNull() == null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
 
-            // Lecture Details Section - ONLY FOR EXISTING UNITS
-            if (!isNewUnit) {
-                item {
-                    Text(
-                        text = "Lecture Details (Optional)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
+            // Lecture Details Section
+            item {
+                Text(
+                    text = "Lecture Details (Optional)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
 
-                item {
-                    OutlinedTextField(
-                        value = lectureDay,
-                        onValueChange = { lectureDay = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Lecture Day") },
-                        placeholder = { Text("e.g., Monday") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.CalendarMonth,
-                                contentDescription = null
-                            )
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        singleLine = true
-                    )
-                }
-
-                item {
-                    OutlinedTextField(
-                        value = lectureTime,
-                        onValueChange = { lectureTime = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Lecture Time") },
-                        placeholder = { Text("e.g., 9:00 AM - 11:00 AM") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Schedule,
-                                contentDescription = null
-                            )
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        singleLine = true
-                    )
-                }
-
-                item {
-                    OutlinedTextField(
-                        value = lectureVenue,
-                        onValueChange = { lectureVenue = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Venue") },
-                        placeholder = { Text("e.g., Room 101") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null
-                            )
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        singleLine = true
-                    )
-                }
-
-                // Active Switch (only for existing units)
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Book,
-                                contentDescription = null,
-                                tint = if (isActive)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "Unit Active",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                        Switch(
-                            checked = isActive,
-                            onCheckedChange = { isActive = it },
+            item {
+                OutlinedTextField(
+                    value = lectureDay,
+                    onValueChange = { lectureDay = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Lecture Day") },
+                    placeholder = { Text("e.g., Monday") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = null
                         )
-                    }
-                }
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+            }
 
-                // Delete Button (for existing units)
+            item {
+                OutlinedTextField(
+                    value = lectureTime,
+                    onValueChange = { lectureTime = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Lecture Time") },
+                    placeholder = { Text("e.g., 9:00 AM - 11:00 AM") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value = lectureVenue,
+                    onValueChange = { lectureVenue = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Venue") },
+                    placeholder = { Text("e.g., Room 101") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+            }
+
+            // Delete Button (for existing units)
+            if (!isNewUnit) {
                 item {
                     OutlinedButton(
                         onClick = { showDeleteDialog = true },
@@ -643,31 +1154,27 @@ fun UnitEditBottomSheet(
             item {
                 Button(
                     onClick = {
-                        val unitEdit = UnitEdit(
-                            id = unit?.id ?: "",
+                        val departmentRef = DepartmentRef(
+                            departmentId = null,
+                            draftName = null
+                        )
+
+                        val newUnit = NewUnitDraft(
                             code = unitCode,
                             name = unitName,
                             semester = semester.toIntOrNull() ?: 1,
-                            // Only include lecture details for existing units
-                            lectureDay = if (!isNewUnit) lectureDay.takeIf { it.isNotBlank() } else null,
-                            lectureTime = if (!isNewUnit) lectureTime.takeIf { it.isNotBlank() } else null,
-                            lectureVenue = if (!isNewUnit) lectureVenue.takeIf { it.isNotBlank() } else null,
-                            isActive = isActive
+                            lectureDay = lectureDay.takeIf { it.isNotBlank() },
+                            lectureTime = lectureTime.takeIf { it.isNotBlank() },
+                            lectureVenue = lectureVenue.takeIf { it.isNotBlank() },
+                            department = departmentRef
                         )
-                        onSave(unitEdit, selectedProgrammeId)
+                        onSave(newUnit, selectedProgrammeId)
                         scope.launch { sheetState.hide() }.invokeOnCompletion {
                             if (!sheetState.isVisible) onDismiss()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = if (isNewUnit) {
-                        unitCode.isNotBlank() &&
-                                unitName.isNotBlank() &&
-                                semester.toIntOrNull() != null &&
-                                selectedProgrammeId.isNotBlank()
-                    } else {
-                        unitCode.isNotBlank() && unitName.isNotBlank() && semester.toIntOrNull() != null
-                    },
+                    enabled = unitCode.isNotBlank() && unitName.isNotBlank() && semester.toIntOrNull() != null,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(if (isNewUnit) "Add Unit" else "Save Changes")
@@ -769,120 +1276,7 @@ private fun ProgrammeSelectionChip(
     }
 }
 
-@Composable
-private fun UnitEditItem(
-    unit: UnitEntity,
-    onUpdate: (UnitEdit) -> Unit
-) {
-    var isExpanded by remember { mutableStateOf(false) }
-    var lectureDay by remember { mutableStateOf(unit.lectureDay ?: "") }
-    var lectureTime by remember { mutableStateOf(unit.lectureTime ?: "") }
-    var lectureVenue by remember { mutableStateOf(unit.lectureVenue ?: "") }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { isExpanded = !isExpanded },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text(
-                        text = "${unit.code} - ${unit.name}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "Semester ${unit.semester}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.Close else Icons.Default.Edit,
-                    contentDescription = if (isExpanded) "Close" else "Edit",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            if (isExpanded) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = lectureDay,
-                        onValueChange = { lectureDay = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Lecture Day") },
-                        placeholder = { Text(unit.lectureDay ?: "Not set") },
-                        shape = RoundedCornerShape(8.dp),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = lectureTime,
-                        onValueChange = { lectureTime = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Lecture Time") },
-                        placeholder = { Text(unit.lectureTime ?: "Not set") },
-                        shape = RoundedCornerShape(8.dp),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = lectureVenue,
-                        onValueChange = { lectureVenue = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Venue") },
-                        placeholder = { Text(unit.lectureVenue ?: "Not set") },
-                        shape = RoundedCornerShape(8.dp),
-                        singleLine = true
-                    )
-
-                    Button(
-                        onClick = {
-                            onUpdate(
-                                UnitEdit(
-                                    id = unit.id,
-                                    code = unit.code,
-                                    name = unit.name,
-                                    semester = unit.semester,
-                                    lectureDay = lectureDay.takeIf { it.isNotBlank() },
-                                    lectureTime = lectureTime.takeIf { it.isNotBlank() },
-                                    lectureVenue = lectureVenue.takeIf { it.isNotBlank() },
-                                    isActive = true
-                                )
-                            )
-                            isExpanded = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Update")
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ==================== ACADEMIC TERM BOTTOM SHEET ====================
 
@@ -892,8 +1286,7 @@ fun AcademicTermBottomSheet(
     terms: List<AcademicTermEntity>,
     activeTerm: AcademicTermEntity?,
     onDismiss: () -> Unit,
-    onSetActive: (String) -> Unit,
-    onAddTerm: (NewAcademicTermDraft) -> Unit // Changed to accept NewAcademicTermDraft
+    onAddTerm: (NewAcademicTermDraft) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -1038,7 +1431,6 @@ fun AcademicTermBottomSheet(
                     TermEditItem(
                         term = term,
                         isActive = term.id == activeTerm?.id,
-                        onSetActive = { onSetActive(term.id) }
                     )
                 }
             } else {
@@ -1057,7 +1449,6 @@ fun AcademicTermBottomSheet(
 private fun TermEditItem(
     term: AcademicTermEntity,
     isActive: Boolean,
-    onSetActive: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1103,13 +1494,6 @@ private fun TermEditItem(
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                }
-            } else {
-                OutlinedButton(
-                    onClick = onSetActive,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Set Active")
                 }
             }
         }
